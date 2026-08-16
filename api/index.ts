@@ -152,17 +152,30 @@ export async function initDbSchema(pool: any) {
 
 export function getDatabase() {
   dotenv.config();
-  const connectionString = process.env.DATABASE_URL;
-  if (!connectionString || !connectionString.trim()) {
+  const rawConn = process.env.DATABASE_URL;
+  if (!rawConn || !rawConn.trim()) {
     return null;
   }
 
   if (dbInstance) return dbInstance;
 
   try {
+    let cleanConnectionString = rawConn.trim();
+    // Normalize sslmode to verify-full to eliminate pg-connection-string warning in Vercel logs
+    if (
+      cleanConnectionString.includes('sslmode=require') ||
+      cleanConnectionString.includes('sslmode=prefer') ||
+      cleanConnectionString.includes('sslmode=verify-ca')
+    ) {
+      cleanConnectionString = cleanConnectionString.replace(
+        /sslmode=(require|prefer|verify-ca)/g,
+        'sslmode=verify-full'
+      );
+    }
+
     const pool = new Pool({
-      connectionString,
-      ssl: connectionString.includes('localhost') ? false : { rejectUnauthorized: false },
+      connectionString: cleanConnectionString,
+      ssl: cleanConnectionString.includes('localhost') ? false : { rejectUnauthorized: false },
       connectionTimeoutMillis: 10000,
     });
 
@@ -174,6 +187,7 @@ export function getDatabase() {
     return null;
   }
 }
+
 
 // ---------------------------------------------------------------------------
 // Express Application & Router
