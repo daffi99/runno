@@ -6,7 +6,12 @@ import { Button } from '../components/ui/Button';
 import { WorkoutCard } from '../components/plan/WorkoutCard';
 import { PlanCard } from '../components/plan/PlanCard';
 import { QuickPlanModal } from '../components/plan/QuickPlanModal';
-import { formatDistance, formatFullWorkoutDate, formatWeekRange } from '../utils/formatters';
+import {
+  formatDistance,
+  formatFullWorkoutDate,
+  formatWeekRange,
+  getDateForDayOfWeek,
+} from '../utils/formatters';
 
 import {
   Sparkles,
@@ -23,7 +28,11 @@ import {
   Copy,
   Check,
   Search,
+  ChevronLeft,
+  ChevronRight,
+  ArrowRight,
 } from 'lucide-react';
+
 
 
 import { clsx } from 'clsx';
@@ -266,6 +275,43 @@ export const CoachView: React.FC<CoachViewProps> = ({
   // Today's day of week (0 = Sunday, 1 = Monday, ..., 6 = Saturday)
   const currentDayOfWeek = new Date().getDay();
 
+  const [viewedWeek, setViewedWeek] = useState<number>(() => activePlan?.currentWeek || 1);
+
+  // Sync viewedWeek whenever activePlan is loaded
+  useEffect(() => {
+    if (activePlan?.currentWeek) {
+      setViewedWeek(activePlan.currentWeek);
+    }
+  }, [activePlan?.id]);
+
+  const totalPlanWeeks = Math.max(activePlan?.totalWeeks || 4, 4);
+  const currentPlanWeek = activePlan?.currentWeek || 1;
+  const isViewingCurrentWeek = viewedWeek === currentPlanWeek;
+  const isViewingNextWeek = viewedWeek === currentPlanWeek + 1;
+
+  // Selected week base date (shifted by (viewedWeek - currentPlanWeek) * 7 days)
+  const selectedWeekBaseDate = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + (viewedWeek - currentPlanWeek) * 7);
+    return d;
+  }, [viewedWeek, currentPlanWeek]);
+
+  // Tomorrow's Date & Workout calculation (e.g. for Sunday looking at Monday tomorrow)
+  const tomorrowDate = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    return d;
+  }, []);
+
+  const tomorrowDayOfWeek = tomorrowDate.getDay(); // 0 = Sun, 1 = Mon, ..., 6 = Sat
+  const tomorrowWorkout = useMemo(() => {
+    if (!activePlan) return null;
+    return activePlan.workouts.find((w) => w.dayOfWeek === tomorrowDayOfWeek) || null;
+  }, [activePlan, tomorrowDayOfWeek]);
+
+  // If today is Sunday (day 0), tomorrow (Monday) begins next week
+  const isSunday = currentDayOfWeek === 0;
+
   // Find today's workout in the active plan
   const todayWorkout = useMemo(() => {
     if (!activePlan) return null;
@@ -289,6 +335,7 @@ export const CoachView: React.FC<CoachViewProps> = ({
       totalWorkouts: runningWorkouts.length,
     };
   }, [activePlan]);
+
 
   const handleToggleWorkout = (workoutId: string) => {
     const updated = storageService.toggleWorkoutCompletion(workoutId);
@@ -549,16 +596,100 @@ export const CoachView: React.FC<CoachViewProps> = ({
         <div className="space-y-4 animate-in fade-in duration-150">
           {activePlan ? (
             <>
+              {/* Interactive Week Switcher Bar & Pills */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between bg-white p-2.5 rounded-2xl border border-neutral-200/90 shadow-soft-xs">
+                  <button
+                    type="button"
+                    onClick={() => setViewedWeek((prev) => Math.max(1, prev - 1))}
+                    disabled={viewedWeek <= 1}
+                    className="p-2 rounded-xl text-neutral-600 hover:bg-neutral-100 disabled:opacity-30 disabled:hover:bg-transparent text-xs font-bold flex items-center gap-1 transition-all active:scale-95"
+                    aria-label="Previous week"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                    <span className="hidden sm:inline">Prev Week</span>
+                  </button>
+
+                  <div className="text-center">
+                    <div className="flex items-center justify-center space-x-1.5">
+                      <span className="text-sm font-black text-neutral-900 tracking-tight">
+                        Week {viewedWeek} of {totalPlanWeeks}
+                      </span>
+                      {isViewingCurrentWeek ? (
+                        <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          This Week
+                        </span>
+                      ) : isViewingNextWeek ? (
+                        <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
+                          Next Week
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-neutral-100 text-neutral-600">
+                          Week {viewedWeek}
+                        </span>
+                      )}
+                    </div>
+                    <span className="text-[11px] font-semibold text-neutral-400 block mt-0.5">
+                      {formatWeekRange(selectedWeekBaseDate)}
+                    </span>
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setViewedWeek((prev) => Math.min(totalPlanWeeks, prev + 1))}
+                    disabled={viewedWeek >= totalPlanWeeks}
+                    className="p-2 rounded-xl text-neutral-600 hover:bg-neutral-100 disabled:opacity-30 disabled:hover:bg-transparent text-xs font-bold flex items-center gap-1 transition-all active:scale-95"
+                    aria-label="Next week"
+                  >
+                    <span className="hidden sm:inline">Next Week</span>
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Quick Week Select Pills */}
+                <div className="flex items-center space-x-1.5 overflow-x-auto pb-1 no-scrollbar">
+                  {Array.from({ length: totalPlanWeeks }, (_, i) => i + 1).map((weekNum) => {
+                    const isSelected = weekNum === viewedWeek;
+                    const isCurrent = weekNum === currentPlanWeek;
+                    const isNext = weekNum === currentPlanWeek + 1;
+                    return (
+                      <button
+                        key={weekNum}
+                        type="button"
+                        onClick={() => setViewedWeek(weekNum)}
+                        className={clsx(
+                          'shrink-0 text-xs font-bold px-3 py-1.5 rounded-full transition-all active:scale-95 shadow-xs border flex items-center gap-1',
+                          isSelected
+                            ? 'bg-neutral-900 text-white border-neutral-900'
+                            : isNext
+                            ? 'bg-indigo-50/80 text-indigo-700 border-indigo-200 hover:bg-indigo-100'
+                            : isCurrent
+                            ? 'bg-orange-50/80 text-[#FF5500] border-orange-200 hover:bg-orange-100'
+                            : 'bg-white text-neutral-600 border-neutral-200 hover:bg-neutral-50'
+                        )}
+                      >
+                        <span>Week {weekNum}</span>
+                        {isCurrent && <span className="text-[9px] opacity-75 font-normal">(Now)</span>}
+                        {isNext && <span className="text-[9px] opacity-75 font-normal">(Next)</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               {/* Plan Overview Card */}
               <Card className="p-4 bg-white border border-neutral-200/80 shadow-soft-sm space-y-3">
                 <div className="flex items-start justify-between">
                   <div>
                     <div className="flex items-center space-x-2 flex-wrap gap-y-1">
-                      <span className="text-[10px] font-black uppercase tracking-wider bg-orange-50 text-[#FF5500] px-2 py-0.5 rounded-full">
-                        Week {activePlan.currentWeek} of {activePlan.totalWeeks}
+                      <span className={clsx(
+                        "text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full",
+                        isViewingCurrentWeek ? "bg-orange-50 text-[#FF5500]" : "bg-indigo-50 text-indigo-700"
+                      )}>
+                        Week {viewedWeek} of {totalPlanWeeks} {isViewingCurrentWeek ? '• Current' : '• Preview'}
                       </span>
                       <span className="text-[11px] font-bold text-neutral-600">
-                        {formatWeekRange()}
+                        {formatWeekRange(selectedWeekBaseDate)}
                       </span>
                       <span className="text-neutral-300">·</span>
                       <span className="text-[11px] font-bold text-neutral-400">
@@ -583,34 +714,49 @@ export const CoachView: React.FC<CoachViewProps> = ({
                   </button>
                 </div>
 
-                {/* Weekly Mileage Progress */}
-                <div className="space-y-1.5 pt-1">
-                  <div className="flex items-center justify-between text-xs font-semibold">
-                    <span className="text-neutral-500 font-medium">Weekly Target Progress</span>
-                    <span className="font-mono text-neutral-900">
-                      <span className="font-bold text-[#FF5500]">
-                        {formatDistance(weeklyProgress.completedKm, unitSystem, true)}
+                {/* Weekly Mileage Progress (Only for current week) */}
+                {isViewingCurrentWeek ? (
+                  <div className="space-y-1.5 pt-1">
+                    <div className="flex items-center justify-between text-xs font-semibold">
+                      <span className="text-neutral-500 font-medium">Weekly Target Progress</span>
+                      <span className="font-mono text-neutral-900">
+                        <span className="font-bold text-[#FF5500]">
+                          {formatDistance(weeklyProgress.completedKm, unitSystem, true)}
+                        </span>
+                        <span className="text-neutral-400"> / {formatDistance(weeklyProgress.targetKm, unitSystem, true)}</span>
                       </span>
-                      <span className="text-neutral-400"> / {formatDistance(weeklyProgress.targetKm, unitSystem, true)}</span>
+                    </div>
+
+                    <div className="w-full h-2.5 bg-neutral-100 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-[#FF5500] to-amber-500 rounded-full transition-all duration-500 ease-out"
+                        style={{ width: `${weeklyProgress.percent}%` }}
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between text-[11px] text-neutral-400 pt-0.5">
+                      <span>{weeklyProgress.completedCount} of {weeklyProgress.totalWorkouts} runs completed</span>
+                      <span className="font-bold text-neutral-700">{weeklyProgress.percent}%</span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="pt-1 flex items-center justify-between text-xs bg-indigo-50/60 p-2.5 rounded-xl border border-indigo-100">
+                    <span className="text-indigo-900 font-medium">
+                      Viewing Week {viewedWeek} preview ({formatWeekRange(selectedWeekBaseDate)})
                     </span>
+                    <button
+                      type="button"
+                      onClick={() => setViewedWeek(currentPlanWeek)}
+                      className="text-xs font-bold text-indigo-700 hover:text-indigo-900 underline"
+                    >
+                      Return to This Week
+                    </button>
                   </div>
-
-                  <div className="w-full h-2.5 bg-neutral-100 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-gradient-to-r from-[#FF5500] to-amber-500 rounded-full transition-all duration-500 ease-out"
-                      style={{ width: `${weeklyProgress.percent}%` }}
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-between text-[11px] text-neutral-400 pt-0.5">
-                    <span>{weeklyProgress.completedCount} of {weeklyProgress.totalWorkouts} runs completed</span>
-                    <span className="font-bold text-neutral-700">{weeklyProgress.percent}%</span>
-                  </div>
-                </div>
+                )}
               </Card>
 
-              {/* Today's Workout Focus Card */}
-              {todayWorkout && (
+              {/* Today's Workout Focus Card (Shown when viewing Current Week) */}
+              {isViewingCurrentWeek && todayWorkout && (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between px-1">
                     <div className="flex items-center space-x-1.5">
@@ -636,24 +782,63 @@ export const CoachView: React.FC<CoachViewProps> = ({
                     workout={todayWorkout}
                     unitSystem={unitSystem}
                     isToday={true}
+                    date={new Date()}
                     onToggleComplete={handleToggleWorkout}
                     onSelectRun={onSelectRun}
                   />
                 </div>
               )}
 
+              {/* Tomorrow's Workout Sneak Peek (Especially on Sunday or if today is rest/completed) */}
+              {isViewingCurrentWeek && tomorrowWorkout && (isSunday || todayWorkout?.completed || todayWorkout?.type === 'rest') && (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between px-1">
+                    <div className="flex items-center space-x-1.5">
+                      <span className="text-xs font-bold uppercase tracking-wider text-indigo-600 flex items-center gap-1">
+                        <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
+                        Tomorrow's Session (Sneak Peek)
+                      </span>
+                      <span className="text-neutral-300">·</span>
+                      <span className="text-[11px] font-semibold text-neutral-500">
+                        {formatFullWorkoutDate(tomorrowDate)}
+                      </span>
+                    </div>
+                    {isSunday && (
+                      <button
+                        onClick={() => setViewedWeek(currentPlanWeek + 1)}
+                        className="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1"
+                      >
+                        <span>Week 2 Plan</span>
+                        <ArrowRight className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
+                  <WorkoutCard
+                    workout={tomorrowWorkout}
+                    unitSystem={unitSystem}
+                    isToday={false}
+                    date={tomorrowDate}
+                    onToggleComplete={handleToggleWorkout}
+                    onSelectRun={onSelectRun}
+                  />
+                </div>
+              )}
 
-
-              {/* Weekly Schedule (7 Days) */}
+              {/* Weekly Schedule (7 Days for the viewed week) */}
               <div className="space-y-2.5 pt-1">
                 <div className="flex items-center justify-between px-1">
-                  <span className="text-xs font-bold uppercase tracking-wider text-neutral-400">
-                    Full Weekly Schedule
-                  </span>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-xs font-bold uppercase tracking-wider text-neutral-500">
+                      Week {viewedWeek} Schedule
+                    </span>
+                    <span className="text-xs text-neutral-400 font-medium">
+                      ({formatWeekRange(selectedWeekBaseDate)})
+                    </span>
+                  </div>
                   <button
                     onClick={() => {
                       setActiveTab('chat');
-                      setInputPrompt('Can you help me adjust my active training schedule?');
+                      setInputPrompt(`Can you help me adjust my Week ${viewedWeek} training schedule?`);
                       setTimeout(() => chatInputRef.current?.focus(), 150);
                     }}
                     className="text-xs font-bold text-[#FF5500] hover:text-[#E64D00] flex items-center gap-1"
@@ -664,26 +849,30 @@ export const CoachView: React.FC<CoachViewProps> = ({
                 </div>
 
                 <div className="space-y-2">
-                  {activePlan.workouts.map((w) => (
-                    <WorkoutCard
-                      key={w.id}
-                      workout={w}
-                      unitSystem={unitSystem}
-                      isToday={w.dayOfWeek === currentDayOfWeek}
-                      onToggleComplete={handleToggleWorkout}
-                      onSelectRun={onSelectRun}
-                    />
-                  ))}
+                  {activePlan.workouts.map((w) => {
+                    const workoutDate = getDateForDayOfWeek(w.dayOfWeek, selectedWeekBaseDate);
+                    const isToday = isViewingCurrentWeek && w.dayOfWeek === currentDayOfWeek;
+                    return (
+                      <WorkoutCard
+                        key={`${w.id}_w${viewedWeek}`}
+                        workout={w}
+                        unitSystem={unitSystem}
+                        isToday={isToday}
+                        date={workoutDate}
+                        onToggleComplete={handleToggleWorkout}
+                        onSelectRun={onSelectRun}
+                      />
+                    );
+                  })}
                 </div>
               </div>
-
 
               {/* AI Coaching Tips */}
               {activePlan.aiAdvice && (
                 <div className="p-3.5 rounded-2xl bg-orange-50/70 border border-orange-200/60 text-xs space-y-1.5">
                   <div className="flex items-center space-x-1.5 text-[#FF5500] font-bold">
                     <Sparkles className="w-4 h-4" />
-                    <span>Coach Strategy for This Week</span>
+                    <span>Coach Strategy for Week {viewedWeek}</span>
                   </div>
                   <p className="text-neutral-700 leading-relaxed">
                     {activePlan.aiAdvice}
@@ -693,6 +882,7 @@ export const CoachView: React.FC<CoachViewProps> = ({
             </>
           ) : (
             /* Empty State: No Active Plan */
+
             <Card className="p-7 text-center space-y-4 bg-white border border-neutral-200/90 shadow-soft-sm">
               <div className="w-14 h-14 rounded-full bg-orange-50 text-[#FF5500] flex items-center justify-center mx-auto shadow-soft-xs">
                 <Calendar className="w-7 h-7" />
