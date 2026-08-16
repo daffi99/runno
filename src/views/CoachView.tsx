@@ -215,8 +215,10 @@ export const CoachView: React.FC<CoachViewProps> = ({
   // Sync plan from server and match completion with run log on mount and runs update
   useEffect(() => {
     storageService.syncActivePlanWithServer().then((synced) => {
-      const base = synced || activePlan;
-      if (base) {
+      if (synced) {
+        const syncedWithRuns = storageService.syncPlanWithRuns(runs);
+        setActivePlan(syncedWithRuns || synced);
+      } else if (activePlan) {
         const syncedWithRuns = storageService.syncPlanWithRuns(runs);
         if (syncedWithRuns) setActivePlan(syncedWithRuns);
       }
@@ -226,11 +228,12 @@ export const CoachView: React.FC<CoachViewProps> = ({
   // Sync coach messages from server on mount
   useEffect(() => {
     storageService.syncCoachMessagesWithServer().then((syncedMsgs) => {
-      if (syncedMsgs && syncedMsgs.length > 1) {
+      if (syncedMsgs && syncedMsgs.length > 0) {
         setMessages(syncedMsgs);
       }
     });
   }, []);
+
 
 
 
