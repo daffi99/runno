@@ -176,17 +176,23 @@ export function getDatabase() {
 }
 
 // ---------------------------------------------------------------------------
-// Express Application
+// Express Application & Router
 // ---------------------------------------------------------------------------
 const app = express();
+const router = express.Router();
 const PORT = process.env.PORT || 3001;
 
 app.use(cors());
 
-// Normalize URL path so both /api/... and /... work in Vercel serverless environments
+// URL Resolver for Vercel Serverless Function rewrites
 app.use((req, _res, next) => {
-  if (req.url && !req.url.startsWith('/api')) {
-    req.url = '/api' + (req.url.startsWith('/') ? req.url : '/' + req.url);
+  const matchedPath =
+    (req.headers['x-matched-path'] as string) ||
+    (req.headers['x-vercel-matched-path'] as string) ||
+    (req.headers['x-rewrite-url'] as string) ||
+    '';
+  if (matchedPath && matchedPath.startsWith('/api')) {
+    req.url = matchedPath;
   }
   next();
 });
@@ -204,8 +210,10 @@ app.use((req, _res, next) => {
   express.json({ limit: '30mb' })(req, _res, next);
 });
 
+// ---------------------------------------------------------------------------
 // Health check endpoint
-app.get('/api/health', (_req, res) => {
+// ---------------------------------------------------------------------------
+router.get('/health', (_req, res) => {
   dotenv.config();
   const db = getDatabase();
   const rawKey = (process.env.OPENROUTER_API_KEY || '').trim();
@@ -223,7 +231,7 @@ app.get('/api/health', (_req, res) => {
 // ---------------------------------------------------------------------------
 // AI Screenshot OCR Analysis Endpoint
 // ---------------------------------------------------------------------------
-app.post('/api/analyze-screenshot', async (req, res) => {
+router.post('/analyze-screenshot', async (req, res) => {
   try {
     dotenv.config();
     let body = req.body;
@@ -374,7 +382,7 @@ Return ONLY a valid JSON object matching this schema (no markdown, no backticks)
 // ---------------------------------------------------------------------------
 // Runs CRUD Endpoints
 // ---------------------------------------------------------------------------
-app.get('/api/runs', async (_req, res) => {
+router.get('/runs', async (_req, res) => {
   const db = getDatabase();
   if (!db) {
     return res.status(200).json({ runs: [], storage: 'local-fallback' });
@@ -389,7 +397,7 @@ app.get('/api/runs', async (_req, res) => {
   }
 });
 
-app.post('/api/runs', async (req, res) => {
+router.post('/runs', async (req, res) => {
   let runPayload = req.body;
   if (typeof runPayload === 'string') {
     try {
@@ -424,7 +432,7 @@ app.post('/api/runs', async (req, res) => {
       vertical_oscillation_cm: runPayload.vertical_oscillation_cm ? Number(runPayload.vertical_oscillation_cm) : null,
       ground_contact_balance: runPayload.ground_contact_balance || null,
       aerobic_te: runPayload.aerobic_te ? Number(runPayload.aerobic_te) : null,
-      anaon: runPayload.anaerobic_te ? Number(runPayload.anaerobic_te) : null,
+      anaerobic_te: runPayload.anaerobic_te ? Number(runPayload.anaerobic_te) : null,
       vo2max: runPayload.vo2max ? Number(runPayload.vo2max) : null,
       training_load: runPayload.training_load ? Number(runPayload.training_load) : null,
       recovery_hours: runPayload.recovery_hours ? Number(runPayload.recovery_hours) : null,
@@ -452,7 +460,7 @@ app.post('/api/runs', async (req, res) => {
   }
 });
 
-app.delete('/api/runs/:id', async (req, res) => {
+router.delete('/runs/:id', async (req, res) => {
   const { id } = req.params;
   const db = getDatabase();
 
@@ -472,7 +480,7 @@ app.delete('/api/runs/:id', async (req, res) => {
 // ---------------------------------------------------------------------------
 // AI Coach & Running Plan Generator API
 // ---------------------------------------------------------------------------
-app.post('/api/ai-coach', async (req, res) => {
+router.post('/ai-coach', async (req, res) => {
   try {
     dotenv.config();
     let body = req.body;
@@ -832,7 +840,7 @@ function generateAlgorithmicPlan(prompt: string, runnerContext?: any) {
 // ---------------------------------------------------------------------------
 // Training Plans Persistence Endpoints
 // ---------------------------------------------------------------------------
-app.get('/api/plans/active', async (_req, res) => {
+router.get('/plans/active', async (_req, res) => {
   const db = getDatabase();
   if (!db) {
     return res.status(200).json({ plan: null, storage: 'local-fallback' });
@@ -874,7 +882,7 @@ app.get('/api/plans/active', async (_req, res) => {
   }
 });
 
-app.post('/api/plans', async (req, res) => {
+router.post('/plans', async (req, res) => {
   let planPayload = req.body;
   if (typeof planPayload === 'string') {
     try {
@@ -918,7 +926,7 @@ app.post('/api/plans', async (req, res) => {
 });
 
 // Coach messages sync endpoints
-app.get('/api/coach/messages', async (_req, res) => {
+router.get('/coach/messages', async (_req, res) => {
   const db = getDatabase();
   if (!db) return res.json({ success: true, messages: [] });
   try {
@@ -937,7 +945,7 @@ app.get('/api/coach/messages', async (_req, res) => {
   }
 });
 
-app.post('/api/coach/messages', async (req, res) => {
+router.post('/coach/messages', async (req, res) => {
   let body = req.body;
   if (typeof body === 'string') {
     try {
@@ -966,6 +974,16 @@ app.post('/api/coach/messages', async (req, res) => {
     console.error('[Runno DB] Error saving coach messages:', err.message);
     res.json({ success: false, error: err.message });
   }
+});
+
+// Mount router on both /api and root /
+app.use('/api', router);
+app.use('/', router);
+
+// Fallback 404 handler
+app.use((req, res) => {
+  console.warn(`[Runno API 404] Not Found: ${req.method} ${req.url}`);
+  res.status(404).json({ error: `Not Found: ${req.method} ${req.url}` });
 });
 
 if (!process.env.VERCEL) {
