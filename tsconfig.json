@@ -10,7 +10,8 @@
     "allowSyntheticDefaultImports": true,
     "strict": false,
     "jsx": "react-jsx",
-    "isolatedModules": true
+    "isolatedModules": true,
+    "noEmit": true
   },
   "include": ["src", "api"]
 }
