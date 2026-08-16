@@ -869,7 +869,13 @@ app.post('/api/plans', async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`[Runno Backend] Server listening on http://localhost:${PORT}`);
-});
+if (!process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`[Runno Backend] Server listening on http://localhost:${PORT}`);
+  });
+}
+
+export default app;
+export { app };
+
 
