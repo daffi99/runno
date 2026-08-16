@@ -155,7 +155,21 @@ export const CoachView: React.FC<CoachViewProps> = ({
   customApiKey,
 }) => {
 
-  const [activeTab, setActiveTab] = useState<CoachSubTab>('schedule');
+  const [activeTab, setActiveTab] = useState<CoachSubTab>(() => {
+    try {
+      const saved = localStorage.getItem('runno_coach_subtab') as CoachSubTab;
+      return saved === 'chat' || saved === 'schedule' ? saved : 'schedule';
+    } catch (_) {
+      return 'schedule';
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('runno_coach_subtab', activeTab);
+    } catch (_) {}
+  }, [activeTab]);
+
   const [activePlan, setActivePlan] = useState<TrainingPlan | null>(storageService.getActivePlan());
   const [messages, setMessages] = useState<AICoachMessage[]>(() => {
     const saved = storageService.getCoachMessages();

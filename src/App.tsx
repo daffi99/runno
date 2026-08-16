@@ -24,10 +24,54 @@ type AppScreen =
     }
   | { type: 'export' };
 
+const VALID_TABS: NavTab[] = ['dashboard', 'history', 'add', 'coach', 'stats', 'more'];
+
+const getInitialScreen = (): AppScreen => {
+  if (typeof window === 'undefined') {
+    return { type: 'tab', tab: 'dashboard' };
+  }
+
+  // 1. Try to read from URL Hash
+  const hash = window.location.hash.replace(/^#\/?/, '').trim();
+  if (hash) {
+    if (VALID_TABS.includes(hash as NavTab)) {
+      return { type: 'tab', tab: hash as NavTab };
+    }
+    if (hash.startsWith('run/')) {
+      const runId = hash.replace('run/', '').trim();
+      if (runId) {
+        return { type: 'runDetail', runId, previousTab: 'history' };
+      }
+    }
+    if (hash === 'export') {
+      return { type: 'export' };
+    }
+  }
+
+  // 2. Try to read from localStorage
+  try {
+    const saved = localStorage.getItem('runno_last_screen');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (parsed?.type === 'tab' && VALID_TABS.includes(parsed.tab)) {
+        return { type: 'tab', tab: parsed.tab };
+      }
+      if (parsed?.type === 'runDetail' && parsed.runId) {
+        return { type: 'runDetail', runId: parsed.runId, previousTab: parsed.previousTab || 'history' };
+      }
+      if (parsed?.type === 'export') {
+        return { type: 'export' };
+      }
+    }
+  } catch (_) {}
+
+  return { type: 'tab', tab: 'dashboard' };
+};
+
 export const App: React.FC = () => {
   const [runs, setRuns] = useState<Run[]>([]);
   const [settings, setSettings] = useState<AppSettings>(storageService.getSettings());
-  const [screen, setScreen] = useState<AppScreen>({ type: 'tab', tab: 'dashboard' });
+  const [screen, setScreen] = useState<AppScreen>(getInitialScreen);
 
   const loadData = async () => {
     // 1. Immediately read local storage
@@ -44,6 +88,46 @@ export const App: React.FC = () => {
     loadData();
   }, []);
 
+  // Persist current screen to localStorage & sync with URL hash
+  useEffect(() => {
+    try {
+      if (screen.type === 'tab' || screen.type === 'runDetail' || screen.type === 'export') {
+        localStorage.setItem('runno_last_screen', JSON.stringify(screen));
+      }
+    } catch (_) {}
+
+    let newHash = '';
+    if (screen.type === 'tab') {
+      newHash = `#${screen.tab}`;
+    } else if (screen.type === 'runDetail') {
+      newHash = `#run/${screen.runId}`;
+    } else if (screen.type === 'export') {
+      newHash = '#export';
+    }
+
+    if (newHash && window.location.hash !== newHash) {
+      window.history.replaceState(null, '', newHash);
+    }
+  }, [screen]);
+
+  // Listen to browser Back/Forward & hash changes
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.replace(/^#\/?/, '').trim();
+      if (VALID_TABS.includes(hash as NavTab)) {
+        setScreen({ type: 'tab', tab: hash as NavTab });
+      } else if (hash.startsWith('run/')) {
+        const runId = hash.replace('run/', '').trim();
+        if (runId) setScreen({ type: 'runDetail', runId, previousTab: 'history' });
+      } else if (hash === 'export') {
+        setScreen({ type: 'export' });
+      }
+    };
+
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
   const handleSelectTab = (tab: NavTab) => {
     if (tab === 'add') {
       setScreen({ type: 'tab', tab: 'add' });
@@ -56,6 +140,7 @@ export const App: React.FC = () => {
     const currentTab = screen.type === 'tab' ? screen.tab : 'dashboard';
     setScreen({ type: 'runDetail', runId, previousTab: currentTab });
   };
+
 
   const handleAnalysisComplete = (payload: {
     screenshotBase64: string | null;
