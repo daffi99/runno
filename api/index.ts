@@ -1049,18 +1049,9 @@ if (!process.env.VERCEL) {
 
 // Vercel Serverless Function Entrypoint
 export default function handler(req: any, res: any) {
-  return new Promise((resolve) => {
-    app(req, res, (err: any) => {
-      if (err && !res.headersSent) {
-        console.error('[Runno Serverless Handler Error]:', err);
-        res.status(500).json({ error: err.message || 'Internal Server Error' });
-      } else if (!res.headersSent) {
-        res.status(404).json({ error: `Not Found: ${req.method} ${req.url}` });
-      }
-      resolve(undefined);
-    });
-  });
+  return app(req, res);
 }
 
 export { app };
+
 
