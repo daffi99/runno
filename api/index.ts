@@ -503,11 +503,23 @@ router.post('/ai-coach', async (req, res) => {
       return res.status(400).json({ error: 'Message is required' });
     }
 
-    const apiKey = (customApiKey || process.env.OPENROUTER_API_KEY || '').trim();
+    const serverEnvKey = (process.env.OPENROUTER_API_KEY || '').trim();
+    const apiKey = (customApiKey || serverEnvKey).trim();
     if (!apiKey) {
-      return res.status(400).json({
-        error: 'OpenRouter API key is not detected on server. Please set OPENROUTER_API_KEY in Vercel Settings or enter your API key in More > Preferences in the app.',
-        code: 'MISSING_API_KEY',
+      return res.status(200).json({
+        success: false,
+        reply: `⚠️ **OpenRouter API Key Belum Terdeteksi**\n\nAI Coach memerlukan API key OpenRouter untuk berkomunikasi. Silakan tempelkan OpenRouter API Key Anda di tab **More > Preferences > Custom OpenRouter API Key**, atau tambahkan \`OPENROUTER_API_KEY\` di Vercel Settings lalu Redeploy.`,
+        debugInfo: {
+          endpoint: '/api/ai-coach',
+          status: 'MISSING_API_KEY',
+          environment: process.env.VERCEL ? 'vercel_serverless' : 'local_node',
+          openRouterKeyLength: 0,
+          openRouterKeyPrefix: 'none',
+          hasApiKey: false,
+          errorName: 'MissingApiKeyError',
+          rawError: 'No OPENROUTER_API_KEY found in process.env or customApiKey in request payload.',
+          clientTimestamp: new Date().toISOString(),
+        },
       });
     }
 
@@ -639,11 +651,24 @@ JSON_PLAN STRUCTURE:
     });
 
     if (!openRouterResponse.ok) {
+      const errText = await openRouterResponse.text();
+      console.error('[Runno AI Coach] OpenRouter returned error:', openRouterResponse.status, errText);
       const fallbackPlan = generateAlgorithmicPlan(message, runnerContext);
       return res.json({
         success: true,
-        reply: `I've prepared a customized running schedule for you below based on your request! (Offline coaching engine fallback).`,
+        reply: `⚠️ **OpenRouter Status (${openRouterResponse.status})**\n\nPanggilan ke model AI mengembalikan error ${openRouterResponse.status}. Saya telah menyiapkan jadwal latihan alternatif di bawah menggunakan offline coaching engine.`,
         suggestedPlan: fallbackPlan,
+        debugInfo: {
+          endpoint: 'https://openrouter.ai/api/v1/chat/completions',
+          status: openRouterResponse.status,
+          environment: process.env.VERCEL ? 'vercel_serverless' : 'local_node',
+          openRouterKeyLength: apiKey.length,
+          openRouterKeyPrefix: apiKey.substring(0, 10) + '...',
+          hasApiKey: true,
+          errorName: `OpenRouter_HTTP_${openRouterResponse.status}`,
+          rawError: errText,
+          clientTimestamp: new Date().toISOString(),
+        },
       });
     }
 
@@ -668,11 +693,33 @@ JSON_PLAN STRUCTURE:
       success: true,
       reply: cleanReply || 'Here is your training plan:',
       suggestedPlan,
+      debugInfo: {
+        endpoint: '/api/ai-coach',
+        status: 200,
+        environment: process.env.VERCEL ? 'vercel_serverless' : 'local_node',
+        openRouterKeyLength: apiKey.length,
+        openRouterKeyPrefix: apiKey.substring(0, 10) + '...',
+        hasApiKey: true,
+        modelUsed: model,
+        clientTimestamp: new Date().toISOString(),
+      },
     });
   } catch (err: any) {
-    console.error('[Runno AI Coach] Error:', err);
-    res.status(500).json({ error: err.message || 'Internal AI Coach error' });
+    console.error('[Runno AI Coach] Exception:', err);
+    res.status(200).json({
+      success: false,
+      reply: `⚠️ **Serverless Exception**\n\nTerjadi kesalahan di backend serverless: \`${err.message || 'Unknown error'}\``,
+      debugInfo: {
+        endpoint: '/api/ai-coach',
+        status: 500,
+        environment: process.env.VERCEL ? 'vercel_serverless' : 'local_node',
+        errorName: err.name || 'InternalError',
+        rawError: err.stack || err.message,
+        clientTimestamp: new Date().toISOString(),
+      },
+    });
   }
+
 });
 
 function sanitizePlan(parsed: any) {

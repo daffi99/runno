@@ -49,4 +49,22 @@ export interface AICoachMessage {
   content: string;
   timestamp: string;
   suggestedPlan?: TrainingPlan | null;
+  debugInfo?: {
+    endpoint?: string;
+    status?: number | string;
+    environment?: string;
+    openRouterKeyLength?: number;
+    openRouterKeyPrefix?: string;
+    hasApiKey?: boolean;
+    hasServerEnvKey?: boolean;
+    serverKeyPrefix?: string;
+    hasCustomClientKey?: boolean;
+    modelUsed?: string;
+    errorName?: string;
+    rawError?: string | any;
+    clientTimestamp?: string;
+    [key: string]: any;
+  } | null;
 }
+
+

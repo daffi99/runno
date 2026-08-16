@@ -175,17 +175,19 @@ export const CoachView: React.FC<CoachViewProps> = ({
   const streamTextWordByWord = (
     msgId: string,
     fullText: string,
-    suggestedPlan: TrainingPlan | null
+    suggestedPlan: TrainingPlan | null,
+    debugInfo?: any
   ) => {
-    const tokens = fullText.split(/(\s+)/);
-    let currentIndex = 0;
-    let accumulated = '';
-
-    setTypingMessageId(msgId);
-
     if (typingIntervalRef.current) {
       clearInterval(typingIntervalRef.current);
     }
+
+    setTypingMessageId(msgId);
+
+    // Split preserving whitespaces/words
+    const tokens = fullText.match(/\S+|\s+/g) || [fullText];
+    let currentIndex = 0;
+    let accumulated = '';
 
     typingIntervalRef.current = setInterval(() => {
       if (currentIndex >= tokens.length) {
@@ -195,7 +197,7 @@ export const CoachView: React.FC<CoachViewProps> = ({
 
         setMessages((prev) =>
           prev.map((m) =>
-            m.id === msgId ? { ...m, content: fullText, suggestedPlan } : m
+            m.id === msgId ? { ...m, content: fullText, suggestedPlan, debugInfo } : m
           )
         );
         return;
@@ -329,25 +331,68 @@ export const CoachView: React.FC<CoachViewProps> = ({
       };
 
 
-      const res = await fetch('/api/ai-coach', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
+      let data: any = null;
+      let errorDebug: any = null;
 
-      if (!res.ok) {
-        let errDetail = `API error (${res.status})`;
-        try {
-          const errData = await res.json();
-          if (errData.error) errDetail = errData.error;
-        } catch (_) {}
-        throw new Error(errDetail);
+      try {
+        const res = await fetch('/api/ai-coach', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+
+        const contentType = res.headers.get('content-type') || '';
+        if (contentType.includes('application/json')) {
+          data = await res.json();
+          if (data.debugInfo) {
+            errorDebug = data.debugInfo;
+          }
+        } else {
+          const rawText = await res.text();
+          errorDebug = {
+            endpoint: '/api/ai-coach',
+            status: res.status,
+            environment: 'vercel_serverless',
+            rawError: rawText.substring(0, 500),
+            clientTimestamp: new Date().toISOString(),
+          };
+          throw new Error(`Server returned non-JSON (${res.status}): ${rawText.substring(0, 100)}`);
+        }
+
+        if (!res.ok && !data?.reply) {
+          throw new Error(data?.error || `HTTP ${res.status}`);
+        }
+      } catch (networkOrServerErr: any) {
+        console.error('[Runno Coach] Request failed:', networkOrServerErr);
+        if (!data) {
+          let healthData: any = {};
+          try {
+            const healthRes = await fetch('/api/health');
+            if (healthRes.ok) healthData = await healthRes.json();
+          } catch (_) {}
+
+          errorDebug = {
+            endpoint: '/api/ai-coach',
+            status: networkOrServerErr.message || 500,
+            environment: healthData.environment || 'vercel_serverless',
+            hasServerEnvKey: healthData.hasOpenRouterKey,
+            serverKeyPrefix: healthData.openRouterKeyPrefix,
+            hasCustomClientKey: Boolean(customApiKey && customApiKey.length > 0),
+            rawError: networkOrServerErr.stack || networkOrServerErr.message,
+            clientTimestamp: new Date().toISOString(),
+          };
+
+          data = {
+            reply: `⚠️ **Gagal Terhubung ke Coaching Engine**\n\n${networkOrServerErr.message || 'Error koneksi'}\n\nSilakan cek panel debug di bawah untuk melihat penyebab detailnya.`,
+            suggestedPlan: null,
+            debugInfo: errorDebug,
+          };
+        }
       }
 
-
-      const data = await res.json();
-      const fullReply = data.reply || "Here is what I've prepared for you:";
-      const plan = data.suggestedPlan || null;
+      const fullReply = data?.reply || "Here is what I've prepared for you:";
+      const plan = data?.suggestedPlan || null;
+      const debugInfo = data?.debugInfo || errorDebug || null;
       const assistantMsgId = `msg_asst_${Date.now()}`;
 
       // Insert assistant message placeholder
@@ -357,26 +402,34 @@ export const CoachView: React.FC<CoachViewProps> = ({
         content: '',
         timestamp: new Date().toISOString(),
         suggestedPlan: null,
+        debugInfo,
       };
 
       setMessages((prev) => [...prev, initialAssistantMsg]);
       setIsLoading(false);
 
       // Stream text word-by-word in real time
-      streamTextWordByWord(assistantMsgId, fullReply, plan);
+      streamTextWordByWord(assistantMsgId, fullReply, plan, debugInfo);
     } catch (err: any) {
       console.error('[Runno Coach] Error sending message:', err);
       const errorMsg: AICoachMessage = {
         id: `msg_err_${Date.now()}`,
         role: 'assistant',
-        content: `Sorry, I encountered an issue connecting to the coaching engine: ${err.message}. Please check your connection or OpenRouter API key in More > Settings.`,
+        content: `Sorry, I encountered an issue connecting to the coaching engine: ${err.message}.`,
         timestamp: new Date().toISOString(),
+        debugInfo: {
+          endpoint: '/api/ai-coach',
+          status: err.message,
+          rawError: err.stack || err.message,
+          clientTimestamp: new Date().toISOString(),
+        },
       };
       setMessages((prev) => [...prev, errorMsg]);
     } finally {
       setIsLoading(false);
     }
   };
+
 
 
   const handleQuickModalGenerate = (params: {
@@ -756,10 +809,49 @@ export const CoachView: React.FC<CoachViewProps> = ({
                         />
                       </div>
                     )}
+
+                    {/* Collapsible Debug Diagnostics */}
+                    {!isUser && msg.debugInfo && (
+                      <details className="mt-2.5 p-2.5 rounded-xl bg-neutral-900 text-neutral-200 text-[11px] font-mono border border-neutral-800">
+                        <summary className="font-bold text-amber-400 cursor-pointer flex items-center justify-between select-none">
+                          <span className="flex items-center gap-1.5">
+                            <span>🔍 Debug Info</span>
+                          </span>
+                          <span className="text-[10px] uppercase px-1.5 py-0.5 rounded bg-neutral-800 text-neutral-300">
+                            {String(msg.debugInfo.status || 'OK')}
+                          </span>
+                        </summary>
+                        <div className="mt-2.5 space-y-1.5 border-t border-neutral-800 pt-2 text-[10.5px]">
+                          <div><strong className="text-neutral-400">Endpoint:</strong> {msg.debugInfo.endpoint || '/api/ai-coach'}</div>
+                          <div><strong className="text-neutral-400">Env:</strong> {msg.debugInfo.environment || 'vercel_serverless'}</div>
+                          <div>
+                            <strong className="text-neutral-400">Server Env Key:</strong>{' '}
+                            {msg.debugInfo.hasServerEnvKey !== undefined
+                              ? (msg.debugInfo.hasServerEnvKey ? `✅ Found (${msg.debugInfo.serverKeyPrefix || 'set'})` : '❌ Missing')
+                              : (msg.debugInfo.openRouterKeyPrefix ? `Prefix: ${msg.debugInfo.openRouterKeyPrefix}` : 'N/A')}
+                          </div>
+                          <div>
+                            <strong className="text-neutral-400">Custom Key (Browser):</strong>{' '}
+                            {msg.debugInfo.hasCustomClientKey ? '✅ Saved in browser' : '❌ Not set in settings'}
+                          </div>
+                          {msg.debugInfo.modelUsed && <div><strong className="text-neutral-400">Model:</strong> {msg.debugInfo.modelUsed}</div>}
+                          {msg.debugInfo.rawError && (
+                            <div className="mt-2">
+                              <strong className="text-rose-400">Error / Raw Trace:</strong>
+                              <pre className="mt-1 p-2 rounded bg-black/60 text-rose-300 overflow-x-auto whitespace-pre-wrap text-[10px] leading-relaxed max-h-40 overflow-y-auto">
+                                {typeof msg.debugInfo.rawError === 'object' ? JSON.stringify(msg.debugInfo.rawError, null, 2) : msg.debugInfo.rawError}
+                              </pre>
+                            </div>
+                          )}
+                          <div className="text-[9.5px] text-neutral-500 pt-1">Time: {msg.debugInfo.clientTimestamp || new Date().toISOString()}</div>
+                        </div>
+                      </details>
+                    )}
                   </div>
                 </div>
               );
             })}
+
 
             {isLoading && (
               <div className="flex items-center space-x-2 text-xs text-neutral-500 p-3 bg-white border border-neutral-200 rounded-2xl rounded-tl-none w-fit animate-pulse">
