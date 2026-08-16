@@ -626,10 +626,20 @@ JSON_PLAN STRUCTURE:
     ];
 
     for (const h of history.slice(-30)) {
-      if (h.role === 'user' || h.role === 'assistant') {
+      if ((h.role === 'user' || h.role === 'assistant') && h.content) {
+        if (
+          h.content.includes('Sorry, I encountered an issue') ||
+          h.content.includes('⚠️ **Gagal Terhubung') ||
+          h.content.includes('⚠️ **OpenRouter Status') ||
+          h.content.includes('⚠️ **Serverless Exception') ||
+          h.content.includes('API error (500)')
+        ) {
+          continue;
+        }
         chatMessages.push({ role: h.role, content: h.content });
       }
     }
+
 
     chatMessages.push({ role: 'user', content: message });
 

@@ -319,9 +319,13 @@ export const CoachView: React.FC<CoachViewProps> = ({
     setIsLoading(true);
 
     try {
+      const cleanHistory = messages
+        .filter((m) => !m.content.includes('Sorry, I encountered an issue') && !m.content.includes('API error'))
+        .slice(-20);
+
       const payload = {
         message: trimmed,
-        history: messages.slice(-30),
+        history: cleanHistory,
         currentPlan: activePlan,
         runnerContext: {
           recentRuns: runs.slice(0, 10),
@@ -329,6 +333,7 @@ export const CoachView: React.FC<CoachViewProps> = ({
         },
         customApiKey,
       };
+
 
 
       let data: any = null;
