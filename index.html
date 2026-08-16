@@ -2,19 +2,44 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <meta name="theme-color" content="#ff5500" />
+    
+    <!-- Primary Title & Meta -->
+    <title>Runno — Personal Running Tracker</title>
+    <meta name="title" content="Runno — Personal Running Tracker" />
+    <meta name="description" content="Mobile-first personal running tracker with AI screenshot extraction, GPX route maps, splits, and analytics." />
+    
+    <!-- Favicon & Touch Icons -->
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png" />
+    <link rel="shortcut icon" href="/favicon.ico" />
+    
+    <!-- Apple Safari & iOS Home Screen Icons -->
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="apple-touch-icon-precomposed" href="/apple-touch-icon.png" />
+    
+    <!-- iOS / PWA App Configuration -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="Runno" />
-    <link rel="apple-touch-icon" href="/pwa-192x192.png" />
-    <title>Runno — Personal Running Tracker</title>
-    <meta name="description" content="Mobile-first personal running tracker with AI screenshot extraction, GPX route maps, splits, and analytics." />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="application-name" content="Runno" />
+    <meta name="theme-color" content="#FF5500" />
+    <meta name="msapplication-TileColor" content="#FF5500" />
+    
+    <!-- OpenGraph / Social Sharing -->
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Runno — Personal Running Tracker" />
+    <meta property="og:description" content="Mobile-first personal running tracker with AI screenshot extraction, GPX route maps, splits, and analytics." />
+    <meta property="og:image" content="/pwa-512x512.png" />
+
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap" rel="stylesheet">
+    
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
   </head>
@@ -23,3 +48,4 @@
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
+
