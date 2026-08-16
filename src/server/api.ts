@@ -11,19 +11,39 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 app.use(cors());
-app.use(express.json({ limit: '30mb' }));
+
+// Normalize URL path so both /api/... and /... work in Vercel serverless environments
+app.use((req, _res, next) => {
+  if (req.url && !req.url.startsWith('/api')) {
+    req.url = '/api' + (req.url.startsWith('/') ? req.url : '/' + req.url);
+  }
+  next();
+});
+
+// Safe Body Parsing (handles both streaming and pre-parsed Vercel serverless payloads)
+app.use((req, res, next) => {
+  if (req.body && typeof req.body === 'object') {
+    next();
+  } else {
+    express.json({ limit: '30mb' })(req, res, next);
+  }
+});
 
 app.get('/api/health', (_req, res) => {
   dotenv.config();
   const db = getDatabase();
-  const apiKey = process.env.OPENROUTER_API_KEY;
+  const rawKey = (process.env.OPENROUTER_API_KEY || '').trim();
   res.json({
     status: 'ok',
-    hasOpenRouterKey: !!apiKey && apiKey.trim().length > 0,
+    environment: process.env.VERCEL ? 'vercel_serverless' : 'local_node',
+    hasOpenRouterKey: rawKey.length > 0,
+    openRouterKeyLength: rawKey.length,
+    openRouterKeyPrefix: rawKey.length > 8 ? `${rawKey.substring(0, 8)}...` : (rawKey.length > 0 ? 'set' : 'none'),
     hasDatabase: !!db,
     timestamp: new Date().toISOString(),
   });
 });
+
 
 app.post('/api/analyze-screenshot', async (req, res) => {
   try {
@@ -319,6 +339,13 @@ app.post('/api/ai-coach', async (req, res) => {
     }
 
     const apiKey = (customApiKey || process.env.OPENROUTER_API_KEY || '').trim();
+    if (!apiKey) {
+      return res.status(400).json({
+        error: 'OpenRouter API key is not detected on server. If you added OPENROUTER_API_KEY in Vercel Settings, please go to Vercel Deployments and click Redeploy. Or paste it directly in More > Preferences in the app.',
+        code: 'MISSING_API_KEY',
+      });
+    }
+
 
     // Prepare runner context description
     const recentRuns = runnerContext.recentRuns || [];

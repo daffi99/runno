@@ -323,8 +323,14 @@ export const CoachView: React.FC<CoachViewProps> = ({
       });
 
       if (!res.ok) {
-        throw new Error(`API error (${res.status})`);
+        let errDetail = `API error (${res.status})`;
+        try {
+          const errData = await res.json();
+          if (errData.error) errDetail = errData.error;
+        } catch (_) {}
+        throw new Error(errDetail);
       }
+
 
       const data = await res.json();
       const fullReply = data.reply || "Here is what I've prepared for you:";
