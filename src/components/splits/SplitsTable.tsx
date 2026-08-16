@@ -1,7 +1,8 @@
 import React from 'react';
 import type { Split, UnitSystem } from '../../types/run';
-import { formatPace } from '../../utils/formatters';
-import { ListOrdered, Layers } from 'lucide-react';
+import { formatPace, formatDuration } from '../../utils/formatters';
+import { ListOrdered, Layers, Heart } from 'lucide-react';
+import { clsx } from 'clsx';
 
 interface SplitsTableProps {
   splits?: Split[] | null;
@@ -45,11 +46,121 @@ export const SplitsTable: React.FC<SplitsTableProps> = ({
     );
   }
 
+  const isIntervalTable = validSplits.some(
+    (s) => s.type || s.duration_seconds || (s.distance_km !== undefined && s.distance_km < 0.95)
+  );
 
   const paces = validSplits.map((s) => s.pace_seconds).filter((p) => p > 0);
   const minPace = Math.min(...paces);
   const maxPace = Math.max(...paces);
   const paceRange = maxPace - minPace || 1;
+
+  if (isIntervalTable) {
+    return (
+      <div className="space-y-4">
+        <div className="bg-white rounded-3xl p-4 sm:p-5 border border-neutral-200/80 shadow-soft overflow-x-auto">
+          <div className="flex items-center justify-between pb-3 border-b border-neutral-100 px-1">
+            <div className="flex items-center space-x-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-indigo-600">
+                Interval Segments Table
+              </span>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700">
+                {validSplits.length} Reps/Laps
+              </span>
+            </div>
+          </div>
+
+          <div className="min-w-[340px] divide-y divide-neutral-100/80 text-xs">
+            <div className="grid grid-cols-12 py-2.5 px-1 font-bold uppercase tracking-wider text-neutral-400 text-[11px]">
+              <div className="col-span-1 text-left">#</div>
+              <div className="col-span-3 text-left">Type</div>
+              <div className="col-span-2 text-right">Dist</div>
+              <div className="col-span-2 text-right">Time</div>
+              <div className="col-span-2 text-right">Pace</div>
+              <div className="col-span-2 text-right">Avg HR</div>
+            </div>
+
+            {validSplits.map((split, index) => {
+              const isRun = split.type?.toLowerCase() === 'run';
+              const isRest = split.type?.toLowerCase() === 'rest';
+
+              const distLabel = split.distance_km !== undefined && split.distance_km !== null
+                ? split.distance_km < 1
+                  ? `${Math.round(split.distance_km * 1000)}m`
+                  : `${split.distance_km.toFixed(2)}km`
+                : '--';
+
+              return (
+                <div
+                  key={index}
+                  className={clsx(
+                    "grid grid-cols-12 items-center py-2.5 px-1 rounded-xl transition-colors font-mono",
+                    isRun ? "bg-orange-50/30 hover:bg-orange-50/60" : "hover:bg-neutral-50/80"
+                  )}
+                >
+                  <div className="col-span-1 font-bold text-neutral-800">
+                    {split.km}
+                  </div>
+
+                  <div className="col-span-3">
+                    <span
+                      className={clsx(
+                        "px-2 py-0.5 text-[10px] font-black rounded-md inline-block tracking-wider uppercase font-sans",
+                        isRun && "bg-orange-100 text-[#FF5500]",
+                        isRest && "bg-indigo-100 text-indigo-700",
+                        !isRun && !isRest && "bg-neutral-100 text-neutral-600"
+                      )}
+                    >
+                      {split.type || 'Lap'}
+                    </span>
+                  </div>
+
+                  <div className="col-span-2 text-right font-bold text-neutral-800">
+                    {distLabel}
+                  </div>
+
+                  <div className="col-span-2 text-right font-semibold text-neutral-600">
+                    {split.duration_seconds ? formatDuration(split.duration_seconds) : '--'}
+                  </div>
+
+                  <div className="col-span-2 text-right font-bold text-neutral-900">
+                    {split.pace_seconds ? formatPace(split.pace_seconds, unitSystem, false) : '--'}
+                  </div>
+
+                  <div className="col-span-2 text-right font-semibold">
+                    {split.avg_heart_rate ? (
+                      <span className="text-rose-600 font-bold flex items-center justify-end gap-0.5">
+                        <Heart className="w-2.5 h-2.5 fill-rose-500 text-rose-500 shrink-0" />
+                        {split.avg_heart_rate}
+                      </span>
+                    ) : (
+                      <span className="text-neutral-300">--</span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {avgPaceSeconds && (
+          <div className="bg-white rounded-3xl p-5 border border-neutral-200/80 shadow-soft flex items-center justify-between">
+            <span className="text-xs font-bold uppercase tracking-wider text-neutral-400">
+              Workout Average Pace
+            </span>
+            <div className="text-right">
+              <span className="text-2xl font-black text-neutral-900 font-mono tracking-tight">
+                {formatPace(avgPaceSeconds, unitSystem, false)}
+              </span>
+              <span className="text-xs font-bold text-neutral-500 ml-1">
+                /{unitSystem === 'metric' ? 'km' : 'mi'}
+              </span>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -131,3 +242,4 @@ export const SplitsTable: React.FC<SplitsTableProps> = ({
     </div>
   );
 };
+

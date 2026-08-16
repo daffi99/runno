@@ -212,8 +212,8 @@ export const RunDetailView: React.FC<RunDetailViewProps> = ({
         customApiKey: customApiKey || undefined,
       };
 
-      // If the run already has a main screenshot, pass it too so AI can cross-reference
-      if (run.screenshot_url) {
+      // Only pass main screenshot if it is a valid data URL base64
+      if (run.screenshot_url && run.screenshot_url.startsWith('data:image/')) {
         payload.imagesBase64 = [run.screenshot_url, intervalPreview];
       }
 
@@ -234,6 +234,10 @@ export const RunDetailView: React.FC<RunDetailViewProps> = ({
       const updatedRun: Run = {
         ...run,
         splits: (extracted?.splits && extracted.splits.length > 0) ? extracted.splits : run.splits,
+        distance_km: run.distance_km > 0 ? run.distance_km : (extracted?.distance_km || run.distance_km),
+        duration_seconds: run.duration_seconds > 0 ? run.duration_seconds : (extracted?.duration_seconds || run.duration_seconds),
+        pace_seconds_per_km: run.pace_seconds_per_km || extracted?.pace_seconds_per_km || null,
+        avg_heart_rate: run.avg_heart_rate || extracted?.avg_heart_rate || null,
         heart_rate_zones: extracted?.heart_rate_zones || run.heart_rate_zones,
         elevationPoints: extracted?.elevationPoints || run.elevationPoints,
         best_pace_seconds_per_km: extracted?.best_pace_seconds_per_km || run.best_pace_seconds_per_km,
@@ -253,6 +257,7 @@ export const RunDetailView: React.FC<RunDetailViewProps> = ({
       setIntervalSuccess(`Successfully extracted ${extracted?.splits?.length || 0} interval splits & laps!`);
       setTimeout(() => setIntervalSuccess(null), 5000);
       setActiveTab('splits');
+
     } catch (err: any) {
       console.error('Interval extraction failed:', err);
       setIntervalError(`Extraction failed: ${err.message || 'Check your OpenRouter connection'}`);

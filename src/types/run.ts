@@ -3,7 +3,12 @@ export interface Split {
   pace_seconds: number;
   elevation_diff_m?: number;
   cumulative_time_seconds?: number;
+  type?: string; // 'Run', 'Rest', 'Warmup', 'Cooldown', 'Other'
+  duration_seconds?: number;
+  distance_km?: number;
+  avg_heart_rate?: number;
 }
+
 
 export interface ElevationPoint {
   distance_km: number;

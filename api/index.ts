@@ -253,8 +253,16 @@ router.post('/analyze-screenshot', async (req, res) => {
       }
     }
 
-    if (rawImages.length === 0) {
-      return res.status(400).json({ error: 'Missing imageBase64 or screenshots in request body' });
+    // Filter and sanitize valid images (ignore blob: or broken strings)
+    const validImages = rawImages.filter((img) => {
+      if (!img || typeof img !== 'string') return false;
+      const trimmed = img.trim();
+      if (trimmed.startsWith('blob:')) return false;
+      return trimmed.startsWith('data:image/') || trimmed.length > 50;
+    });
+
+    if (validImages.length === 0) {
+      return res.status(400).json({ error: 'Missing valid imageBase64 or screenshots in request body' });
     }
 
     const apiKey = (customApiKey || process.env.OPENROUTER_API_KEY || '').trim();
@@ -265,7 +273,7 @@ router.post('/analyze-screenshot', async (req, res) => {
       });
     }
 
-    const imageContentItems = rawImages.map((img) => {
+    const imageContentItems = validImages.map((img) => {
       let formatted = img.trim();
       if (!formatted.startsWith('data:image/')) {
         formatted = `data:image/jpeg;base64,${formatted}`;
@@ -275,39 +283,55 @@ router.post('/analyze-screenshot', async (req, res) => {
 
     const systemPrompt = `You are an expert sports data extraction AI specializing in running result screenshots from Huawei Health, Amazfit, Zepp, Apple Fitness, Garmin Connect, Strava, Coros, Nike Run Club, and Samsung Health.
 
-Read the provided screenshot(s) carefully. You may receive multiple screenshots for the same running workout (for example: Screenshot 1 showing the main workout overview and Screenshot 2 showing interval segments, laps, splits table, or heart rate graph).
-Merge, cross-correlate, and extract all clearly visible workout metrics across all provided screenshots.
+Read the provided screenshot(s) carefully. You may receive screenshots showing the main workout overview, interval segments/laps table (e.g. Huawei Health "Segments" tab), splits table, or charts.
+Merge, cross-correlate, and extract all workout metrics accurately.
 
 CRITICAL PARSING RULES:
-1. Decimal Separators: In European/Huawei locales, comma ',' represents a decimal point. Convert '6,50' to 6.50, '6,32' to 6.32, '57,4' to 57.4, '9,7' to 9.7, '89,3' to 89.3.
+1. Decimal Separators: In European/Huawei locales, comma ',' represents a decimal point. Convert '6,50' to 6.50, '1,72' to 1.72, '0,40' to 0.40, '0,02' to 0.02, '57,4' to 57.4, '89,3' to 89.3.
 2. Workout Time / Duration:
-   - Look at the main workout duration counter.
-   - If formatted as "01:01:40" (HH:MM:SS), calculate total seconds: 1h + 1m + 40s = 3700s.
-   - If formatted as "51:02" (MM:SS), calculate total seconds: 51m + 2s = 3062s.
+   - Look at the main workout duration counter or the Total row.
+   - If formatted as "00:15:20" or "01:01:40" (HH:MM:SS), calculate total seconds: 15m + 20s = 920s; 1h + 1m + 40s = 3700s.
+   - If formatted as "02:30" (MM:SS), calculate total seconds: 2m + 30s = 150s.
 3. Pace:
-   - Average pace (e.g. 9'29" or 9:29/km) -> pace_seconds_per_km: 569.
-   - Best pace (e.g. 7'29" or 7:35/km) -> best_pace_seconds_per_km: 449.
-4. Cadence & Steps:
-   - Avg Cadence (e.g. 147 spm) -> cadence: 147.
-   - Max Cadence (e.g. 160 spm) -> max_cadence: 160.
-   - Total Steps (e.g. 9074) -> total_steps: 9074.
-   - Stride Length (e.g. 121 cm) -> stride_length_cm: 121.
-5. Heart Rate & Zones:
-   - Avg Heart Rate (e.g. 153 bpm) -> avg_heart_rate: 153.
-   - Max Heart Rate (e.g. 179 bpm) -> max_heart_rate: 179.
-   - Heart Rate Zones: extract into "heart_rate_zones" array.
-6. Splits & Interval Laps/Segments:
-   - Extract all kilometer splits or interval reps/laps into "splits": [ { "km": 1, "pace_seconds": 569, "elevation_diff_m": 0 }, ... ]
-   - If interval work/recovery reps are present, detail them in "splits" or summarize their lap breakdown in "raw_notes".
-7. Chart Samples:
-   - Sample 8 to 20 representative data points into "elevation_points".
-8. Performance & Training Metrics:
-   - Aerobic TE -> aerobic_te. VO2Max -> vo2max. Training Load -> training_load. Recovery -> recovery_hours.
-9. Advanced Running Form:
-   - GCT -> ground_contact_time_ms. Vertical Oscillation -> vertical_oscillation_cm. Balance -> ground_contact_balance.
-10. Elevation:
-   - Elevation Gain -> elevation_gain_m. Elevation Loss -> elevation_loss_m.
-11. Source:
+   - Convert pace formatted as "6'16\"" (6 min 16 sec) to total seconds: 6 * 60 + 16 = 376s.
+   - Convert pace formatted as "8'55\"" to total seconds: 8 * 60 + 55 = 535s.
+   - Convert pace formatted as "64'47\"" to total seconds: 64 * 60 + 47 = 3887s.
+4. Segments & Interval Laps Table (e.g. Huawei Health "Segments" tab with columns: Segments, Type, Duration, Distance (km), Pace (/km), Avg heart rate (bpm)):
+   - Extract EVERY row into the "splits" array:
+     [
+       {
+         "km": 1,
+         "type": "Run",
+         "duration_seconds": 150,
+         "distance_km": 0.40,
+         "pace_seconds": 376,
+         "avg_heart_rate": 147,
+         "elevation_diff_m": 0
+       },
+       {
+         "km": 2,
+         "type": "Rest",
+         "duration_seconds": 75,
+         "distance_km": 0.02,
+         "pace_seconds": 3887,
+         "avg_heart_rate": 155,
+         "elevation_diff_m": 0
+       },
+       ...
+     ]
+   - If there is a "Total" row at the bottom:
+     - Distance "1,72" -> "distance_km": 1.72
+     - Duration "00:15:20" -> "duration_seconds": 920
+     - Pace "8'55\"" -> "pace_seconds_per_km": 535
+     - Avg HR "162" -> "avg_heart_rate": 162
+5. Standard Kilometer Splits:
+   - If standard kilometer splits (KM 1, KM 2...) are shown, extract into "splits": [ { "km": 1, "pace_seconds": 360, "elevation_diff_m": 0 }, ... ].
+6. Heart Rate & Zones:
+   - Avg Heart Rate (e.g. 162 bpm) -> avg_heart_rate: 162.
+   - Max Heart Rate -> max_heart_rate.
+7. Performance, Form & Elevation:
+   - Extract cadence, steps, stride length, TE, VO2max, elevation gain/loss if visible.
+8. Source:
    - "Huawei Health", "Amazfit", "Zepp", "Apple Fitness", "Garmin", "Strava", "Coros", "Nike Run Club", or "Other".
 
 Never invent numbers. If a metric or table is not in the screenshot, return null.
@@ -339,11 +363,22 @@ Return ONLY a valid JSON object matching this schema (no markdown, no backticks)
   "vo2max": number | null,
   "training_load": number | null,
   "recovery_hours": number | null,
-  "splits": [ { "km": number, "pace_seconds": number, "elevation_diff_m": number } ] | null,
+  "splits": [
+    {
+      "km": number,
+      "type": string | null,
+      "duration_seconds": number | null,
+      "distance_km": number | null,
+      "pace_seconds": number,
+      "avg_heart_rate": number | null,
+      "elevation_diff_m": number | null
+    }
+  ] | null,
   "heart_rate_zones": [ { "zone": number, "name": string, "percentage": number, "duration_seconds": number | null, "bpm_range": string | null } ] | null,
   "elevation_points": [ { "distance_km": number, "elevation_m": number, "heart_rate": number | null, "pace_seconds": number | null, "cadence": number | null } ] | null,
   "raw_notes": string | null
 }`;
+
 
     const model = 'google/gemini-2.5-flash-lite';
     const openRouterResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
