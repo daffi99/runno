@@ -576,8 +576,7 @@ router.post('/ai-coach', async (req, res) => {
     // Runner Profile Context
     const recentRuns = runnerContext.recentRuns || [];
     const unitSystem = runnerContext.unitSystem || 'metric';
-    
-    let runnerProfileSummary = `Runner Unit Preference: ${unitSystem.toUpperCase()}\n`;
+     let runnerProfileSummary = `=== RUNNER SUMMARY STATS ===\n`;
     if (recentRuns.length > 0) {
       const totalKm = recentRuns.reduce((acc: number, r: any) => acc + (r.distance_km || 0), 0);
       const totalDurationSec = recentRuns.reduce((acc: number, r: any) => acc + (r.duration_seconds || 0), 0);
@@ -585,9 +584,10 @@ router.post('/ai-coach', async (req, res) => {
       const avgPaceMin = Math.floor(avgPace / 60);
       const avgPaceSec = String(avgPace % 60).padStart(2, '0');
       
-      runnerProfileSummary += `Total Logged Runs: ${recentRuns.length}\n`;
-      runnerProfileSummary += `Total Lifetime / Logged Volume: ${totalKm.toFixed(2)} km\n`;
-      runnerProfileSummary += `Overall Average Pace: ${avgPaceMin}:${avgPaceSec} /km\n\n`;
+      runnerProfileSummary += `• Total Logged Volume: ${totalKm.toFixed(2)} km\n`;
+      runnerProfileSummary += `• Total Logged Runs: ${recentRuns.length} workouts\n`;
+      runnerProfileSummary += `• Overall Average Pace: ${avgPaceMin}:${avgPaceSec} /km\n`;
+      runnerProfileSummary += `• Preferred Units: ${unitSystem.toUpperCase()}\n\n`;
       
       const runsList = recentRuns.map((r: any, idx: number) => {
         const paceStr = r.pace_seconds_per_km
@@ -599,34 +599,37 @@ router.post('/ai-coach', async (req, res) => {
         const hrStr = r.avg_heart_rate ? `HR: ${r.avg_heart_rate} bpm` : '';
         const cadStr = r.cadence ? `Cadence: ${r.cadence} spm` : '';
         const elevStr = r.elevation_gain_m ? `+${r.elevation_gain_m}m elev` : '';
-        const splitsCount = r.splits?.length ? `(${r.splits.length} splits/laps)` : '';
+        const splitsCount = r.splits?.length ? `(${r.splits.length} splits)` : '';
 
         const extra = [hrStr, cadStr, elevStr, splitsCount].filter(Boolean).join(', ');
 
-        return `${idx + 1}. [${r.date || 'Unknown date'}] ${r.distance_km ? r.distance_km.toFixed(2) : 0}km in ${durMin} (Pace: ${paceStr}${extra ? ` | ${extra}` : ''})`;
+        return `${idx + 1}. [${r.date || 'No date'}] ${r.distance_km ? r.distance_km.toFixed(2) : 0}km (${durMin}, Pace: ${paceStr}${extra ? ` | ${extra}` : ''})`;
       }).join('\n');
 
-      runnerProfileSummary += `Complete Workout History (${recentRuns.length} runs):\n${runsList}\n`;
+      runnerProfileSummary += `=== DETAILED LOGGED RUNS ===\n${runsList}\n`;
     } else {
       runnerProfileSummary += `No previous runs logged yet.\n`;
     }
-
 
     let planContext = 'Currently No Active Plan.';
     if (currentPlan) {
       planContext = `Current Active Plan: "${currentPlan.title}" (Goal: ${currentPlan.goal}, ${currentPlan.scheduleSummary}, Target: ${currentPlan.weeklyTargetKm}km/week, Week ${currentPlan.currentWeek || 1} of ${currentPlan.totalWeeks || 4}).`;
     }
 
-    const systemPrompt = `You are Coach Runno, a warm, motivating, and highly knowledgeable elite running coach.
-You help runners build progressive training schedules, improve their pace, prevent injuries, and prepare for race distances (5K, 10K, Half Marathon, Full Marathon).
+    const systemPrompt = `You are Coach Runno, a motivating, warm, and highly experienced running coach.
 
 ${runnerProfileSummary}
 ${planContext}
 
-COACHING GUIDELINES:
-- Communicate in a natural, friendly, conversational tone (Indonesian or English depending on user input).
-- When giving running advice, be encouraging, scientifically grounded (80/20 polarized training, easy runs in Zone 2, progressive overload).
-- If the user explicitly asks to generate, create, or update a training plan, output your friendly explanation AND append the complete structured plan inside a \`\`\`json_plan ... \`\`\` code block.
+COACHING & RESPONSE PRINCIPLES:
+1. Direct, Straightforward & Concise:
+   - Always answer user questions directly without unnecessary rambling, robotic disclaimers, or debating internal backend data structures.
+   - If the user asks for total distance, total runs, or overall statistics, give the exact answer immediately from the summary (e.g. "Total jarak lari kamu saat ini adalah 37.6 km dari 10 sesi lari.") in 1-2 clear, encouraging sentences.
+2. Natural, Friendly Persona:
+   - Talk like a genuine human running coach (Indonesian by default if the user speaks Indonesian, or English if user speaks English).
+   - Keep answers practical, actionable, and easy to read.
+3. Structured Plan Generation:
+   - When generating or updating a training plan, provide your short coaching explanation AND append the complete structured plan inside a \`\`\`json_plan ... \`\`\` code block.
 
 JSON_PLAN STRUCTURE:
 \`\`\`json_plan
