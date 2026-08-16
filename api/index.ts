@@ -986,11 +986,34 @@ app.use((req, res) => {
   res.status(404).json({ error: `Not Found: ${req.method} ${req.url}` });
 });
 
+// Error handling middleware
+app.use((err: any, _req: any, res: any, _next: any) => {
+  console.error('[Runno API Internal Error]:', err);
+  if (!res.headersSent) {
+    res.status(500).json({ error: err.message || 'Internal Server Error' });
+  }
+});
+
 if (!process.env.VERCEL) {
   app.listen(PORT, () => {
     console.log(`[Runno Backend] Server listening on http://localhost:${PORT}`);
   });
 }
 
-export default app;
+// Vercel Serverless Function Entrypoint
+export default function handler(req: any, res: any) {
+  return new Promise((resolve) => {
+    app(req, res, (err: any) => {
+      if (err && !res.headersSent) {
+        console.error('[Runno Serverless Handler Error]:', err);
+        res.status(500).json({ error: err.message || 'Internal Server Error' });
+      } else if (!res.headersSent) {
+        res.status(404).json({ error: `Not Found: ${req.method} ${req.url}` });
+      }
+      resolve(undefined);
+    });
+  });
+}
+
 export { app };
+
