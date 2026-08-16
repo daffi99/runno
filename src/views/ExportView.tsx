@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import type { Run } from '../types/run';
+import { storageService } from '../services/storage';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
 import { formatDate } from '../utils/formatters';
+
 import {
   ChevronLeft,
   ChevronRight,
@@ -66,8 +68,17 @@ export const ExportView: React.FC<ExportViewProps> = ({ runs, onBack }) => {
         : null,
     }));
 
-    return JSON.stringify({ runs: formattedRuns, total: formattedRuns.length }, null, 2);
+    const exportPayload: any = {
+      runs: formattedRuns,
+      total: formattedRuns.length,
+      active_plan: storageService.getActivePlan(),
+      coach_messages: storageService.getCoachMessages(),
+      exported_at: new Date().toISOString(),
+    };
+
+    return JSON.stringify(exportPayload, null, 2);
   };
+
 
   const jsonContent = getCleanExportJson();
 

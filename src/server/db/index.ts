@@ -67,12 +67,20 @@ export async function initDbSchema(pool: InstanceType<typeof Pool>) {
         created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL
       );
+
+      CREATE TABLE IF NOT EXISTS coach_messages (
+        id TEXT PRIMARY KEY,
+        messages JSONB NOT NULL,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL
+      );
     `;
     await pool.query(createTableQuery);
-    console.log('[Runno DB] PostgreSQL runs & training_plans tables verified/migrated successfully.');
+
+    console.log('[Runno DB] PostgreSQL runs, training_plans & coach_messages tables verified/migrated successfully.');
   } catch (err: any) {
     console.error('[Runno DB] Schema init notice:', err.message);
   }
+
 }
 
 export function getDatabase() {

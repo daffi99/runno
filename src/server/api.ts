@@ -2,7 +2,8 @@ import express from 'express';
 import cors from 'cors';
 import * as dotenv from 'dotenv';
 import { getDatabase } from './db/index';
-import { runs, trainingPlans } from './db/schema';
+import { runs, trainingPlans, coachMessagesTable } from './db/schema';
+
 import { eq, desc } from 'drizzle-orm';
 
 dotenv.config();
@@ -895,6 +896,50 @@ app.post('/api/plans', async (req, res) => {
     res.status(500).json({ error: 'Failed to save training plan to database' });
   }
 });
+
+// Coach messages sync endpoints
+app.get('/api/coach/messages', async (_req, res) => {
+  const db = getDatabase();
+  if (!db) return res.json({ success: true, messages: [] });
+  try {
+    const result = await db
+      .select()
+      .from(coachMessagesTable)
+      .where(eq(coachMessagesTable.id, 'default_coach_session'))
+      .limit(1);
+    if (result.length > 0) {
+      return res.json({ success: true, messages: result[0].messages });
+    }
+    res.json({ success: true, messages: [] });
+  } catch (err: any) {
+    console.error('[Runno DB] Error fetching coach messages:', err.message);
+    res.json({ success: false, messages: [] });
+  }
+});
+
+app.post('/api/coach/messages', async (req, res) => {
+  const { messages } = req.body;
+  const db = getDatabase();
+  if (!db || !messages) return res.json({ success: true });
+  try {
+    await db.insert(coachMessagesTable).values({
+      id: 'default_coach_session',
+      messages,
+      updated_at: new Date(),
+    }).onConflictDoUpdate({
+      target: coachMessagesTable.id,
+      set: {
+        messages,
+        updated_at: new Date(),
+      },
+    });
+    res.json({ success: true });
+  } catch (err: any) {
+    console.error('[Runno DB] Error saving coach messages:', err.message);
+    res.json({ success: false, error: err.message });
+  }
+});
+
 
 if (!process.env.VERCEL) {
   app.listen(PORT, () => {

@@ -223,6 +223,16 @@ export const CoachView: React.FC<CoachViewProps> = ({
     });
   }, [runs]);
 
+  // Sync coach messages from server on mount
+  useEffect(() => {
+    storageService.syncCoachMessagesWithServer().then((syncedMsgs) => {
+      if (syncedMsgs && syncedMsgs.length > 1) {
+        setMessages(syncedMsgs);
+      }
+    });
+  }, []);
+
+
 
   // Save messages on update (only when not actively typing partial words)
   useEffect(() => {

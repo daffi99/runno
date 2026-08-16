@@ -59,8 +59,16 @@ export const trainingPlans = pgTable('training_plans', {
   updated_at: timestamp('updated_at').defaultNow().notNull(),
 });
 
+export const coachMessagesTable = pgTable('coach_messages', {
+  id: text('id').primaryKey(),
+  messages: jsonb('messages').notNull(),
+  updated_at: timestamp('updated_at').defaultNow().notNull(),
+});
+
 export type RunRecord = typeof runs.$inferSelect;
 export type NewRunRecord = typeof runs.$inferInsert;
 export type TrainingPlanRecord = typeof trainingPlans.$inferSelect;
 export type NewTrainingPlanRecord = typeof trainingPlans.$inferInsert;
+export type CoachMessageRecord = typeof coachMessagesTable.$inferSelect;
+
 

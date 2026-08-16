@@ -210,6 +210,16 @@ export const storageService = {
 
       this.saveRuns(merged);
 
+      // Restore coach chat messages if present in backup
+      if (parsed && Array.isArray(parsed.coach_messages) && parsed.coach_messages.length > 0) {
+        this.saveCoachMessages(parsed.coach_messages);
+      }
+
+      // Restore active training plan if present in backup
+      if (parsed && parsed.active_plan) {
+        this.saveActivePlan(parsed.active_plan);
+      }
+
       // Sync all imported runs to DB
       for (const r of newRuns) {
         fetch('/api/runs', {
@@ -218,6 +228,7 @@ export const storageService = {
           body: JSON.stringify(r),
         }).catch(() => {});
       }
+
 
       return { success: true, count: newRuns.length };
     } catch (err: any) {
@@ -398,17 +409,48 @@ export const storageService = {
   saveCoachMessages(messages: AICoachMessage[]): void {
     try {
       localStorage.setItem(COACH_MESSAGES_KEY, JSON.stringify(messages));
+      // Sync to database in background
+      fetch('/api/coach/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages }),
+      }).catch(() => {});
     } catch (e) {
       console.error('Error saving coach messages to localStorage', e);
     }
   },
 
+  async syncCoachMessagesWithServer(): Promise<AICoachMessage[]> {
+    const local = this.getCoachMessages();
+    try {
+      const res = await fetch('/api/coach/messages');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.messages && Array.isArray(data.messages) && data.messages.length > 0) {
+          if (local.length <= 1 && data.messages.length > local.length) {
+            this.saveCoachMessages(data.messages);
+            return data.messages;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[Runno Storage] Could not fetch coach messages from DB', e);
+    }
+    return local;
+  },
+
   clearCoachChat(): void {
     try {
       localStorage.removeItem(COACH_MESSAGES_KEY);
+      fetch('/api/coach/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: [] }),
+      }).catch(() => {});
     } catch (e) {
       console.error('Error clearing coach chat', e);
     }
   },
 };
+
 
