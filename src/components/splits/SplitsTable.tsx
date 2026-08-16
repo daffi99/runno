@@ -1,34 +1,50 @@
 import React from 'react';
 import type { Split, UnitSystem } from '../../types/run';
 import { formatPace } from '../../utils/formatters';
-import { ListOrdered } from 'lucide-react';
+import { ListOrdered, Layers } from 'lucide-react';
 
 interface SplitsTableProps {
   splits?: Split[] | null;
   avgPaceSeconds?: number | null;
   unitSystem?: UnitSystem;
+  onUploadInterval?: () => void;
 }
 
 export const SplitsTable: React.FC<SplitsTableProps> = ({
   splits = [],
   avgPaceSeconds,
   unitSystem = 'metric',
+  onUploadInterval,
 }) => {
   const validSplits = splits || [];
 
   if (validSplits.length === 0) {
     return (
-      <div className="bg-white rounded-3xl p-8 border border-neutral-200/80 shadow-soft text-center my-4 space-y-2">
+      <div className="bg-white rounded-3xl p-8 border border-neutral-200/80 shadow-soft text-center my-4 space-y-3">
         <div className="w-12 h-12 rounded-full bg-orange-50 text-[#FF5500] flex items-center justify-center mx-auto">
           <ListOrdered className="w-6 h-6" />
         </div>
-        <p className="text-sm font-bold text-neutral-800">No split breakdown available</p>
-        <p className="text-xs text-neutral-400 max-w-xs mx-auto">
-          Splits are automatically populated when visible in the screenshot or calculated from an attached GPX file.
-        </p>
+        <div>
+          <p className="text-sm font-bold text-neutral-800">No split breakdown available</p>
+          <p className="text-xs text-neutral-400 max-w-xs mx-auto mt-0.5">
+            Splits are automatically populated when visible in screenshot or attached from interval screens.
+          </p>
+        </div>
+        {onUploadInterval && (
+          <div className="pt-1">
+            <button
+              onClick={onUploadInterval}
+              className="px-4 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl text-xs font-bold transition-all active:scale-95 border border-indigo-200 inline-flex items-center space-x-1.5 shadow-xs"
+            >
+              <Layers className="w-3.5 h-3.5" />
+              <span>Upload Interval Splits Screenshot</span>
+            </button>
+          </div>
+        )}
       </div>
     );
   }
+
 
   const paces = validSplits.map((s) => s.pace_seconds).filter((p) => p > 0);
   const minPace = Math.min(...paces);

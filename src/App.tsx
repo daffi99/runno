@@ -195,8 +195,11 @@ export const App: React.FC = () => {
                 onDeleteRun={handleDeleteRun}
                 onExportJson={handleExportJson}
                 onUpdateRun={handleSaveRun}
+                customApiKey={settings.customOpenRouterKey}
               />
             );
+
+
           })()
         )}
 

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import type { Run, UnitSystem } from '../types/run';
 import { Card } from '../components/ui/Card';
 import { Tabs } from '../components/ui/Tabs';
@@ -7,6 +7,7 @@ import { RunMap } from '../components/map/RunMap';
 import { SplitsTable } from '../components/splits/SplitsTable';
 import { RunCharts } from '../components/charts/RunCharts';
 import { parseGpx } from '../utils/gpx';
+import { compressImage } from '../utils/image';
 import {
   formatDate,
   formatDuration,
@@ -27,6 +28,10 @@ import {
   Upload,
   CheckCircle2,
   AlertCircle,
+  Layers,
+  Sparkles,
+  Clipboard,
+  Image as ImageIcon,
 } from 'lucide-react';
 
 interface RunDetailViewProps {
@@ -36,6 +41,7 @@ interface RunDetailViewProps {
   onDeleteRun: (id: string) => void;
   onExportJson: (runId: string) => void;
   onUpdateRun?: (updatedRun: Run) => void;
+  customApiKey?: string;
 }
 
 export const RunDetailView: React.FC<RunDetailViewProps> = ({
@@ -44,6 +50,7 @@ export const RunDetailView: React.FC<RunDetailViewProps> = ({
   onBack,
   onDeleteRun,
   onUpdateRun,
+  customApiKey,
 }) => {
   const [activeTab, setActiveTab] = useState<string>('overview');
   const [showMenu, setShowMenu] = useState<boolean>(false);
@@ -53,7 +60,19 @@ export const RunDetailView: React.FC<RunDetailViewProps> = ({
   const [gpxError, setGpxError] = useState<string | null>(null);
   const [gpxSuccess, setGpxSuccess] = useState<string | null>(null);
 
+  // Interval Screenshot Modal State
+  const [showIntervalModal, setShowIntervalModal] = useState<boolean>(false);
+  const [intervalFile, setIntervalFile] = useState<File | null>(null);
+  const [intervalPreview, setIntervalPreview] = useState<string | null>(null);
+  const [isDraggingInterval, setIsDraggingInterval] = useState<boolean>(false);
+  const [isAnalyzingInterval, setIsAnalyzingInterval] = useState<boolean>(false);
+  const [intervalError, setIntervalError] = useState<string | null>(null);
+  const [intervalSuccess, setIntervalSuccess] = useState<string | null>(null);
+  const [clipboardToast, setClipboardToast] = useState<string | null>(null);
+
   const gpxInputRef = useRef<HTMLInputElement>(null);
+  const intervalInputRef = useRef<HTMLInputElement>(null);
+
 
   const tabs = [
     { id: 'overview', label: 'Overview' },
@@ -127,6 +146,121 @@ export const RunDetailView: React.FC<RunDetailViewProps> = ({
     }
   };
 
+  const processIntervalImageFile = async (file: File) => {
+    setIntervalError(null);
+    if (!file.type.startsWith('image/')) {
+      setIntervalError('Please select a valid image file (JPG or PNG).');
+      return;
+    }
+
+    if (file.size > 15 * 1024 * 1024) {
+      setIntervalError('Image size exceeds 15MB limit.');
+      return;
+    }
+
+    setIntervalFile(file);
+    try {
+      const compressed = await compressImage(file, 1080, 2400, 0.85);
+      setIntervalPreview(compressed);
+    } catch {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setIntervalPreview(event.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  // Clipboard Paste Support (Ctrl+V / Cmd+V when interval modal is open)
+  useEffect(() => {
+    if (!showIntervalModal) return;
+
+    const handlePaste = (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf('image') !== -1) {
+          const file = items[i].getAsFile();
+          if (file) {
+            e.preventDefault();
+            processIntervalImageFile(file);
+            setClipboardToast('Interval screenshot pasted from clipboard!');
+            setTimeout(() => setClipboardToast(null), 3000);
+            break;
+          }
+        }
+      }
+    };
+
+    window.addEventListener('paste', handlePaste);
+    return () => window.removeEventListener('paste', handlePaste);
+  }, [showIntervalModal]);
+
+  const handleAnalyzeInterval = async () => {
+    if (!intervalPreview) {
+      setIntervalError('Please select or paste an interval screenshot first.');
+      return;
+    }
+
+    setIsAnalyzingInterval(true);
+    setIntervalError(null);
+
+    try {
+      const payload: any = {
+        imageBase64: intervalPreview,
+        customApiKey: customApiKey || undefined,
+      };
+
+      // If the run already has a main screenshot, pass it too so AI can cross-reference
+      if (run.screenshot_url) {
+        payload.imagesBase64 = [run.screenshot_url, intervalPreview];
+      }
+
+      const response = await fetch('/api/analyze-screenshot', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const errJson = await response.json().catch(() => ({}));
+        throw new Error(errJson.error || `Server error: ${response.status}`);
+      }
+
+      const result = await response.json();
+      const extracted = result.data;
+
+      const updatedRun: Run = {
+        ...run,
+        splits: (extracted?.splits && extracted.splits.length > 0) ? extracted.splits : run.splits,
+        heart_rate_zones: extracted?.heart_rate_zones || run.heart_rate_zones,
+        elevationPoints: extracted?.elevationPoints || run.elevationPoints,
+        best_pace_seconds_per_km: extracted?.best_pace_seconds_per_km || run.best_pace_seconds_per_km,
+        extra_metrics: {
+          ...(run.extra_metrics || {}),
+          ...(extracted?.raw_notes ? { raw_notes: extracted.raw_notes } : {}),
+          interval_screenshot_url: intervalPreview,
+        },
+        updated_at: new Date().toISOString(),
+      };
+
+      if (onUpdateRun) {
+        onUpdateRun(updatedRun);
+      }
+
+      setShowIntervalModal(false);
+      setIntervalSuccess(`Successfully extracted ${extracted?.splits?.length || 0} interval splits & laps!`);
+      setTimeout(() => setIntervalSuccess(null), 5000);
+      setActiveTab('splits');
+    } catch (err: any) {
+      console.error('Interval extraction failed:', err);
+      setIntervalError(`Extraction failed: ${err.message || 'Check your OpenRouter connection'}`);
+    } finally {
+      setIsAnalyzingInterval(false);
+    }
+  };
+
   const hasRunningDynamics =
     run.total_steps ||
     run.stride_length_cm ||
@@ -151,6 +285,16 @@ export const RunDetailView: React.FC<RunDetailViewProps> = ({
         accept=".gpx,application/gpx+xml,text/xml"
         className="hidden"
         onChange={handleGpxFileChange}
+      />
+      <input
+        ref={intervalInputRef}
+        type="file"
+        accept="image/png,image/jpeg,image/webp,image/heic"
+        className="hidden"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (file) processIntervalImageFile(file);
+        }}
       />
 
       {/* Top Header */}
@@ -185,7 +329,20 @@ export const RunDetailView: React.FC<RunDetailViewProps> = ({
                 className="fixed inset-0 z-40"
                 onClick={() => setShowMenu(false)}
               />
-              <div className="absolute right-0 mt-2 w-52 bg-white rounded-2xl shadow-soft-lg border border-neutral-200/80 py-1.5 z-50 animate-in fade-in zoom-in-95">
+              <div className="absolute right-0 mt-2 w-56 bg-white rounded-2xl shadow-soft-lg border border-neutral-200/80 py-1.5 z-50 animate-in fade-in zoom-in-95">
+                <button
+                  onClick={() => {
+                    setShowMenu(false);
+                    setShowIntervalModal(true);
+                  }}
+                  className="w-full px-4 py-2.5 text-left text-xs font-semibold text-neutral-700 hover:bg-neutral-50 flex items-center space-x-2"
+                >
+                  <Layers className="w-4 h-4 text-indigo-600" />
+                  <span>{run.splits && run.splits.length > 0 ? 'Update Interval Splits' : 'Upload Interval Splits'}</span>
+                </button>
+
+                <div className="h-px bg-neutral-100 my-1" />
+
                 <button
                   onClick={() => {
                     setShowMenu(false);
@@ -242,6 +399,14 @@ export const RunDetailView: React.FC<RunDetailViewProps> = ({
           )}
         </div>
       </div>
+
+      {intervalSuccess && (
+        <div className="p-3 rounded-2xl bg-indigo-50 border border-indigo-200 flex items-center space-x-2 text-indigo-900 text-xs animate-in fade-in">
+          <CheckCircle2 className="w-4 h-4 text-indigo-600 shrink-0" />
+          <span className="font-semibold">{intervalSuccess}</span>
+        </div>
+      )}
+
 
       {gpxSuccess && (
         <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center space-x-2 text-emerald-800 text-xs animate-in fade-in">
@@ -643,14 +808,28 @@ export const RunDetailView: React.FC<RunDetailViewProps> = ({
 
       {/* TAB 3: SPLITS */}
       {activeTab === 'splits' && (
-        <div className="animate-in fade-in">
+        <div className="animate-in fade-in space-y-3">
+          <div className="flex items-center justify-between px-1">
+            <span className="text-xs font-bold uppercase tracking-wider text-neutral-400">
+              Kilometer & Interval Splits
+            </span>
+            <button
+              onClick={() => setShowIntervalModal(true)}
+              className="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1.5 transition-colors"
+            >
+              <Layers className="w-3.5 h-3.5" />
+              <span>{run.splits && run.splits.length > 0 ? 'Update Splits' : 'Upload Splits Screenshot'}</span>
+            </button>
+          </div>
           <SplitsTable
             splits={run.splits || run.route_data?.splits}
             avgPaceSeconds={run.pace_seconds_per_km}
             unitSystem={unitSystem}
+            onUploadInterval={() => setShowIntervalModal(true)}
           />
         </div>
       )}
+
 
       {/* TAB 4: CHARTS */}
       {activeTab === 'charts' && (
@@ -723,6 +902,148 @@ export const RunDetailView: React.FC<RunDetailViewProps> = ({
           </Card>
         </div>
       )}
+
+      {/* Upload Interval Splits Modal */}
+      {showIntervalModal && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
+          <Card className="max-w-md w-full p-5 space-y-4 shadow-2xl animate-in zoom-in-95 bg-white">
+            <div className="flex items-start justify-between">
+              <div className="flex items-center space-x-2.5">
+                <div className="w-9 h-9 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                  <Layers className="w-4.5 h-4.5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-neutral-900">
+                    Upload Interval / Splits
+                  </h3>
+                  <p className="text-xs text-neutral-400">
+                    Attach interval reps or splits screenshot to this workout
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setShowIntervalModal(false);
+                  setIntervalPreview(null);
+                  setIntervalFile(null);
+                  setIntervalError(null);
+                }}
+                className="p-1 rounded-full text-neutral-400 hover:text-neutral-700"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {clipboardToast && (
+              <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center space-x-2 text-emerald-800 text-xs animate-in fade-in shadow-soft-xs">
+                <Clipboard className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span className="font-semibold">{clipboardToast}</span>
+              </div>
+            )}
+
+            {intervalError && (
+              <div className="p-3 rounded-xl bg-red-50 border border-red-200 flex items-start space-x-2 text-red-700 text-xs animate-in fade-in">
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                <span>{intervalError}</span>
+              </div>
+            )}
+
+            {/* Dropzone / Paste Area */}
+            <div
+              onClick={() => intervalInputRef.current?.click()}
+              onDragOver={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setIsDraggingInterval(true);
+              }}
+              onDragLeave={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setIsDraggingInterval(false);
+              }}
+              onDrop={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setIsDraggingInterval(false);
+                const files = e.dataTransfer.files;
+                if (files && files.length > 0) processIntervalImageFile(files[0]);
+              }}
+              className={`p-5 rounded-2xl border-2 border-dashed text-center cursor-pointer transition-all duration-200 group flex flex-col items-center justify-center min-h-[170px] ${
+                isDraggingInterval
+                  ? 'border-indigo-500 bg-indigo-50/60 scale-[1.01]'
+                  : 'border-neutral-200/90 hover:border-indigo-300 bg-neutral-50/50 hover:bg-indigo-50/20'
+              }`}
+            >
+              {intervalPreview ? (
+                <div className="relative w-full flex flex-col items-center">
+                  <div className="relative max-h-48 overflow-hidden rounded-xl border border-neutral-200 shadow-sm bg-neutral-950 p-1">
+                    <img
+                      src={intervalPreview}
+                      alt="Interval Screenshot Preview"
+                      className="max-h-44 object-contain rounded-lg mx-auto"
+                    />
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setIntervalFile(null);
+                        setIntervalPreview(null);
+                      }}
+                      className="absolute top-2 right-2 p-1.5 bg-black/70 hover:bg-black text-white rounded-full transition-colors"
+                      title="Remove image"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  <span className="text-xs font-semibold text-indigo-700 flex items-center mt-2.5">
+                    <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
+                    {intervalFile?.name || 'Screenshot ready to extract'}
+                  </span>
+                </div>
+              ) : (
+                <>
+                  <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mb-2.5 group-hover:scale-105 transition-transform">
+                    <ImageIcon className="w-6 h-6" />
+                  </div>
+                  <h4 className="text-xs font-bold text-neutral-900 mb-0.5">
+                    {isDraggingInterval ? 'Drop Screenshot Here!' : 'Drop Interval Screenshot'}
+                  </h4>
+                  <p className="text-[11px] text-neutral-400">
+                    Click, Drag & drop, or press <kbd className="font-mono font-bold text-neutral-600 bg-white px-1.5 py-0.5 rounded border border-neutral-200">Ctrl+V</kbd> to paste
+                  </p>
+                </>
+              )}
+            </div>
+
+            <div className="flex items-center justify-end space-x-2 pt-2">
+              <Button
+                variant="secondary"
+                size="md"
+                onClick={() => {
+                  setShowIntervalModal(false);
+                  setIntervalPreview(null);
+                  setIntervalFile(null);
+                  setIntervalError(null);
+                }}
+                disabled={isAnalyzingInterval}
+                className="text-xs font-bold"
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                size="md"
+                onClick={handleAnalyzeInterval}
+                disabled={!intervalPreview || isAnalyzingInterval}
+                leftIcon={<Sparkles className="w-4 h-4 text-white" />}
+                className="text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white shadow-md"
+              >
+                {isAnalyzingInterval ? 'Extracting Splits...' : 'Extract & Update Splits'}
+              </Button>
+            </div>
+          </Card>
+        </div>
+      )}
     </div>
   );
 };
+
