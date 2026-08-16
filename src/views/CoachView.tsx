@@ -19,7 +19,11 @@ import {
   Sliders,
   Trash2,
   Plus,
+  X,
+  Copy,
+  Check,
 } from 'lucide-react';
+
 import { clsx } from 'clsx';
 
 
@@ -154,6 +158,9 @@ export const CoachView: React.FC<CoachViewProps> = ({
   });
   const [inputPrompt, setInputPrompt] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [selectedDebugInfo, setSelectedDebugInfo] = useState<any>(null);
+  const [copiedTrace, setCopiedTrace] = useState<boolean>(false);
+
   const [typingMessageId, setTypingMessageId] = useState<string | null>(null);
   const [isQuickModalOpen, setIsQuickModalOpen] = useState<boolean>(false);
   const [appliedPlanToast, setAppliedPlanToast] = useState<string | null>(null);
@@ -815,43 +822,27 @@ export const CoachView: React.FC<CoachViewProps> = ({
                       </div>
                     )}
 
-                    {/* Collapsible Debug Diagnostics */}
+                    {/* Minimized Subtle Greyed-out Debug Tag */}
                     {!isUser && msg.debugInfo && (
-                      <details className="mt-2.5 p-2.5 rounded-xl bg-neutral-900 text-neutral-200 text-[11px] font-mono border border-neutral-800">
-                        <summary className="font-bold text-amber-400 cursor-pointer flex items-center justify-between select-none">
-                          <span className="flex items-center gap-1.5">
-                            <span>🔍 Debug Info</span>
-                          </span>
-                          <span className="text-[10px] uppercase px-1.5 py-0.5 rounded bg-neutral-800 text-neutral-300">
+                      <div className="pt-1">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedDebugInfo(msg.debugInfo)}
+                          className="text-[10.5px] font-mono text-neutral-400 hover:text-neutral-600 bg-neutral-100/90 hover:bg-neutral-200/90 px-2 py-0.5 rounded-lg border border-neutral-200/60 flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer select-none"
+                        >
+                          <span className="opacity-70">🔍 Debug Info</span>
+                          <span className={clsx(
+                            "px-1 py-0.2 text-[9px] font-bold rounded",
+                            msg.debugInfo.status === 200 || msg.debugInfo.status === '200' || msg.debugInfo.status === 'OK'
+                              ? "bg-emerald-100 text-emerald-700"
+                              : "bg-rose-100 text-rose-700"
+                          )}>
                             {String(msg.debugInfo.status || 'OK')}
                           </span>
-                        </summary>
-                        <div className="mt-2.5 space-y-1.5 border-t border-neutral-800 pt-2 text-[10.5px]">
-                          <div><strong className="text-neutral-400">Endpoint:</strong> {msg.debugInfo.endpoint || '/api/ai-coach'}</div>
-                          <div><strong className="text-neutral-400">Env:</strong> {msg.debugInfo.environment || 'vercel_serverless'}</div>
-                          <div>
-                            <strong className="text-neutral-400">Server Env Key:</strong>{' '}
-                            {msg.debugInfo.hasServerEnvKey !== undefined
-                              ? (msg.debugInfo.hasServerEnvKey ? `✅ Found (${msg.debugInfo.serverKeyPrefix || 'set'})` : '❌ Missing')
-                              : (msg.debugInfo.openRouterKeyPrefix ? `Prefix: ${msg.debugInfo.openRouterKeyPrefix}` : 'N/A')}
-                          </div>
-                          <div>
-                            <strong className="text-neutral-400">Custom Key (Browser):</strong>{' '}
-                            {msg.debugInfo.hasCustomClientKey ? '✅ Saved in browser' : '❌ Not set in settings'}
-                          </div>
-                          {msg.debugInfo.modelUsed && <div><strong className="text-neutral-400">Model:</strong> {msg.debugInfo.modelUsed}</div>}
-                          {msg.debugInfo.rawError && (
-                            <div className="mt-2">
-                              <strong className="text-rose-400">Error / Raw Trace:</strong>
-                              <pre className="mt-1 p-2 rounded bg-black/60 text-rose-300 overflow-x-auto whitespace-pre-wrap text-[10px] leading-relaxed max-h-40 overflow-y-auto">
-                                {typeof msg.debugInfo.rawError === 'object' ? JSON.stringify(msg.debugInfo.rawError, null, 2) : msg.debugInfo.rawError}
-                              </pre>
-                            </div>
-                          )}
-                          <div className="text-[9.5px] text-neutral-500 pt-1">Time: {msg.debugInfo.clientTimestamp || new Date().toISOString()}</div>
-                        </div>
-                      </details>
+                        </button>
+                      </div>
                     )}
+
                   </div>
                 </div>
               );
@@ -913,6 +904,120 @@ export const CoachView: React.FC<CoachViewProps> = ({
         onGenerate={handleQuickModalGenerate}
         isLoading={isLoading}
       />
+
+      {/* Diagnostics & Debug Info Popup Modal (Greyed Out Backdrop) */}
+      {selectedDebugInfo && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-neutral-900 text-neutral-100 rounded-3xl p-5 max-w-md w-full border border-neutral-800 shadow-2xl space-y-4 max-h-[85vh] flex flex-col animate-in zoom-in-95">
+            {/* Header */}
+            <div className="flex items-center justify-between pb-2 border-b border-neutral-800">
+              <div className="flex items-center space-x-2">
+                <div className="w-2.5 h-2.5 rounded-full bg-amber-400" />
+                <h3 className="text-sm font-bold text-white tracking-tight">
+                  Backend & LLM Diagnostics
+                </h3>
+              </div>
+              <button
+                onClick={() => setSelectedDebugInfo(null)}
+                className="p-1.5 rounded-full text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors"
+                aria-label="Close popup"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Grid of details */}
+            <div className="space-y-2 text-xs font-mono overflow-y-auto flex-1 pr-1">
+              <div className="p-3.5 rounded-2xl bg-neutral-950/80 border border-neutral-800/80 space-y-2">
+                <div className="flex justify-between items-center">
+                  <span className="text-neutral-400">Endpoint:</span>
+                  <span className="font-bold text-neutral-200">{selectedDebugInfo.endpoint || '/api/ai-coach'}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-neutral-400">HTTP Status:</span>
+                  <span className={clsx(
+                    "px-2 py-0.5 rounded text-[10px] font-bold",
+                    selectedDebugInfo.status === 200 || selectedDebugInfo.status === '200' || selectedDebugInfo.status === 'OK'
+                      ? "bg-emerald-900/60 text-emerald-300 border border-emerald-700/50"
+                      : "bg-rose-900/60 text-rose-300 border border-rose-700/50"
+                  )}>
+                    {String(selectedDebugInfo.status || 'OK')}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-neutral-400">Environment:</span>
+                  <span className="text-neutral-300">{selectedDebugInfo.environment || 'vercel_serverless'}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-neutral-400">Server Env Key:</span>
+                  <span className="text-neutral-300">
+                    {selectedDebugInfo.hasServerEnvKey !== undefined
+                      ? (selectedDebugInfo.hasServerEnvKey ? `✅ Found (${selectedDebugInfo.serverKeyPrefix || 'set'})` : '❌ Missing')
+                      : (selectedDebugInfo.openRouterKeyPrefix ? `Prefix: ${selectedDebugInfo.openRouterKeyPrefix}` : 'N/A')}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-neutral-400">Custom Browser Key:</span>
+                  <span className="text-neutral-300">
+                    {selectedDebugInfo.hasCustomClientKey ? '✅ Saved in browser' : '❌ Not set'}
+                  </span>
+                </div>
+                {selectedDebugInfo.modelUsed && (
+                  <div className="flex justify-between items-center">
+                    <span className="text-neutral-400">Model:</span>
+                    <span className="text-neutral-300">{selectedDebugInfo.modelUsed}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Raw Error / Trace if present */}
+              {selectedDebugInfo.rawError && (
+                <div className="space-y-1.5 pt-1">
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="text-rose-400 font-bold">Raw Trace / Error Output:</span>
+                    <button
+                      onClick={() => {
+                        const textToCopy = typeof selectedDebugInfo.rawError === 'object'
+                          ? JSON.stringify(selectedDebugInfo.rawError, null, 2)
+                          : String(selectedDebugInfo.rawError);
+                        navigator.clipboard.writeText(textToCopy);
+                        setCopiedTrace(true);
+                        setTimeout(() => setCopiedTrace(false), 2000);
+                      }}
+                      className="text-[10px] text-neutral-400 hover:text-white flex items-center gap-1 bg-neutral-800 px-2 py-0.5 rounded"
+                    >
+                      {copiedTrace ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                      {copiedTrace ? 'Copied' : 'Copy'}
+                    </button>
+                  </div>
+                  <pre className="p-3 rounded-2xl bg-neutral-950 border border-neutral-800 text-rose-300 text-[10.5px] leading-relaxed max-h-48 overflow-y-auto whitespace-pre-wrap font-mono">
+                    {typeof selectedDebugInfo.rawError === 'object'
+                      ? JSON.stringify(selectedDebugInfo.rawError, null, 2)
+                      : String(selectedDebugInfo.rawError)}
+                  </pre>
+                </div>
+              )}
+
+              <div className="text-[10px] text-neutral-500 pt-1 text-right">
+                Timestamp: {selectedDebugInfo.clientTimestamp || new Date().toISOString()}
+              </div>
+            </div>
+
+            {/* Close button */}
+            <div className="pt-2">
+              <Button
+                variant="secondary"
+                size="md"
+                onClick={() => setSelectedDebugInfo(null)}
+                className="w-full font-bold text-xs bg-neutral-800 hover:bg-neutral-700 text-white border-neutral-700 rounded-2xl py-2.5"
+              >
+                Close Diagnostics
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
+

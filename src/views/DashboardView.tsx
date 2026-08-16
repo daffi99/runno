@@ -4,7 +4,8 @@ import { storageService } from '../services/storage';
 import { Card } from '../components/ui/Card';
 import { RouteThumbnail } from '../components/ui/RouteThumbnail';
 import { formatDuration, formatPace, formatDate, formatDistance, formatWorkoutDate } from '../utils/formatters';
-import { Bell, ChevronDown, TrendingUp, TrendingDown, Minus, Sparkles, ArrowRight } from 'lucide-react';
+import { Bell, ChevronDown, TrendingUp, TrendingDown, Minus, Sparkles, ArrowRight, ChevronRight } from 'lucide-react';
+
 
 
 
@@ -86,11 +87,48 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     };
   }, [currentMonthRuns, prevMonthRuns]);
 
-  const recentRuns = useMemo(() => {
-    return [...runs]
-      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-      .slice(0, 5);
+  const recentDayGroups = useMemo(() => {
+    const sorted = [...runs].sort(
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+    );
+
+    const dayMap = new Map<string, {
+      dateKey: string;
+      formattedDate: string;
+      runs: Run[];
+      totalDistance: number;
+      totalDuration: number;
+      avgPaceSec: number | null;
+    }>();
+
+    for (const run of sorted) {
+      const d = new Date(run.date);
+      const dayKey = isNaN(d.getTime()) ? run.date : d.toISOString().split('T')[0];
+
+      if (!dayMap.has(dayKey)) {
+        if (dayMap.size >= 5) break; // Limit to latest 5 unique days
+        dayMap.set(dayKey, {
+          dateKey: dayKey,
+          formattedDate: formatDate(run.date),
+          runs: [],
+          totalDistance: 0,
+          totalDuration: 0,
+          avgPaceSec: null,
+        });
+      }
+
+      const dg = dayMap.get(dayKey)!;
+      dg.runs.push(run);
+      dg.totalDistance += run.distance_km || 0;
+      dg.totalDuration += run.duration_seconds || 0;
+    }
+
+    return Array.from(dayMap.values()).map((dg) => ({
+      ...dg,
+      avgPaceSec: dg.totalDistance > 0 ? Math.round(dg.totalDuration / dg.totalDistance) : null,
+    }));
   }, [runs]);
+
 
   return (
     <div className="space-y-6 pb-24 max-w-md mx-auto px-4 pt-4">
@@ -357,7 +395,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           )}
         </div>
 
-        {recentRuns.length === 0 ? (
+        {recentDayGroups.length === 0 ? (
           <Card className="p-8 text-center">
             <p className="text-sm font-bold text-neutral-800">No runs logged yet</p>
             <p className="text-xs text-neutral-400 mt-1">
@@ -365,43 +403,127 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </p>
           </Card>
         ) : (
-          <div className="space-y-2.5">
-            {recentRuns.map((run) => (
-              <Card
-                key={run.id}
-                variant="interactive"
-                onClick={() => onSelectRun(run.id)}
-                className="p-3.5 flex items-center space-x-3.5"
-              >
-                <RouteThumbnail routeData={run.route_data} width={64} height={52} />
+          <div className="space-y-3">
+            {recentDayGroups.map((dayGroup) => {
+              if (dayGroup.runs.length === 1) {
+                const run = dayGroup.runs[0];
+                return (
+                  <Card
+                    key={run.id}
+                    variant="interactive"
+                    onClick={() => onSelectRun(run.id)}
+                    className="p-3.5 flex items-center space-x-3.5"
+                  >
+                    <RouteThumbnail routeData={run.route_data} width={64} height={52} />
 
-                <div className="flex-1 min-w-0">
-                  <span className="text-[11px] font-semibold text-neutral-400 block">
-                    {formatDate(run.date)}
-                  </span>
-                  <div className="flex items-baseline space-x-1 mt-0.5">
-                    <span className="text-base font-black text-neutral-900">
-                      {run.distance_km.toFixed(2)} {unitSystem === 'metric' ? 'km' : 'mi'}
-                    </span>
-                  </div>
-                  <div className="flex items-center text-xs text-neutral-500 font-mono space-x-1.5 mt-0.5">
-                    <span>{formatDuration(run.duration_seconds)}</span>
-                    <span className="text-neutral-300">·</span>
-                    <span>{formatPace(run.pace_seconds_per_km, unitSystem, true)}</span>
-                  </div>
-                </div>
+                    <div className="flex-1 min-w-0">
+                      <span className="text-[11px] font-semibold text-neutral-400 block">
+                        {formatDate(run.date)}
+                      </span>
+                      <div className="flex items-baseline space-x-1 mt-0.5">
+                        <span className="text-base font-black text-neutral-900">
+                          {formatDistance(run.distance_km, unitSystem, true)}
+                        </span>
+                      </div>
+                      <div className="flex items-center text-xs text-neutral-500 font-mono space-x-1.5 mt-0.5">
+                        <span>{formatDuration(run.duration_seconds)}</span>
+                        <span className="text-neutral-300">·</span>
+                        <span>{formatPace(run.pace_seconds_per_km, unitSystem, true)}</span>
+                        {run.avg_heart_rate && (
+                          <>
+                            <span className="text-neutral-300">·</span>
+                            <span>{run.avg_heart_rate} bpm</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
 
-                <div className="shrink-0 pr-1">
-                  {run.route_data ? (
-                    <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-                  ) : (
-                    <div className="w-2.5 h-2.5 rounded-full bg-neutral-200" />
-                  )}
-                </div>
-              </Card>
-            ))}
+                    <div className="shrink-0 text-neutral-300 pr-1">
+                      <ChevronRight className="w-4 h-4" />
+                    </div>
+                  </Card>
+                );
+              }
+
+              // MULTIPLE RUNS ON SAME DATE
+              return (
+                <Card
+                  key={dayGroup.dateKey}
+                  className="p-3.5 space-y-2.5 bg-white border border-neutral-200/80 shadow-soft-xs"
+                >
+                  {/* Day Header with Combined Stats */}
+                  <div className="flex items-center justify-between pb-2 border-b border-neutral-100">
+                    <div className="flex items-center space-x-2">
+                      <div className="w-2 h-2 rounded-full bg-[#FF5500]" />
+                      <span className="text-xs font-bold text-neutral-900">
+                        {dayGroup.formattedDate}
+                      </span>
+                      <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-orange-50 text-[#FF5500] border border-orange-200/60">
+                        {dayGroup.runs.length} Sessions
+                      </span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-xs font-black text-neutral-900 font-mono">
+                        {formatDistance(dayGroup.totalDistance, unitSystem, true)}
+                      </span>
+                      <span className="text-[11px] text-neutral-400 font-mono block">
+                        {formatDuration(dayGroup.totalDuration)} · {formatPace(dayGroup.avgPaceSec, unitSystem, true)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Individual Sessions List inside the same day */}
+                  <div className="space-y-1.5">
+                    {dayGroup.runs.map((run, idx) => (
+                      <div
+                        key={run.id}
+                        onClick={() => onSelectRun(run.id)}
+                        className="p-2.5 rounded-2xl bg-neutral-50/70 hover:bg-orange-50/40 border border-neutral-100 hover:border-orange-200/60 flex items-center space-x-3 cursor-pointer transition-all active:scale-[0.99] group"
+                      >
+                        <RouteThumbnail routeData={run.route_data} width={50} height={42} />
+
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center space-x-1.5">
+                            <span className="text-[10px] font-bold text-neutral-600 uppercase tracking-wider">
+                              Session {idx + 1}
+                            </span>
+                            {run.date && run.date.includes('T') && (
+                              <span className="text-[10px] text-neutral-400 font-mono">
+                                {new Date(run.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </span>
+                            )}
+                            {run.source && (
+                              <span className="text-[9px] font-semibold px-1.5 py-0.2 rounded bg-neutral-200/60 text-neutral-500">
+                                {run.source}
+                              </span>
+                            )}
+                          </div>
+
+                          <div className="flex items-baseline space-x-2 mt-0.5">
+                            <span className="text-sm font-black text-neutral-900 font-mono">
+                              {formatDistance(run.distance_km, unitSystem, true)}
+                            </span>
+                            <span className="text-xs text-neutral-500 font-mono">
+                              {formatDuration(run.duration_seconds)}
+                            </span>
+                            <span className="text-xs text-neutral-400 font-mono">
+                              · {formatPace(run.pace_seconds_per_km, unitSystem, true)}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="shrink-0 text-neutral-300 group-hover:text-[#FF5500] pr-1 transition-colors">
+                          <ChevronRight className="w-4 h-4" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+              );
+            })}
           </div>
         )}
+
       </div>
     </div>
   );

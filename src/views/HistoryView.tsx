@@ -40,8 +40,25 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
     });
   }, [runs, searchQuery, selectedSource]);
 
-  const groupedByMonth = useMemo(() => {
-    const groups: { [key: string]: { runs: Run[]; totalDist: number; totalDuration: number } } = {};
+  interface DayRunGroup {
+    dateKey: string;
+    formattedDate: string;
+    runs: Run[];
+    totalDistance: number;
+    totalDuration: number;
+    avgPaceSec: number | null;
+  }
+
+  interface MonthRunGroup {
+    month: string;
+    dayGroups: DayRunGroup[];
+    totalDist: number;
+    totalDuration: number;
+    count: number;
+  }
+
+  const groupedByMonth = useMemo<MonthRunGroup[]>(() => {
+    const monthMap = new Map<string, { runs: Run[]; totalDist: number; totalDuration: number }>();
 
     for (const r of filteredRuns) {
       const d = new Date(r.date);
@@ -49,22 +66,58 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
         ? 'Other'
         : d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
 
-      if (!groups[monthKey]) {
-        groups[monthKey] = { runs: [], totalDist: 0, totalDuration: 0 };
+      if (!monthMap.has(monthKey)) {
+        monthMap.set(monthKey, { runs: [], totalDist: 0, totalDuration: 0 });
       }
-
-      groups[monthKey].runs.push(r);
-      groups[monthKey].totalDist += r.distance_km || 0;
-      groups[monthKey].totalDuration += r.duration_seconds || 0;
+      const mData = monthMap.get(monthKey)!;
+      mData.runs.push(r);
+      mData.totalDist += r.distance_km || 0;
+      mData.totalDuration += r.duration_seconds || 0;
     }
 
-    return Object.entries(groups).map(([month, data]) => ({
-      month,
-      runs: data.runs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
-      totalDist: data.totalDist,
-      totalDuration: data.totalDuration,
-      count: data.runs.length,
-    }));
+    return Array.from(monthMap.entries()).map(([month, data]) => {
+      // Sort runs descending by date
+      const sortedRuns = [...data.runs].sort(
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+      );
+
+      // Group runs by dayKey (e.g. "2026-08-16")
+      const dayMap = new Map<string, DayRunGroup>();
+
+      for (const run of sortedRuns) {
+        const d = new Date(run.date);
+        const dayKey = isNaN(d.getTime()) ? run.date : d.toISOString().split('T')[0];
+
+        if (!dayMap.has(dayKey)) {
+          dayMap.set(dayKey, {
+            dateKey: dayKey,
+            formattedDate: formatDate(run.date),
+            runs: [],
+            totalDistance: 0,
+            totalDuration: 0,
+            avgPaceSec: null,
+          });
+        }
+
+        const dayGroup = dayMap.get(dayKey)!;
+        dayGroup.runs.push(run);
+        dayGroup.totalDistance += run.distance_km || 0;
+        dayGroup.totalDuration += run.duration_seconds || 0;
+      }
+
+      const dayGroups = Array.from(dayMap.values()).map((dg) => ({
+        ...dg,
+        avgPaceSec: dg.totalDistance > 0 ? Math.round(dg.totalDuration / dg.totalDistance) : null,
+      }));
+
+      return {
+        month,
+        dayGroups,
+        totalDist: data.totalDist,
+        totalDuration: data.totalDuration,
+        count: sortedRuns.length,
+      };
+    });
   }, [filteredRuns]);
 
   const availableSources = useMemo(() => {
@@ -156,37 +209,125 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
                 </p>
               </div>
 
-              <div className="space-y-2.5">
-                {group.runs.map((run) => (
-                  <Card
-                    key={run.id}
-                    variant="interactive"
-                    onClick={() => onSelectRun(run.id)}
-                    className="p-3.5 flex items-center space-x-3.5"
-                  >
-                    <RouteThumbnail routeData={run.route_data} width={64} height={52} />
+              <div className="space-y-3">
+                {group.dayGroups.map((dayGroup) => {
+                  // SINGLE RUN ON THIS DAY: standard sleek card
+                  if (dayGroup.runs.length === 1) {
+                    const run = dayGroup.runs[0];
+                    return (
+                      <Card
+                        key={run.id}
+                        variant="interactive"
+                        onClick={() => onSelectRun(run.id)}
+                        className="p-3.5 flex items-center space-x-3.5"
+                      >
+                        <RouteThumbnail routeData={run.route_data} width={64} height={52} />
 
-                    <div className="flex-1 min-w-0">
-                      <span className="text-[11px] font-semibold text-neutral-400 block">
-                        {formatDate(run.date)}
-                      </span>
-                      <div className="flex items-baseline space-x-1 mt-0.5">
-                        <span className="text-base font-black text-neutral-900">
-                          {formatDistance(run.distance_km, unitSystem, true)}
-                        </span>
-                      </div>
-                      <div className="flex items-center text-xs text-neutral-500 font-mono space-x-1.5 mt-0.5">
-                        <span>{formatDuration(run.duration_seconds)}</span>
-                        <span className="text-neutral-300">·</span>
-                        <span>{formatPace(run.pace_seconds_per_km, unitSystem, true)}</span>
-                      </div>
-                    </div>
+                        <div className="flex-1 min-w-0">
+                          <span className="text-[11px] font-semibold text-neutral-400 block">
+                            {formatDate(run.date)}
+                          </span>
+                          <div className="flex items-baseline space-x-1 mt-0.5">
+                            <span className="text-base font-black text-neutral-900">
+                              {formatDistance(run.distance_km, unitSystem, true)}
+                            </span>
+                          </div>
+                          <div className="flex items-center text-xs text-neutral-500 font-mono space-x-1.5 mt-0.5">
+                            <span>{formatDuration(run.duration_seconds)}</span>
+                            <span className="text-neutral-300">·</span>
+                            <span>{formatPace(run.pace_seconds_per_km, unitSystem, true)}</span>
+                            {run.avg_heart_rate && (
+                              <>
+                                <span className="text-neutral-300">·</span>
+                                <span>{run.avg_heart_rate} bpm</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
 
-                    <div className="shrink-0 text-neutral-300 pr-1">
-                      <ChevronRight className="w-4 h-4" />
-                    </div>
-                  </Card>
-                ))}
+                        <div className="shrink-0 text-neutral-300 pr-1">
+                          <ChevronRight className="w-4 h-4" />
+                        </div>
+                      </Card>
+                    );
+                  }
+
+                  // MULTIPLE RUNS ON SAME DATE: Joined Multi-Session Day Card
+                  return (
+                    <Card
+                      key={dayGroup.dateKey}
+                      className="p-3.5 space-y-2.5 bg-white border border-neutral-200/80 shadow-soft-xs"
+                    >
+                      {/* Day Header with Combined Stats */}
+                      <div className="flex items-center justify-between pb-2 border-b border-neutral-100">
+                        <div className="flex items-center space-x-2">
+                          <div className="w-2 h-2 rounded-full bg-[#FF5500]" />
+                          <span className="text-xs font-bold text-neutral-900">
+                            {dayGroup.formattedDate}
+                          </span>
+                          <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-orange-50 text-[#FF5500] border border-orange-200/60">
+                            {dayGroup.runs.length} Sessions
+                          </span>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-xs font-black text-neutral-900 font-mono">
+                            {formatDistance(dayGroup.totalDistance, unitSystem, true)}
+                          </span>
+                          <span className="text-[11px] text-neutral-400 font-mono block">
+                            {formatDuration(dayGroup.totalDuration)} · {formatPace(dayGroup.avgPaceSec, unitSystem, true)}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Individual Sessions List inside the same day */}
+                      <div className="space-y-1.5">
+                        {dayGroup.runs.map((run, idx) => (
+                          <div
+                            key={run.id}
+                            onClick={() => onSelectRun(run.id)}
+                            className="p-2.5 rounded-2xl bg-neutral-50/70 hover:bg-orange-50/40 border border-neutral-100 hover:border-orange-200/60 flex items-center space-x-3 cursor-pointer transition-all active:scale-[0.99] group"
+                          >
+                            <RouteThumbnail routeData={run.route_data} width={50} height={42} />
+
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center space-x-1.5">
+                                <span className="text-[10px] font-bold text-neutral-600 uppercase tracking-wider">
+                                  Session {idx + 1}
+                                </span>
+                                {run.date && run.date.includes('T') && (
+                                  <span className="text-[10px] text-neutral-400 font-mono">
+                                    {new Date(run.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                  </span>
+                                )}
+                                {run.source && (
+                                  <span className="text-[9px] font-semibold px-1.5 py-0.2 rounded bg-neutral-200/60 text-neutral-500">
+                                    {run.source}
+                                  </span>
+                                )}
+                              </div>
+
+                              <div className="flex items-baseline space-x-2 mt-0.5">
+                                <span className="text-sm font-black text-neutral-900 font-mono">
+                                  {formatDistance(run.distance_km, unitSystem, true)}
+                                </span>
+                                <span className="text-xs text-neutral-500 font-mono">
+                                  {formatDuration(run.duration_seconds)}
+                                </span>
+                                <span className="text-xs text-neutral-400 font-mono">
+                                  · {formatPace(run.pace_seconds_per_km, unitSystem, true)}
+                                </span>
+                              </div>
+                            </div>
+
+                            <div className="shrink-0 text-neutral-300 group-hover:text-[#FF5500] pr-1 transition-colors">
+                              <ChevronRight className="w-4 h-4" />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </Card>
+                  );
+                })}
               </div>
             </div>
           ))}
@@ -195,3 +336,4 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
     </div>
   );
 };
+
