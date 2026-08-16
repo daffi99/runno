@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import type { Run, UnitSystem, TrainingPlan, AICoachMessage } from '../types/run';
+import type { Run, UnitSystem } from '../types/run';
+import type { PlanWorkout, TrainingPlan, AICoachMessage } from '../types/plan';
+
 import { storageService } from '../services/storage';
 import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
@@ -296,6 +298,55 @@ export const CoachView: React.FC<CoachViewProps> = ({
     return d;
   }, [viewedWeek, currentPlanWeek]);
 
+  // Helper to compute accurate workout completion for any target calendar date
+  // Prevents past runs from falsely showing as completed on future/next week schedules
+  const getWorkoutForDate = (w: PlanWorkout, targetDate: Date, isViewingThisWeek: boolean): PlanWorkout => {
+    const targetIso = targetDate.toISOString().split('T')[0];
+    const todayIso = new Date().toISOString().split('T')[0];
+    const isFutureDate = targetIso > todayIso;
+
+    // Find if there is an actual run logged on this specific calendar date
+    const matchingRun = runs.find((r) => {
+      if (!r.date) return false;
+      return r.date.split('T')[0] === targetIso;
+    });
+
+    if (matchingRun) {
+      return {
+        ...w,
+        date: targetIso,
+        completed: true,
+        completedRunId: matchingRun.id,
+      };
+    }
+
+    if (isFutureDate) {
+      // Future dates cannot be completed yet
+      return {
+        ...w,
+        date: targetIso,
+        completed: false,
+        completedRunId: null,
+      };
+    }
+
+    if (isViewingThisWeek) {
+      return {
+        ...w,
+        date: targetIso,
+        completed: Boolean(w.completed),
+        completedRunId: w.completedRunId || null,
+      };
+    }
+
+    return {
+      ...w,
+      date: targetIso,
+      completed: false,
+      completedRunId: null,
+    };
+  };
+
   // Tomorrow's Date & Workout calculation (e.g. for Sunday looking at Monday tomorrow)
   const tomorrowDate = useMemo(() => {
     const d = new Date();
@@ -322,20 +373,36 @@ export const CoachView: React.FC<CoachViewProps> = ({
   const weeklyProgress = useMemo(() => {
     if (!activePlan) return { completedKm: 0, targetKm: 0, percent: 0, completedCount: 0, totalWorkouts: 0 };
     const runningWorkouts = activePlan.workouts.filter((w) => w.type !== 'rest' && w.distanceKm > 0);
-    const completedWorkouts = runningWorkouts.filter((w) => w.completed);
-    const completedKm = completedWorkouts.reduce((acc, w) => acc + w.distanceKm, 0);
     const targetKm = activePlan.weeklyTargetKm || runningWorkouts.reduce((acc, w) => acc + w.distanceKm, 0);
-    const percent = targetKm > 0 ? Math.min(100, Math.round((completedKm / targetKm) * 100)) : 0;
 
-    return {
-      completedKm,
-      targetKm,
-      percent,
-      completedCount: completedWorkouts.length,
-      totalWorkouts: runningWorkouts.length,
-    };
-  }, [activePlan]);
+    if (isViewingCurrentWeek) {
+      const completedWorkouts = runningWorkouts.filter((w) => w.completed);
+      const completedKm = completedWorkouts.reduce((acc, w) => acc + w.distanceKm, 0);
+      const percent = targetKm > 0 ? Math.min(100, Math.round((completedKm / targetKm) * 100)) : 0;
+      return {
+        completedKm,
+        targetKm,
+        percent,
+        completedCount: completedWorkouts.length,
+        totalWorkouts: runningWorkouts.length,
+      };
+    } else {
+      const weekDates = activePlan.workouts.map((w) =>
+        getDateForDayOfWeek(w.dayOfWeek, selectedWeekBaseDate).toISOString().split('T')[0]
+      );
+      const completedRunsThisWeek = runs.filter((r) => r.date && weekDates.includes(r.date.split('T')[0]));
+      const completedKm = completedRunsThisWeek.reduce((acc, r) => acc + (r.distance_km || 0), 0);
+      const percent = targetKm > 0 ? Math.min(100, Math.round((completedKm / targetKm) * 100)) : 0;
 
+      return {
+        completedKm,
+        targetKm,
+        percent,
+        completedCount: completedRunsThisWeek.length,
+        totalWorkouts: runningWorkouts.length,
+      };
+    }
+  }, [activePlan, isViewingCurrentWeek, selectedWeekBaseDate, runs]);
 
   const handleToggleWorkout = (workoutId: string) => {
     const updated = storageService.toggleWorkoutCompletion(workoutId);
@@ -343,6 +410,7 @@ export const CoachView: React.FC<CoachViewProps> = ({
       setActivePlan({ ...updated });
     }
   };
+
 
   const handleApplyPlan = (planToApply: TrainingPlan) => {
     const newActivePlan: TrainingPlan = {
@@ -436,8 +504,7 @@ export const CoachView: React.FC<CoachViewProps> = ({
             endpoint: '/api/ai-coach',
             status: networkOrServerErr.message || 500,
             environment: healthData.environment || 'vercel_serverless',
-            hasServerEnvKey: healthData.hasOpenRouterKey,
-            serverKeyPrefix: healthData.openRouterKeyPrefix,
+            hasServerEnvKey: Boolean(healthData.hasOpenRouterKey),
             hasCustomClientKey: Boolean(customApiKey && customApiKey.length > 0),
             rawError: networkOrServerErr.stack || networkOrServerErr.message,
             clientTimestamp: new Date().toISOString(),
@@ -452,6 +519,7 @@ export const CoachView: React.FC<CoachViewProps> = ({
       }
 
       const fullReply = data?.reply || "Here is what I've prepared for you:";
+
       const plan = data?.suggestedPlan || null;
       const debugInfo = data?.debugInfo || errorDebug || null;
       const assistantMsgId = `msg_asst_${Date.now()}`;
@@ -779,7 +847,7 @@ export const CoachView: React.FC<CoachViewProps> = ({
                     )}
                   </div>
                   <WorkoutCard
-                    workout={todayWorkout}
+                    workout={getWorkoutForDate(todayWorkout, new Date(), true)}
                     unitSystem={unitSystem}
                     isToday={true}
                     date={new Date()}
@@ -814,7 +882,7 @@ export const CoachView: React.FC<CoachViewProps> = ({
                     )}
                   </div>
                   <WorkoutCard
-                    workout={tomorrowWorkout}
+                    workout={getWorkoutForDate(tomorrowWorkout, tomorrowDate, false)}
                     unitSystem={unitSystem}
                     isToday={false}
                     date={tomorrowDate}
@@ -852,10 +920,11 @@ export const CoachView: React.FC<CoachViewProps> = ({
                   {activePlan.workouts.map((w) => {
                     const workoutDate = getDateForDayOfWeek(w.dayOfWeek, selectedWeekBaseDate);
                     const isToday = isViewingCurrentWeek && w.dayOfWeek === currentDayOfWeek;
+                    const dateBoundWorkout = getWorkoutForDate(w, workoutDate, isViewingCurrentWeek);
                     return (
                       <WorkoutCard
                         key={`${w.id}_w${viewedWeek}`}
-                        workout={w}
+                        workout={dateBoundWorkout}
                         unitSystem={unitSystem}
                         isToday={isToday}
                         date={workoutDate}
@@ -866,6 +935,7 @@ export const CoachView: React.FC<CoachViewProps> = ({
                   })}
                 </div>
               </div>
+
 
               {/* AI Coaching Tips */}
               {activePlan.aiAdvice && (
@@ -1145,17 +1215,18 @@ export const CoachView: React.FC<CoachViewProps> = ({
                 <div className="flex justify-between items-center">
                   <span className="text-neutral-400">Server Env Key:</span>
                   <span className="text-neutral-300">
-                    {selectedDebugInfo.hasServerEnvKey !== undefined
-                      ? (selectedDebugInfo.hasServerEnvKey ? `✅ Found (${selectedDebugInfo.serverKeyPrefix || 'set'})` : '❌ Missing')
-                      : (selectedDebugInfo.openRouterKeyPrefix ? `Prefix: ${selectedDebugInfo.openRouterKeyPrefix}` : 'N/A')}
+                    {selectedDebugInfo.hasServerEnvKey || selectedDebugInfo.hasApiKey
+                      ? '✅ Configured (Active)'
+                      : '❌ Not Set'}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-neutral-400">Custom Browser Key:</span>
                   <span className="text-neutral-300">
-                    {selectedDebugInfo.hasCustomClientKey ? '✅ Saved in browser' : '❌ Not set'}
+                    {selectedDebugInfo.hasCustomClientKey ? '✅ Configured (Active)' : '❌ Not Set'}
                   </span>
                 </div>
+
                 {selectedDebugInfo.modelUsed && (
                   <div className="flex justify-between items-center">
                     <span className="text-neutral-400">Model:</span>

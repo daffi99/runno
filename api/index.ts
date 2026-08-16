@@ -221,12 +221,11 @@ router.get('/health', (_req, res) => {
     status: 'ok',
     environment: process.env.VERCEL ? 'vercel_serverless' : 'local_node',
     hasOpenRouterKey: rawKey.length > 0,
-    openRouterKeyLength: rawKey.length,
-    openRouterKeyPrefix: rawKey.length > 8 ? `${rawKey.substring(0, 8)}...` : (rawKey.length > 0 ? 'set' : 'none'),
     hasDatabase: !!db,
     timestamp: new Date().toISOString(),
   });
 });
+
 
 // ---------------------------------------------------------------------------
 // AI Screenshot OCR Analysis Endpoint
@@ -563,13 +562,14 @@ router.post('/ai-coach', async (req, res) => {
           endpoint: '/api/ai-coach',
           status: 'MISSING_API_KEY',
           environment: process.env.VERCEL ? 'vercel_serverless' : 'local_node',
-          openRouterKeyLength: 0,
-          openRouterKeyPrefix: 'none',
+          hasServerEnvKey: false,
+          hasCustomClientKey: false,
           hasApiKey: false,
           errorName: 'MissingApiKeyError',
           rawError: 'No OPENROUTER_API_KEY found in process.env or customApiKey in request payload.',
           clientTimestamp: new Date().toISOString(),
         },
+
       });
     }
 
@@ -722,8 +722,8 @@ JSON_PLAN STRUCTURE:
           endpoint: 'https://openrouter.ai/api/v1/chat/completions',
           status: openRouterResponse.status,
           environment: process.env.VERCEL ? 'vercel_serverless' : 'local_node',
-          openRouterKeyLength: apiKey.length,
-          openRouterKeyPrefix: apiKey.substring(0, 10) + '...',
+          hasServerEnvKey: Boolean(process.env.OPENROUTER_API_KEY),
+          hasCustomClientKey: Boolean(customApiKey),
           hasApiKey: true,
           errorName: `OpenRouter_HTTP_${openRouterResponse.status}`,
           rawError: errText,
@@ -757,13 +757,14 @@ JSON_PLAN STRUCTURE:
         endpoint: '/api/ai-coach',
         status: 200,
         environment: process.env.VERCEL ? 'vercel_serverless' : 'local_node',
-        openRouterKeyLength: apiKey.length,
-        openRouterKeyPrefix: apiKey.substring(0, 10) + '...',
+        hasServerEnvKey: Boolean(process.env.OPENROUTER_API_KEY),
+        hasCustomClientKey: Boolean(customApiKey),
         hasApiKey: true,
         modelUsed: model,
         clientTimestamp: new Date().toISOString(),
       },
     });
+
   } catch (err: any) {
     console.error('[Runno AI Coach] Exception:', err);
     res.status(200).json({
