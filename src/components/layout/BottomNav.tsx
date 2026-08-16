@@ -49,12 +49,24 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onSelectTab })
                 isActive ? 'text-[#FF5500]' : 'text-neutral-400 hover:text-neutral-600'
               )}
             >
-              <Icon className={clsx('w-5 h-5 mb-1', isActive ? 'stroke-[2.4]' : 'stroke-[1.8]')} />
+              {item.id === 'dashboard' ? (
+                <img
+                  src="/apple-touch-icon.png"
+                  alt="Dashboard"
+                  className={clsx(
+                    'w-5 h-5 rounded-[5px] object-contain mb-1 transition-all',
+                    isActive ? 'scale-110 ring-1.5 ring-[#FF5500] shadow-xs' : 'opacity-55 grayscale hover:opacity-100 hover:grayscale-0'
+                  )}
+                />
+              ) : (
+                <Icon className={clsx('w-5 h-5 mb-1', isActive ? 'stroke-[2.4]' : 'stroke-[1.8]')} />
+              )}
               <span className={clsx('text-[10px] font-medium tracking-tight', isActive && 'font-bold')}>
                 {item.label}
               </span>
             </button>
           );
+
         })}
       </div>
     </nav>

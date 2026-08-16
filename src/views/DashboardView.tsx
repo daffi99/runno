@@ -134,9 +134,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     <div className="space-y-6 pb-24 max-w-md mx-auto px-4 pt-4">
       {/* Header */}
       <div className="flex items-center justify-between pt-2">
-        <h1 className="text-2xl font-black text-neutral-900 tracking-tight">
-          Dashboard
-        </h1>
+        <div className="flex items-center space-x-2.5">
+          <img
+            src="/apple-touch-icon.png"
+            alt="Runno"
+            className="w-8 h-8 rounded-xl object-contain shadow-soft-xs border border-neutral-200/60"
+          />
+          <h1 className="text-2xl font-black text-neutral-900 tracking-tight">
+            Dashboard
+          </h1>
+        </div>
         <button
           onClick={() => onNavigateTab('more')}
           className="relative p-2.5 rounded-full bg-white border border-neutral-200/80 text-neutral-700 shadow-soft-sm hover:bg-neutral-50 active:scale-95 transition-all"
@@ -146,6 +153,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <span className="absolute top-2 right-2 w-2 h-2 bg-[#FF5500] rounded-full ring-2 ring-white" />
         </button>
       </div>
+
 
       {/* Month Dropdown */}
       <div className="relative inline-block">
