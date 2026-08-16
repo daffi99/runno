@@ -242,10 +242,19 @@ router.post('/analyze-screenshot', async (req, res) => {
     }
     body = body || {};
 
-    const { imageBase64, customApiKey } = body;
+    const { imageBase64, intervalImageBase64, imagesBase64, customApiKey } = body;
 
-    if (!imageBase64) {
-      return res.status(400).json({ error: 'Missing imageBase64 in request body' });
+    const rawImages: string[] = [];
+    if (imageBase64 && typeof imageBase64 === 'string') rawImages.push(imageBase64);
+    if (intervalImageBase64 && typeof intervalImageBase64 === 'string') rawImages.push(intervalImageBase64);
+    if (Array.isArray(imagesBase64)) {
+      for (const img of imagesBase64) {
+        if (img && typeof img === 'string') rawImages.push(img);
+      }
+    }
+
+    if (rawImages.length === 0) {
+      return res.status(400).json({ error: 'Missing imageBase64 or screenshots in request body' });
     }
 
     const apiKey = (customApiKey || process.env.OPENROUTER_API_KEY || '').trim();
@@ -256,14 +265,18 @@ router.post('/analyze-screenshot', async (req, res) => {
       });
     }
 
-    let formattedImageUrl = imageBase64;
-    if (!imageBase64.startsWith('data:image/')) {
-      formattedImageUrl = `data:image/jpeg;base64,${imageBase64}`;
-    }
+    const imageContentItems = rawImages.map((img) => {
+      let formatted = img.trim();
+      if (!formatted.startsWith('data:image/')) {
+        formatted = `data:image/jpeg;base64,${formatted}`;
+      }
+      return { type: 'image_url', image_url: { url: formatted } };
+    });
 
     const systemPrompt = `You are an expert sports data extraction AI specializing in running result screenshots from Huawei Health, Amazfit, Zepp, Apple Fitness, Garmin Connect, Strava, Coros, Nike Run Club, and Samsung Health.
 
-Read the entire image (including long/scrolling screenshots from top to bottom) and extract all clearly visible workout metrics, including Splits tables and Chart series if present.
+Read the provided screenshot(s) carefully. You may receive multiple screenshots for the same running workout (for example: Screenshot 1 showing the main workout overview and Screenshot 2 showing interval segments, laps, splits table, or heart rate graph).
+Merge, cross-correlate, and extract all clearly visible workout metrics across all provided screenshots.
 
 CRITICAL PARSING RULES:
 1. Decimal Separators: In European/Huawei locales, comma ',' represents a decimal point. Convert '6,50' to 6.50, '6,32' to 6.32, '57,4' to 57.4, '9,7' to 9.7, '89,3' to 89.3.
@@ -283,8 +296,9 @@ CRITICAL PARSING RULES:
    - Avg Heart Rate (e.g. 153 bpm) -> avg_heart_rate: 153.
    - Max Heart Rate (e.g. 179 bpm) -> max_heart_rate: 179.
    - Heart Rate Zones: extract into "heart_rate_zones" array.
-6. Splits Table:
-   - Extract kilometer splits into "splits": [ { "km": 1, "pace_seconds": 569, "elevation_diff_m": 0 }, ... ]
+6. Splits & Interval Laps/Segments:
+   - Extract all kilometer splits or interval reps/laps into "splits": [ { "km": 1, "pace_seconds": 569, "elevation_diff_m": 0 }, ... ]
+   - If interval work/recovery reps are present, detail them in "splits" or summarize their lap breakdown in "raw_notes".
 7. Chart Samples:
    - Sample 8 to 20 representative data points into "elevation_points".
 8. Performance & Training Metrics:
@@ -347,14 +361,15 @@ Return ONLY a valid JSON object matching this schema (no markdown, no backticks)
             role: 'user',
             content: [
               { type: 'text', text: systemPrompt },
-              { type: 'image_url', image_url: { url: formattedImageUrl } },
+              ...imageContentItems,
             ],
           },
         ],
-        max_tokens: 3000,
+        max_tokens: 3500,
         temperature: 0.1,
       }),
     });
+
 
     if (!openRouterResponse.ok) {
       const errText = await openRouterResponse.text();

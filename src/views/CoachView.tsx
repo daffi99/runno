@@ -22,7 +22,9 @@ import {
   X,
   Copy,
   Check,
+  Search,
 } from 'lucide-react';
+
 
 import { clsx } from 'clsx';
 
@@ -822,26 +824,28 @@ export const CoachView: React.FC<CoachViewProps> = ({
                       </div>
                     )}
 
-                    {/* Minimized Subtle Greyed-out Debug Tag */}
+                    {/* Minimized Search Icon + Status Pill */}
                     {!isUser && msg.debugInfo && (
-                      <div className="pt-1">
+                      <div className="pt-0.5">
                         <button
                           type="button"
                           onClick={() => setSelectedDebugInfo(msg.debugInfo)}
-                          className="text-[10.5px] font-mono text-neutral-400 hover:text-neutral-600 bg-neutral-100/90 hover:bg-neutral-200/90 px-2 py-0.5 rounded-lg border border-neutral-200/60 flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer select-none"
+                          className="text-[10px] font-mono text-neutral-400 hover:text-neutral-600 bg-neutral-100/90 hover:bg-neutral-200/90 px-2 py-0.5 rounded-full border border-neutral-200/60 flex items-center gap-1 transition-all active:scale-95 cursor-pointer select-none"
+                          title="View Diagnostics"
                         >
-                          <span className="opacity-70">🔍 Debug Info</span>
+                          <Search className="w-3 h-3 text-neutral-400" />
                           <span className={clsx(
-                            "px-1 py-0.2 text-[9px] font-bold rounded",
+                            "text-[9.5px] font-bold font-mono",
                             msg.debugInfo.status === 200 || msg.debugInfo.status === '200' || msg.debugInfo.status === 'OK'
-                              ? "bg-emerald-100 text-emerald-700"
-                              : "bg-rose-100 text-rose-700"
+                              ? "text-emerald-600"
+                              : "text-rose-600"
                           )}>
-                            {String(msg.debugInfo.status || 'OK')}
+                            {String(msg.debugInfo.status || '200')}
                           </span>
                         </button>
                       </div>
                     )}
+
 
                   </div>
                 </div>

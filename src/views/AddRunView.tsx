@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { parseGpx } from '../utils/gpx';
@@ -13,6 +13,8 @@ import {
   AlertCircle,
   Sparkles,
   X,
+  Layers,
+  Clipboard,
 } from 'lucide-react';
 
 interface AddRunViewProps {
@@ -32,16 +34,22 @@ export const AddRunView: React.FC<AddRunViewProps> = ({
 }) => {
   const [screenshotFile, setScreenshotFile] = useState<File | null>(null);
   const [screenshotPreview, setScreenshotPreview] = useState<string | null>(null);
+  const [intervalScreenshotFile, setIntervalScreenshotFile] = useState<File | null>(null);
+  const [intervalScreenshotPreview, setIntervalScreenshotPreview] = useState<string | null>(null);
+
   const [gpxFile, setGpxFile] = useState<File | null>(null);
   const [parsedRoute, setParsedRoute] = useState<RouteData | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState<boolean>(false);
   const [analysisStep, setAnalysisStep] = useState<string>('Preparing upload...');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [clipboardToast, setClipboardToast] = useState<string | null>(null);
 
   const [isDraggingImage, setIsDraggingImage] = useState<boolean>(false);
+  const [isDraggingInterval, setIsDraggingInterval] = useState<boolean>(false);
   const [isDraggingGpx, setIsDraggingGpx] = useState<boolean>(false);
 
   const screenshotInputRef = useRef<HTMLInputElement>(null);
+  const intervalInputRef = useRef<HTMLInputElement>(null);
   const gpxInputRef = useRef<HTMLInputElement>(null);
 
   const processImageFile = async (file: File) => {
@@ -69,6 +77,31 @@ export const AddRunView: React.FC<AddRunViewProps> = ({
     }
   };
 
+  const processIntervalImageFile = async (file: File) => {
+    setErrorMsg(null);
+    if (!file.type.startsWith('image/')) {
+      setErrorMsg('Please select a valid interval image file (JPG or PNG).');
+      return;
+    }
+
+    if (file.size > 15 * 1024 * 1024) {
+      setErrorMsg('Interval image size exceeds 15MB limit.');
+      return;
+    }
+
+    setIntervalScreenshotFile(file);
+    try {
+      const compressed = await compressImage(file, 1080, 2400, 0.85);
+      setIntervalScreenshotPreview(compressed);
+    } catch {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setIntervalScreenshotPreview(event.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const processGpxFile = (file: File) => {
     setErrorMsg(null);
     if (!file.name.toLowerCase().endsWith('.gpx') && !file.type.includes('xml')) {
@@ -90,9 +123,48 @@ export const AddRunView: React.FC<AddRunViewProps> = ({
     reader.readAsText(file);
   };
 
+  // Clipboard Paste Support (Ctrl+V / Cmd+V anywhere on this view)
+  useEffect(() => {
+    const handlePaste = (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf('image') !== -1) {
+          const file = items[i].getAsFile();
+          if (file) {
+            e.preventDefault();
+            if (!screenshotPreview) {
+              processImageFile(file);
+              setClipboardToast('Main workout screenshot pasted from clipboard!');
+              setTimeout(() => setClipboardToast(null), 3000);
+            } else if (!intervalScreenshotPreview) {
+              processIntervalImageFile(file);
+              setClipboardToast('Interval segment screenshot pasted from clipboard!');
+              setTimeout(() => setClipboardToast(null), 3000);
+            } else {
+              processImageFile(file);
+              setClipboardToast('Main screenshot replaced from clipboard!');
+              setTimeout(() => setClipboardToast(null), 3000);
+            }
+            break;
+          }
+        }
+      }
+    };
+
+    window.addEventListener('paste', handlePaste);
+    return () => window.removeEventListener('paste', handlePaste);
+  }, [screenshotPreview, intervalScreenshotPreview]);
+
   const handleScreenshotChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) processImageFile(file);
+  };
+
+  const handleIntervalChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) processIntervalImageFile(file);
   };
 
   const handleGpxChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -163,14 +235,19 @@ export const AddRunView: React.FC<AddRunViewProps> = ({
     setErrorMsg(null);
 
     try {
-      setAnalysisStep('Uploading screenshot...');
-      setAnalysisStep('Gemini 2.5 Flash Lite analyzing image...');
+      setAnalysisStep('Uploading screenshot(s)...');
+      setAnalysisStep(
+        intervalScreenshotPreview
+          ? 'Gemini 2.5 Flash Lite analyzing main & interval screenshots...'
+          : 'Gemini 2.5 Flash Lite analyzing screenshot...'
+      );
 
       const response = await fetch('/api/analyze-screenshot', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           imageBase64: screenshotPreview,
+          intervalImageBase64: intervalScreenshotPreview || undefined,
           customApiKey: customApiKey || undefined,
         }),
       });
@@ -180,7 +257,7 @@ export const AddRunView: React.FC<AddRunViewProps> = ({
         throw new Error(errJson.error || `Server returned error status ${response.status}`);
       }
 
-      setAnalysisStep('Extracting running statistics...');
+      setAnalysisStep('Extracting running statistics & interval splits...');
       const result = await response.json();
       const extracted: ExtractedRunData = result.data;
 
@@ -199,6 +276,7 @@ export const AddRunView: React.FC<AddRunViewProps> = ({
     }
   };
 
+
   return (
     <div className="max-w-md mx-auto px-4 pt-4 pb-16 space-y-5">
       <div className="flex items-center space-x-3 pt-2">
@@ -211,6 +289,13 @@ export const AddRunView: React.FC<AddRunViewProps> = ({
         </button>
         <h1 className="text-xl font-bold text-neutral-900">Add Run</h1>
       </div>
+
+      {clipboardToast && (
+        <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center space-x-2.5 text-emerald-800 text-xs animate-in fade-in shadow-soft-xs">
+          <Clipboard className="w-4 h-4 text-emerald-600 shrink-0" />
+          <span className="font-semibold">{clipboardToast}</span>
+        </div>
+      )}
 
       {errorMsg && (
         <div className="p-3.5 rounded-2xl bg-red-50 border border-red-200 flex items-start space-x-2.5 text-red-700 text-xs animate-in fade-in">
@@ -230,6 +315,13 @@ export const AddRunView: React.FC<AddRunViewProps> = ({
         onChange={handleScreenshotChange}
       />
       <input
+        ref={intervalInputRef}
+        type="file"
+        accept="image/png,image/jpeg,image/webp,image/heic"
+        className="hidden"
+        onChange={handleIntervalChange}
+      />
+      <input
         ref={gpxInputRef}
         type="file"
         accept=".gpx,application/gpx+xml,text/xml"
@@ -237,141 +329,234 @@ export const AddRunView: React.FC<AddRunViewProps> = ({
         onChange={handleGpxChange}
       />
 
-      {/* 1. Screenshot Dropzone Card */}
-      <Card
-        onClick={() => screenshotInputRef.current?.click()}
-        onDragOver={handleImageDragOver}
-        onDragLeave={handleImageDragLeave}
-        onDrop={handleImageDrop}
-        className={`p-8 border-2 border-dashed text-center cursor-pointer transition-all duration-200 group flex flex-col items-center justify-center min-h-[220px] ${
-          isDraggingImage
-            ? 'border-[#FF5500] bg-orange-50/60 scale-[1.01] shadow-glow-orange'
-            : 'border-neutral-200 hover:border-[#FF5500]/50 bg-white hover:bg-orange-50/20'
-        }`}
-      >
-        {screenshotPreview ? (
-          <div className="relative w-full flex flex-col items-center">
-            <div className="relative max-h-56 overflow-hidden rounded-2xl border border-neutral-200 shadow-sm bg-neutral-950 p-1">
-              <img
-                src={screenshotPreview}
-                alt="Screenshot Preview"
-                className="max-h-52 object-contain rounded-xl mx-auto"
-              />
+      {/* 1. Main Workout Screenshot Dropzone Card */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between px-1">
+          <span className="text-xs font-bold uppercase tracking-wider text-neutral-500">
+            1. Main Workout Screenshot
+          </span>
+          <span className="text-[10px] font-mono text-neutral-400 bg-neutral-100 px-2 py-0.5 rounded-md border border-neutral-200">
+            Paste (⌘+V / Ctrl+V)
+          </span>
+        </div>
+
+        <Card
+          onClick={() => screenshotInputRef.current?.click()}
+          onDragOver={handleImageDragOver}
+          onDragLeave={handleImageDragLeave}
+          onDrop={handleImageDrop}
+          className={`p-6 sm:p-7 border-2 border-dashed text-center cursor-pointer transition-all duration-200 group flex flex-col items-center justify-center min-h-[190px] ${
+            isDraggingImage
+              ? 'border-[#FF5500] bg-orange-50/60 scale-[1.01] shadow-glow-orange'
+              : 'border-neutral-200 hover:border-[#FF5500]/50 bg-white hover:bg-orange-50/20'
+          }`}
+        >
+          {screenshotPreview ? (
+            <div className="relative w-full flex flex-col items-center">
+              <div className="relative max-h-52 overflow-hidden rounded-2xl border border-neutral-200 shadow-sm bg-neutral-950 p-1">
+                <img
+                  src={screenshotPreview}
+                  alt="Main Workout Preview"
+                  className="max-h-48 object-contain rounded-xl mx-auto"
+                />
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setScreenshotFile(null);
+                    setScreenshotPreview(null);
+                  }}
+                  className="absolute top-2 right-2 p-1.5 bg-black/70 hover:bg-black text-white rounded-full transition-colors"
+                  title="Remove image"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+              <span className="text-xs font-semibold text-emerald-600 flex items-center mt-2.5">
+                <CheckCircle2 className="w-4 h-4 mr-1.5" />
+                Main screenshot selected: {screenshotFile?.name || 'Image ready'}
+              </span>
+            </div>
+          ) : (
+            <>
+              <div className={`w-14 h-14 rounded-3xl flex items-center justify-center mb-3 transition-transform duration-200 ${
+                isDraggingImage ? 'bg-[#FF5500] text-white scale-110' : 'bg-orange-50 text-[#FF5500] group-hover:scale-105'
+              }`}>
+                <ImageIcon className="w-7 h-7 stroke-[1.8]" />
+              </div>
+              <h3 className="text-sm font-bold text-neutral-900 mb-1">
+                {isDraggingImage ? 'Drop Main Screenshot Here!' : 'Drop main running screenshot here'}
+              </h3>
+              <p className="text-xs font-medium text-neutral-400">
+                Drag & drop, click to upload, or paste with <kbd className="font-mono font-bold text-neutral-600">Ctrl+V</kbd>
+              </p>
+            </>
+          )}
+        </Card>
+      </div>
+
+      {/* 2. Interval / Splits / Lap Segments Screenshot Card (Optional) */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between px-1">
+          <div className="flex items-center space-x-1.5">
+            <span className="text-xs font-bold uppercase tracking-wider text-neutral-500">
+              2. Interval & Segments Screenshot
+            </span>
+            <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-indigo-50 text-indigo-600 border border-indigo-200/60">
+              Optional
+            </span>
+          </div>
+          <span className="text-[10px] font-mono text-neutral-400 bg-neutral-100 px-2 py-0.5 rounded-md border border-neutral-200">
+            Paste (⌘+V / Ctrl+V)
+          </span>
+        </div>
+
+        <Card
+          onClick={() => intervalInputRef.current?.click()}
+          onDragOver={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setIsDraggingInterval(true);
+          }}
+          onDragLeave={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setIsDraggingInterval(false);
+          }}
+          onDrop={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setIsDraggingInterval(false);
+            const files = e.dataTransfer.files;
+            if (files && files.length > 0) processIntervalImageFile(files[0]);
+          }}
+          className={`p-4 sm:p-5 transition-all duration-200 border-2 border-dashed cursor-pointer group ${
+            isDraggingInterval
+              ? 'border-indigo-500 bg-indigo-50/60 scale-[1.01]'
+              : 'border-neutral-200/80 hover:border-indigo-300 bg-white hover:bg-indigo-50/20'
+          }`}
+        >
+          {intervalScreenshotPreview ? (
+            <div className="p-2 rounded-2xl bg-indigo-50/80 border border-indigo-200 flex items-center justify-between">
+              <div className="flex items-center space-x-3 min-w-0">
+                <img
+                  src={intervalScreenshotPreview}
+                  alt="Interval Preview"
+                  className="w-12 h-12 object-cover rounded-xl border border-indigo-200 bg-black shrink-0"
+                />
+                <div className="min-w-0">
+                  <span className="text-xs font-semibold text-indigo-950 block truncate max-w-[200px]">
+                    {intervalScreenshotFile?.name || 'Interval screenshot attached'}
+                  </span>
+                  <span className="text-[11px] text-indigo-600 font-medium flex items-center gap-1 mt-0.5">
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    Interval splits will be analyzed
+                  </span>
+                </div>
+              </div>
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  setScreenshotFile(null);
-                  setScreenshotPreview(null);
+                  setIntervalScreenshotFile(null);
+                  setIntervalScreenshotPreview(null);
                 }}
-                className="absolute top-2 right-2 p-1.5 bg-black/70 hover:bg-black text-white rounded-full transition-colors"
-                title="Remove image"
+                className="text-indigo-700 hover:text-indigo-950 p-1.5 rounded-full hover:bg-indigo-100 transition-colors"
+                title="Remove interval image"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-start space-x-3">
+              <div className="w-10 h-10 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0 mt-0.5 group-hover:scale-105 transition-transform">
+                <Layers className="w-5 h-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h4 className="text-xs font-bold text-neutral-900">
+                  {isDraggingInterval ? 'Drop Interval Screenshot Here' : 'Add Interval Segments / Laps'}
+                </h4>
+                <p className="text-[11px] text-neutral-400 mt-0.5">
+                  Upload screenshot of your interval reps, split times, or work/rest breakdown.
+                </p>
+              </div>
+            </div>
+          )}
+        </Card>
+      </div>
+
+      {/* 3. GPX Dropzone Card */}
+      <div className="space-y-2">
+        <div className="flex items-center justify-between px-1">
+          <div className="flex items-center space-x-1.5">
+            <span className="text-xs font-bold uppercase tracking-wider text-neutral-500">
+              3. GPS Route (GPX)
+            </span>
+            <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-neutral-100 text-neutral-600 border border-neutral-200">
+              Optional
+            </span>
+          </div>
+        </div>
+
+        <Card
+          onDragOver={handleGpxDragOver}
+          onDragLeave={handleGpxDragLeave}
+          onDrop={handleGpxDrop}
+          className={`p-4 sm:p-5 transition-all duration-200 border-2 ${
+            isDraggingGpx
+              ? 'border-emerald-500 bg-emerald-50/60 scale-[1.01]'
+              : 'border-neutral-200/80 bg-white'
+          }`}
+        >
+          <div className="flex items-start space-x-3">
+            <div className="w-10 h-10 rounded-2xl bg-neutral-100 text-neutral-700 flex items-center justify-center shrink-0 mt-0.5">
+              <Compass className="w-5 h-5 text-neutral-600" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h4 className="text-xs font-bold text-neutral-900">
+                {isDraggingGpx ? 'Drop GPX File Here' : 'Add GPX route'}
+              </h4>
+              <p className="text-[11px] text-neutral-400 mt-0.5">
+                Drag & drop or upload GPX file to display your route map.
+              </p>
+            </div>
+          </div>
+
+          {parsedRoute ? (
+            <div className="mt-3 p-3 rounded-2xl bg-emerald-50/80 border border-emerald-200 flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span className="text-xs font-semibold text-emerald-800 truncate max-w-[200px]">
+                  {gpxFile?.name || 'Route attached'} ({parsedRoute.coordinates.length} pts)
+                </span>
+              </div>
+              <button
+                onClick={() => {
+                  setGpxFile(null);
+                  setParsedRoute(null);
+                }}
+                className="text-emerald-700 hover:text-emerald-900 p-1"
               >
                 <X className="w-3.5 h-3.5" />
               </button>
             </div>
-            <span className="text-xs font-semibold text-emerald-600 flex items-center mt-3">
-              <CheckCircle2 className="w-4 h-4 mr-1.5" />
-              Screenshot selected: {screenshotFile?.name || 'Image ready'}
-            </span>
-          </div>
-        ) : (
-          <>
-            <div className={`w-16 h-16 rounded-3xl flex items-center justify-center mb-3.5 transition-transform duration-200 ${
-              isDraggingImage ? 'bg-[#FF5500] text-white scale-110' : 'bg-orange-50 text-[#FF5500] group-hover:scale-105'
-            }`}>
-              <ImageIcon className="w-8 h-8 stroke-[1.8]" />
+          ) : (
+            <div className="mt-3">
+              <Button
+                variant="secondary"
+                size="md"
+                fullWidth
+                leftIcon={<Upload className="w-4 h-4 text-neutral-500" />}
+                onClick={() => gpxInputRef.current?.click()}
+                className="text-xs font-semibold py-2"
+              >
+                Upload / Drop GPX
+              </Button>
             </div>
-            <h3 className="text-base font-bold text-neutral-900 mb-1">
-              {isDraggingImage ? 'Drop Screenshot Here!' : 'Drop running screenshot here'}
-            </h3>
-            <p className="text-xs font-medium text-neutral-400">
-              Drag & drop or click to upload • JPG, PNG Max 15MB
-            </p>
-          </>
-        )}
-      </Card>
-
-      <div className="flex items-center space-x-3 text-neutral-300">
-        <div className="h-px bg-neutral-200 flex-1" />
-        <span className="text-xs font-bold text-neutral-400 uppercase tracking-wider">OR</span>
-        <div className="h-px bg-neutral-200 flex-1" />
+          )}
+        </Card>
       </div>
 
-      <Button
-        variant="secondary"
-        fullWidth
-        size="lg"
-        leftIcon={<ImageIcon className="w-5 h-5 text-neutral-600" />}
-        onClick={() => screenshotInputRef.current?.click()}
-        className="font-bold text-neutral-800"
-      >
-        Choose from Gallery / Files
-      </Button>
-
-      {/* 2. GPX Dropzone Card */}
-      <Card
-        onDragOver={handleGpxDragOver}
-        onDragLeave={handleGpxDragLeave}
-        onDrop={handleGpxDrop}
-        className={`p-4 sm:p-5 transition-all duration-200 border-2 ${
-          isDraggingGpx
-            ? 'border-emerald-500 bg-emerald-50/60 scale-[1.01]'
-            : 'border-neutral-200/80 bg-white'
-        }`}
-      >
-        <div className="flex items-start space-x-3">
-          <div className="w-10 h-10 rounded-2xl bg-neutral-100 text-neutral-700 flex items-center justify-center shrink-0 mt-0.5">
-            <Compass className="w-5 h-5 text-neutral-600" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <h4 className="text-sm font-bold text-neutral-900">
-              {isDraggingGpx ? 'Drop GPX File Here' : 'Add GPX route (optional)'}
-            </h4>
-            <p className="text-xs text-neutral-400 mt-0.5">
-              Drag & drop or upload GPX file to display your route map.
-            </p>
-          </div>
-        </div>
-
-        {parsedRoute ? (
-          <div className="mt-3.5 p-3 rounded-2xl bg-emerald-50/80 border border-emerald-200 flex items-center justify-between">
-            <div className="flex items-center space-x-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span className="text-xs font-semibold text-emerald-800 truncate max-w-[200px]">
-                {gpxFile?.name || 'Route attached'} ({parsedRoute.coordinates.length} pts)
-              </span>
-            </div>
-            <button
-              onClick={() => {
-                setGpxFile(null);
-                setParsedRoute(null);
-              }}
-              className="text-emerald-700 hover:text-emerald-900 p-1"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        ) : (
-          <div className="mt-3.5">
-            <Button
-              variant="secondary"
-              size="md"
-              fullWidth
-              leftIcon={<Upload className="w-4 h-4 text-neutral-500" />}
-              onClick={() => gpxInputRef.current?.click()}
-              className="text-xs font-semibold"
-            >
-              Upload / Drop GPX
-            </Button>
-          </div>
-        )}
-
-        <p className="text-[11px] text-neutral-400 mt-2.5 leading-tight italic">
-          * GPX is optional and is only used to show your route on the map.
-        </p>
-      </Card>
-
       {/* Single prominent submit button */}
+
       <div className="pt-3">
         <Button
           variant="primary"
