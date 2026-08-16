@@ -461,16 +461,39 @@ export const CoachView: React.FC<CoachViewProps> = ({
         .filter((m) => !m.content.includes('Sorry, I encountered an issue') && !m.content.includes('API error'))
         .slice(-20);
 
+      // Sanitize all runs so AI has complete visibility into 100% of uploaded runs without heavy image payloads
+      const sanitizedRuns = runs.map((r) => ({
+        id: r.id,
+        date: r.date,
+        distance_km: r.distance_km,
+        duration_seconds: r.duration_seconds,
+        pace_seconds_per_km: r.pace_seconds_per_km,
+        avg_heart_rate: r.avg_heart_rate,
+        max_heart_rate: r.max_heart_rate,
+        cadence: r.cadence,
+        elevation_gain_m: r.elevation_gain_m,
+        source: r.source,
+        splits: r.splits?.map((s) => ({
+          km: s.km,
+          type: s.type,
+          distance_km: s.distance_km,
+          duration_seconds: s.duration_seconds,
+          pace_seconds: s.pace_seconds,
+          avg_heart_rate: s.avg_heart_rate,
+        })),
+      }));
+
       const payload = {
         message: trimmed,
         history: cleanHistory,
         currentPlan: activePlan,
         runnerContext: {
-          recentRuns: runs.slice(0, 10),
+          recentRuns: sanitizedRuns,
           unitSystem,
         },
         customApiKey,
       };
+
 
 
 

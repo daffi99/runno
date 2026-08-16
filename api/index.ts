@@ -580,26 +580,37 @@ router.post('/ai-coach', async (req, res) => {
     let runnerProfileSummary = `Runner Unit Preference: ${unitSystem.toUpperCase()}\n`;
     if (recentRuns.length > 0) {
       const totalKm = recentRuns.reduce((acc: number, r: any) => acc + (r.distance_km || 0), 0);
-      const avgPace = Math.round(
-        recentRuns.reduce((acc: number, r: any) => acc + (r.duration_seconds || 0), 0) / (totalKm || 1)
-      );
+      const totalDurationSec = recentRuns.reduce((acc: number, r: any) => acc + (r.duration_seconds || 0), 0);
+      const avgPace = Math.round(totalDurationSec / (totalKm || 1));
       const avgPaceMin = Math.floor(avgPace / 60);
       const avgPaceSec = String(avgPace % 60).padStart(2, '0');
       
-      runnerProfileSummary += `Logged Runs Count: ${recentRuns.length}\n`;
-      runnerProfileSummary += `Recent Total Volume: ${totalKm.toFixed(1)} km\n`;
-      runnerProfileSummary += `Average Pace: ${avgPaceMin}:${avgPaceSec} /km\n`;
+      runnerProfileSummary += `Total Logged Runs: ${recentRuns.length}\n`;
+      runnerProfileSummary += `Total Lifetime / Logged Volume: ${totalKm.toFixed(2)} km\n`;
+      runnerProfileSummary += `Overall Average Pace: ${avgPaceMin}:${avgPaceSec} /km\n\n`;
       
-      const last5 = recentRuns.slice(0, 5).map((r: any) => {
+      const runsList = recentRuns.map((r: any, idx: number) => {
         const paceStr = r.pace_seconds_per_km
           ? `${Math.floor(r.pace_seconds_per_km / 60)}:${String(r.pace_seconds_per_km % 60).padStart(2, '0')}/km`
           : 'N/A';
-        return `- ${r.date}: ${r.distance_km?.toFixed(1)}km, Pace: ${paceStr}, HR: ${r.avg_heart_rate || 'N/A'} bpm, Cadence: ${r.cadence || 'N/A'} spm`;
+        const durMin = r.duration_seconds
+          ? `${Math.floor(r.duration_seconds / 60)}:${String(r.duration_seconds % 60).padStart(2, '0')}`
+          : 'N/A';
+        const hrStr = r.avg_heart_rate ? `HR: ${r.avg_heart_rate} bpm` : '';
+        const cadStr = r.cadence ? `Cadence: ${r.cadence} spm` : '';
+        const elevStr = r.elevation_gain_m ? `+${r.elevation_gain_m}m elev` : '';
+        const splitsCount = r.splits?.length ? `(${r.splits.length} splits/laps)` : '';
+
+        const extra = [hrStr, cadStr, elevStr, splitsCount].filter(Boolean).join(', ');
+
+        return `${idx + 1}. [${r.date || 'Unknown date'}] ${r.distance_km ? r.distance_km.toFixed(2) : 0}km in ${durMin} (Pace: ${paceStr}${extra ? ` | ${extra}` : ''})`;
       }).join('\n');
-      runnerProfileSummary += `Recent Workouts:\n${last5}\n`;
+
+      runnerProfileSummary += `Complete Workout History (${recentRuns.length} runs):\n${runsList}\n`;
     } else {
       runnerProfileSummary += `No previous runs logged yet.\n`;
     }
+
 
     let planContext = 'Currently No Active Plan.';
     if (currentPlan) {
