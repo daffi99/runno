@@ -21,13 +21,17 @@ app.use((req, _res, next) => {
   next();
 });
 
-// Safe Body Parsing (handles both streaming and pre-parsed Vercel serverless payloads)
-app.use((req, res, next) => {
-  if (req.body && typeof req.body === 'object') {
-    next();
-  } else {
-    express.json({ limit: '30mb' })(req, res, next);
+// Safe Body Parsing (handles pre-parsed Vercel serverless bodies, JSON strings, and raw streams)
+app.use((req, _res, next) => {
+  if (req.body !== undefined && req.body !== null) {
+    if (typeof req.body === 'string') {
+      try {
+        req.body = JSON.parse(req.body);
+      } catch (_) {}
+    }
+    return next();
   }
+  express.json({ limit: '30mb' })(req, _res, next);
 });
 
 app.get('/api/health', (_req, res) => {
@@ -45,11 +49,18 @@ app.get('/api/health', (_req, res) => {
   });
 });
 
-
 app.post('/api/analyze-screenshot', async (req, res) => {
   try {
     dotenv.config();
-    const { imageBase64, customApiKey } = req.body;
+    let body = req.body;
+    if (typeof body === 'string') {
+      try {
+        body = JSON.parse(body);
+      } catch (_) {}
+    }
+    body = body || {};
+
+    const { imageBase64, customApiKey } = body;
 
     if (!imageBase64) {
       return res.status(400).json({ error: 'Missing imageBase64 in request body' });
@@ -58,12 +69,13 @@ app.post('/api/analyze-screenshot', async (req, res) => {
     const apiKey = (customApiKey || process.env.OPENROUTER_API_KEY || '').trim();
     if (!apiKey) {
       return res.status(400).json({
-        error: 'OpenRouter API key is missing. Please set OPENROUTER_API_KEY in .env or provide it in Settings > Custom OpenRouter API Key.',
+        error: 'OpenRouter API key is missing. Please set OPENROUTER_API_KEY in Vercel Environment Variables or in More > Preferences in the app.',
         code: 'MISSING_API_KEY',
       });
     }
 
     let formattedImageUrl = imageBase64;
+
     if (!imageBase64.startsWith('data:image/')) {
       formattedImageUrl = `data:image/jpeg;base64,${imageBase64}`;
     }
@@ -241,8 +253,15 @@ app.get('/api/runs', async (_req, res) => {
 });
 
 app.post('/api/runs', async (req, res) => {
-  const runPayload = req.body;
+  let runPayload = req.body;
+  if (typeof runPayload === 'string') {
+    try {
+      runPayload = JSON.parse(runPayload);
+    } catch (_) {}
+  }
+  runPayload = runPayload || {};
   const db = getDatabase();
+
 
   if (!db) {
     return res.json({ success: true, savedLocally: true, run: runPayload });
@@ -327,13 +346,22 @@ app.delete('/api/runs/:id', async (req, res) => {
 app.post('/api/ai-coach', async (req, res) => {
   try {
     dotenv.config();
+    let body = req.body;
+    if (typeof body === 'string') {
+      try {
+        body = JSON.parse(body);
+      } catch (_) {}
+    }
+    body = body || {};
+
     const {
       message,
       history = [],
       currentPlan = null,
       runnerContext = {},
       customApiKey,
-    } = req.body;
+    } = body;
+
 
     if (!message || typeof message !== 'string') {
       return res.status(400).json({ error: 'Message is required' });
@@ -860,7 +888,13 @@ app.get('/api/plans/active', async (_req, res) => {
 });
 
 app.post('/api/plans', async (req, res) => {
-  const planPayload = req.body;
+  let planPayload = req.body;
+  if (typeof planPayload === 'string') {
+    try {
+      planPayload = JSON.parse(planPayload);
+    } catch (_) {}
+  }
+  planPayload = planPayload || {};
   const db = getDatabase();
 
   if (!db) {
@@ -918,9 +952,17 @@ app.get('/api/coach/messages', async (_req, res) => {
 });
 
 app.post('/api/coach/messages', async (req, res) => {
-  const { messages } = req.body;
+  let body = req.body;
+  if (typeof body === 'string') {
+    try {
+      body = JSON.parse(body);
+    } catch (_) {}
+  }
+  body = body || {};
+  const { messages } = body;
   const db = getDatabase();
   if (!db || !messages) return res.json({ success: true });
+
   try {
     await db.insert(coachMessagesTable).values({
       id: 'default_coach_session',
