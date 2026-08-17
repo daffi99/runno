@@ -117,57 +117,39 @@ export const WorkoutCard: React.FC<WorkoutCardProps> = ({
               }
             }}
           >
-            <div className="flex items-center justify-between gap-1">
-              <div className="flex items-center space-x-1.5 flex-wrap">
-                <span className={clsx(
-                  'text-[11px] font-bold uppercase tracking-wider',
-                  isToday ? 'text-[#FF5500]' : 'text-neutral-500'
-                )}>
-                  {workout.dayName}
-                </span>
-                {displayDateStr && (
-                  <>
-                    <span className="text-neutral-300">·</span>
-                    <span className={clsx(
-                      'text-[11px] font-bold',
-                      isToday ? 'text-[#FF5500]' : 'text-neutral-400'
-                    )}>
-                      {displayDateStr}
-                    </span>
-                  </>
-                )}
-                <span className="text-neutral-300">·</span>
-                <span className={clsx(
-                  'text-[10px] font-semibold flex items-center gap-1 uppercase tracking-tight',
-                  workout.type === 'long_run' && 'text-[#FF5500]',
-                  (workout.type === 'tempo' || workout.type === 'intervals') && 'text-amber-600',
-                  (workout.type === 'easy' || workout.type === 'recovery') && 'text-emerald-600',
-                  workout.type === 'rest' && 'text-neutral-400'
-                )}>
-                  {getTypeIcon()}
-                  {workout.type.replace('_', ' ')}
-                </span>
-              </div>
-
-              {/* Info popup button */}
-              {workout.description && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setIsInfoOpen(true);
-                  }}
-                  className="p-1 rounded-full text-neutral-300 hover:text-[#FF5500] hover:bg-orange-50 active:scale-95 transition-all shrink-0"
-                  aria-label="View workout instructions"
-                  title="Workout Details & Description"
-                >
-                  <Info className="w-3.5 h-3.5" />
-                </button>
+            <div className="flex items-center space-x-1.5 flex-wrap">
+              <span className={clsx(
+                'text-[11px] font-bold uppercase tracking-wider',
+                isToday ? 'text-[#FF5500]' : 'text-neutral-500'
+              )}>
+                {workout.dayName}
+              </span>
+              {displayDateStr && (
+                <>
+                  <span className="text-neutral-300">·</span>
+                  <span className={clsx(
+                    'text-[11px] font-bold',
+                    isToday ? 'text-[#FF5500]' : 'text-neutral-400'
+                  )}>
+                    {displayDateStr}
+                  </span>
+                </>
               )}
+              <span className="text-neutral-300">·</span>
+              <span className={clsx(
+                'text-[10px] font-semibold flex items-center gap-1 uppercase tracking-tight',
+                workout.type === 'long_run' && 'text-[#FF5500]',
+                (workout.type === 'tempo' || workout.type === 'intervals') && 'text-amber-600',
+                (workout.type === 'easy' || workout.type === 'recovery') && 'text-emerald-600',
+                workout.type === 'rest' && 'text-neutral-400'
+              )}>
+                {getTypeIcon()}
+                {workout.type.replace('_', ' ')}
+              </span>
             </div>
 
             <h4 className={clsx(
-              'text-sm font-black text-neutral-900 mt-0.5 tracking-tight line-clamp-1',
+              'text-sm font-black text-neutral-900 mt-0.5 tracking-tight line-clamp-1 pr-6',
               workout.completed && 'line-through text-neutral-500'
             )}>
               {workout.title}
@@ -175,7 +157,7 @@ export const WorkoutCard: React.FC<WorkoutCardProps> = ({
 
             {/* Metrics summary */}
             {!isRestOrRecovery && (
-              <div className="flex flex-wrap items-center gap-2 mt-1.5 text-xs font-mono">
+              <div className="flex flex-wrap items-center gap-2 mt-1.5 text-xs font-mono pr-6">
                 <span className="font-bold text-neutral-800">
                   {formatDistance(workout.distanceKm, unitSystem, true)}
                 </span>
@@ -202,7 +184,7 @@ export const WorkoutCard: React.FC<WorkoutCardProps> = ({
 
             {/* Sync badge if completed */}
             {workout.completed && !isRestOrRecovery && (
-              <div className="mt-2 flex items-center justify-between">
+              <div className="mt-2 flex items-center justify-between pr-6">
                 {workout.completedRunId ? (
                   <button
                     type="button"
@@ -228,7 +210,24 @@ export const WorkoutCard: React.FC<WorkoutCardProps> = ({
             )}
           </div>
         </div>
+
+        {/* Bottom Right: Info Modal Trigger */}
+        {workout.description && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsInfoOpen(true);
+            }}
+            className="absolute bottom-2 right-2 p-1.5 rounded-full text-neutral-300 hover:text-[#FF5500] hover:bg-orange-50 active:scale-95 transition-all"
+            aria-label="View workout instructions"
+            title="Workout Details & Description"
+          >
+            <Info className="w-3.5 h-3.5" />
+          </button>
+        )}
       </Card>
+
 
       {/* Workout Description & Info Modal */}
       {isInfoOpen && (
