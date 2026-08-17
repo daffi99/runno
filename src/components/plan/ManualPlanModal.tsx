@@ -152,10 +152,10 @@ export const ManualPlanModal: React.FC<ManualPlanModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-xs animate-in fade-in">
-      <div className="bg-white w-full max-w-lg rounded-t-3xl sm:rounded-3xl p-5 max-h-[92vh] overflow-y-auto space-y-4 shadow-2xl border border-neutral-100">
-        {/* Header */}
-        <div className="flex items-center justify-between pb-3 border-b border-neutral-100">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs p-0 sm:p-4 animate-in fade-in">
+      <div className="bg-white w-full max-w-lg rounded-t-3xl sm:rounded-3xl max-h-[92dvh] h-[90dvh] sm:h-auto sm:max-h-[88vh] flex flex-col shadow-2xl border border-neutral-100 overflow-hidden">
+        {/* Header - Fixed */}
+        <div className="flex items-center justify-between p-4 sm:p-5 pb-3 border-b border-neutral-100 shrink-0">
           <div className="flex items-center space-x-2.5">
             <div className="w-9 h-9 rounded-2xl bg-orange-100 text-[#FF5500] flex items-center justify-center shrink-0">
               <Calendar className="w-5 h-5" />
@@ -178,7 +178,10 @@ export const ManualPlanModal: React.FC<ManualPlanModalProps> = ({
           </button>
         </div>
 
-        {/* 1. Plan Details (Title, Goal, Total Weeks, Level) */}
+        {/* Scrollable Content Body */}
+        <div className="flex-1 overflow-y-auto overscroll-contain p-4 sm:p-5 space-y-4">
+          {/* 1. Plan Details (Title, Goal, Total Weeks, Level) */}
+
         <div className="space-y-3 bg-neutral-50/80 p-3.5 rounded-2xl border border-neutral-200/70">
           <div>
             <label className="block text-[11px] font-bold uppercase tracking-wider text-neutral-500 mb-1">
@@ -460,14 +463,15 @@ export const ManualPlanModal: React.FC<ManualPlanModalProps> = ({
             )}
           </Card>
         )}
+        </div>
 
-        {/* Action Buttons */}
-        <div className="pt-2 flex items-center space-x-2.5">
+        {/* Action Buttons - Pinned Sticky Footer */}
+        <div className="p-4 border-t border-neutral-100 bg-white flex items-center space-x-2.5 shrink-0 shadow-[0_-4px_16px_rgba(0,0,0,0.04)] pb-[max(1rem,env(safe-area-inset-bottom))]">
           <Button
             variant="secondary"
             size="md"
             onClick={onClose}
-            className="flex-1 font-bold text-xs"
+            className="flex-1 font-bold text-xs py-3"
           >
             Batal
           </Button>
@@ -477,7 +481,7 @@ export const ManualPlanModal: React.FC<ManualPlanModalProps> = ({
             size="md"
             onClick={handleSave}
             leftIcon={<Check className="w-4 h-4 text-white" />}
-            className="flex-2 font-bold text-xs shadow-glow-orange"
+            className="flex-2 font-bold text-xs shadow-glow-orange py-3"
           >
             Simpan Program Latihan
           </Button>
@@ -486,3 +490,4 @@ export const ManualPlanModal: React.FC<ManualPlanModalProps> = ({
     </div>
   );
 };
+

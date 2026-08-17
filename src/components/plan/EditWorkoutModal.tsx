@@ -82,10 +82,10 @@ export const EditWorkoutModal: React.FC<EditWorkoutModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-xs animate-in fade-in">
-      <div className="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl p-5 max-h-[90vh] overflow-y-auto space-y-4 shadow-2xl border border-neutral-100">
-        {/* Header */}
-        <div className="flex items-center justify-between pb-2 border-b border-neutral-100">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs p-0 sm:p-4 animate-in fade-in">
+      <div className="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl max-h-[90dvh] h-[85dvh] sm:h-auto sm:max-h-[85vh] flex flex-col shadow-2xl border border-neutral-100 overflow-hidden">
+        {/* Header - Fixed */}
+        <div className="flex items-center justify-between p-4 sm:p-5 pb-3 border-b border-neutral-100 shrink-0">
           <div className="flex items-center space-x-2.5">
             <div className="w-8 h-8 rounded-xl bg-orange-100 text-[#FF5500] flex items-center justify-center">
               <Pencil className="w-4 h-4" />
@@ -108,7 +108,10 @@ export const EditWorkoutModal: React.FC<EditWorkoutModalProps> = ({
           </button>
         </div>
 
-        {/* Workout Type Selector */}
+        {/* Scrollable Content Body */}
+        <div className="flex-1 overflow-y-auto overscroll-contain p-4 sm:p-5 space-y-4">
+          {/* Workout Type Selector */}
+
         <div>
           <label className="block text-[11px] font-bold text-neutral-500 mb-1.5 uppercase tracking-wider">
             Tipe Latihan
@@ -255,14 +258,16 @@ export const EditWorkoutModal: React.FC<EditWorkoutModalProps> = ({
             <p className="text-[11px] text-neutral-400">Jarak dan target pace dinonaktifkan untuk pemulihan optimal.</p>
           </div>
         )}
+        </div>
 
-        {/* Action buttons */}
-        <div className="pt-2 flex items-center space-x-2.5">
+        {/* Action buttons - Pinned Sticky Footer */}
+
+        <div className="p-4 border-t border-neutral-100 bg-white flex items-center space-x-2.5 shrink-0 shadow-[0_-4px_16px_rgba(0,0,0,0.04)] pb-[max(1rem,env(safe-area-inset-bottom))]">
           <Button
             variant="secondary"
             size="md"
             onClick={onClose}
-            className="flex-1 font-bold text-xs"
+            className="flex-1 font-bold text-xs py-3"
           >
             Batal
           </Button>
@@ -272,7 +277,7 @@ export const EditWorkoutModal: React.FC<EditWorkoutModalProps> = ({
             size="md"
             onClick={handleSave}
             leftIcon={<Check className="w-4 h-4 text-white" />}
-            className="flex-2 font-bold text-xs shadow-glow-orange"
+            className="flex-2 font-bold text-xs shadow-glow-orange py-3"
           >
             Simpan Perubahan
           </Button>
@@ -281,3 +286,4 @@ export const EditWorkoutModal: React.FC<EditWorkoutModalProps> = ({
     </div>
   );
 };
+

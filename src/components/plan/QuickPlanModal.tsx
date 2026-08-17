@@ -64,10 +64,10 @@ export const QuickPlanModal: React.FC<QuickPlanModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-xs animate-in fade-in">
-      <div className="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl p-5 max-h-[90vh] overflow-y-auto space-y-4 shadow-2xl border border-neutral-100">
-        {/* Header */}
-        <div className="flex items-center justify-between pb-2 border-b border-neutral-100">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs p-0 sm:p-4 animate-in fade-in">
+      <div className="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl max-h-[90dvh] h-[85dvh] sm:h-auto sm:max-h-[85vh] flex flex-col shadow-2xl border border-neutral-100 overflow-hidden">
+        {/* Header - Fixed */}
+        <div className="flex items-center justify-between p-4 sm:p-5 pb-3 border-b border-neutral-100 shrink-0">
           <div className="flex items-center space-x-2">
             <div className="w-8 h-8 rounded-xl bg-orange-50 text-[#FF5500] flex items-center justify-center">
               <Sparkles className="w-4 h-4" />
@@ -90,7 +90,10 @@ export const QuickPlanModal: React.FC<QuickPlanModalProps> = ({
           </button>
         </div>
 
-        {/* 1. Select Available Days */}
+        {/* Scrollable Content Body */}
+        <div className="flex-1 overflow-y-auto overscroll-contain p-4 sm:p-5 space-y-4">
+          {/* 1. Select Available Days */}
+
         <div className="space-y-2">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold uppercase tracking-wider text-neutral-500">
@@ -204,9 +207,10 @@ export const QuickPlanModal: React.FC<QuickPlanModalProps> = ({
             })}
           </div>
         </div>
+        </div>
 
-        {/* Action button */}
-        <div className="pt-3">
+        {/* Action button - Pinned Sticky Footer */}
+        <div className="p-4 border-t border-neutral-100 bg-white shrink-0 shadow-[0_-4px_16px_rgba(0,0,0,0.04)] pb-[max(1rem,env(safe-area-inset-bottom))]">
           <Button
             variant="primary"
             size="lg"
@@ -214,7 +218,7 @@ export const QuickPlanModal: React.FC<QuickPlanModalProps> = ({
             isLoading={isLoading}
             onClick={handleGenerate}
             leftIcon={<Sparkles className="w-4 h-4" />}
-            className="font-bold text-sm shadow-glow-orange rounded-2xl"
+            className="font-bold text-sm shadow-glow-orange rounded-2xl py-3.5"
           >
             Generate AI Training Plan
           </Button>
@@ -223,3 +227,4 @@ export const QuickPlanModal: React.FC<QuickPlanModalProps> = ({
     </div>
   );
 };
+
