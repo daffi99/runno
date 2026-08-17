@@ -7,7 +7,7 @@ import { formatDuration, formatPace, formatDate, formatDistance, formatWorkoutDa
 import { RefreshCw, ChevronDown, TrendingUp, TrendingDown, Minus, Sparkles, ArrowRight, ChevronRight } from 'lucide-react';
 import { clsx } from 'clsx';
 
-export const APP_VERSION = 'v1.1.2';
+export const APP_VERSION = 'v1.1.3';
 
 interface DashboardViewProps {
   runs: Run[];
@@ -31,14 +31,28 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     if (isRefreshing) return;
     setIsRefreshing(true);
     try {
+      // 1. Force Service Worker to check & fetch latest deploy from Vercel CDN immediately
+      if ('serviceWorker' in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        for (const reg of registrations) {
+          await reg.update().catch(() => {});
+        }
+      }
+
+      // 2. Sync database runs & active plan
       if (onRefresh) {
         await onRefresh();
       } else {
         await storageService.syncWithServer();
       }
     } catch (_) {}
-    setTimeout(() => setIsRefreshing(false), 600);
+
+    // 3. Reload PWA page so new frontend code and version badge appear instantly!
+    setTimeout(() => {
+      window.location.reload();
+    }, 400);
   };
+
   const months = useMemo(() => {
     const monthSet = new Set<string>();
     for (const r of runs) {
