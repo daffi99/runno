@@ -153,74 +153,32 @@ export type CoachModelKey = 'deepseek' | 'qwen' | 'gemini';
 
 export interface CoachModelOption {
   id: CoachModelKey;
-  initial: string;
+  iconSrc: string;
   name: string;
   desc: string;
-  badgeColor: string;
-  badgeBg: string;
-  textColor: string;
 }
-
-export const ModelIcon: React.FC<{ model: CoachModelKey; className?: string }> = ({ model, className = 'w-3.5 h-3.5' }) => {
-  if (model === 'deepseek') {
-    return (
-      <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM11.1 5.6C12.4 4.8 14.1 5.3 14.8 6.6C15.5 7.9 15 9.6 13.7 10.3C12.4 11 10.7 10.5 10 9.2C9.3 7.9 9.8 6.3 11.1 5.6ZM16.8 17.5C14.7 19 11.8 19.3 9.4 18.2C8.3 17.7 7.4 16.9 6.8 15.9C6.2 14.9 6 13.7 6.3 12.6C6.7 11.2 7.7 10.1 9 9.5C9.4 10.8 10.3 11.8 11.6 12.3C12.9 12.8 14.3 12.6 15.4 11.9C15.8 12.8 16 13.8 15.9 14.8C15.7 15.9 15.1 16.8 14.2 17.4L16.8 17.5Z" fill="#1D7BF6"/>
-      </svg>
-    );
-  }
-  if (model === 'qwen') {
-    return (
-      <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <path d="M12 2.5L3.5 7.4V16.6L12 21.5L20.5 16.6V7.4L12 2.5Z" stroke="#615CED" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
-        <path d="M12 7L7 10V14L12 17L17 14V10L12 7Z" fill="#615CED" opacity="0.85"/>
-        <circle cx="12" cy="12" r="1.8" fill="#FFFFFF"/>
-      </svg>
-    );
-  }
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M12 2C12 7.52 7.52 12 2 12C7.52 12 12 16.48 12 22C12 16.48 16.48 12 22 12C16.48 12 12 7.52 12 2Z" fill="url(#gemini-icon-grad)"/>
-      <defs>
-        <linearGradient id="gemini-icon-grad" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
-          <stop stopColor="#4E89FF"/>
-          <stop offset="0.5" stopColor="#9B72CB"/>
-          <stop offset="1" stopColor="#FF7643"/>
-        </linearGradient>
-      </defs>
-    </svg>
-  );
-};
 
 export const COACH_MODELS: CoachModelOption[] = [
   {
     id: 'deepseek',
-    initial: 'DS',
+    iconSrc: '/models/deepseek.png',
     name: 'DeepSeek V4 Flash',
-    desc: 'Default · Analitis & Cepat',
-    badgeColor: 'border-blue-200 text-blue-700 bg-blue-50/90',
-    badgeBg: 'bg-blue-600',
-    textColor: 'text-blue-700',
+    desc: 'Default · Cepat & Analitis',
   },
   {
     id: 'qwen',
-    initial: 'QW',
+    iconSrc: '/models/qwen.png',
     name: 'Qwen 3.7 Flash',
     desc: 'Multimodal & Reasoning',
-    badgeColor: 'border-purple-200 text-purple-700 bg-purple-50/90',
-    badgeBg: 'bg-purple-600',
-    textColor: 'text-purple-700',
   },
   {
     id: 'gemini',
-    initial: 'GE',
+    iconSrc: '/models/gemini.png',
     name: 'Gemini 2.5 Flash',
-    desc: 'Google · Ultra Cepat',
-    badgeColor: 'border-amber-200 text-amber-700 bg-amber-50/90',
-    badgeBg: 'bg-amber-600',
-    textColor: 'text-amber-700',
+    desc: 'Google · Ultra Responsif',
   },
 ];
+
 
 
 export const CoachView: React.FC<CoachViewProps> = ({
@@ -1172,15 +1130,16 @@ export const CoachView: React.FC<CoachViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsModelDropdownOpen(!isModelDropdownOpen)}
-                  className={clsx(
-                    'flex items-center space-x-1.5 px-2 py-1.5 rounded-xl border text-xs font-black transition-all active:scale-95 shadow-2xs',
-                    activeModelOption.badgeColor
-                  )}
-                  title={`Active Model: ${activeModelOption.name} (${activeModelOption.initial})`}
+                  className="flex items-center space-x-1 p-1.5 rounded-xl border border-neutral-200/90 bg-neutral-50/90 hover:bg-neutral-100/90 transition-all active:scale-95 shadow-2xs"
+                  aria-label="Select AI Model"
+                  title={`Active Model: ${activeModelOption.name}`}
                 >
-                  <ModelIcon model={activeModelOption.id} className="w-3.5 h-3.5 shrink-0" />
-                  <span className="tracking-wide text-[10.5px] font-black">{activeModelOption.initial}</span>
-                  <ChevronDown className="w-3 h-3 opacity-60" />
+                  <img
+                    src={activeModelOption.iconSrc}
+                    alt={activeModelOption.name}
+                    className="w-4 h-4 rounded-md object-contain shrink-0"
+                  />
+                  <ChevronDown className="w-3 h-3 text-neutral-400 opacity-80" />
                 </button>
 
                 {isModelDropdownOpen && (
@@ -1215,24 +1174,14 @@ export const CoachView: React.FC<CoachViewProps> = ({
                           >
                             <div className="flex items-center space-x-2.5 min-w-0">
                               <div className={clsx(
-                                "w-7 h-7 rounded-xl flex items-center justify-center shrink-0 border",
-                                isSelected ? "bg-neutral-800 border-neutral-700" : "bg-neutral-50 border-neutral-200/80"
+                                "w-7 h-7 rounded-xl flex items-center justify-center shrink-0 border p-0.5 bg-white",
+                                isSelected ? "border-neutral-700 shadow-xs" : "border-neutral-200/80"
                               )}>
-                                <ModelIcon model={m.id} className="w-4 h-4" />
+                                <img src={m.iconSrc} alt={m.name} className="w-4.5 h-4.5 object-contain" />
                               </div>
                               <div className="min-w-0">
-                                <div className="font-bold leading-tight flex items-center gap-1.5">
-                                  <span className="truncate">{m.name}</span>
-                                  <span
-                                    className={clsx(
-                                      'px-1 py-0.2 rounded text-[9px] font-black border shrink-0',
-                                      isSelected
-                                        ? 'bg-neutral-800 border-neutral-700 text-white'
-                                        : m.badgeColor
-                                    )}
-                                  >
-                                    {m.initial}
-                                  </span>
+                                <div className="font-bold leading-tight truncate">
+                                  {m.name}
                                 </div>
                                 <div
                                   className={clsx(
@@ -1251,6 +1200,7 @@ export const CoachView: React.FC<CoachViewProps> = ({
                     </div>
                   </>
                 )}
+
 
               </div>
 

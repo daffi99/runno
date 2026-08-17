@@ -8,8 +8,7 @@ import { formatDuration, formatPace, formatDate, formatDistance, formatWorkoutDa
 import { RefreshCw, ChevronDown, TrendingUp, TrendingDown, Minus, Sparkles, ArrowRight, ChevronRight, Moon } from 'lucide-react';
 import { clsx } from 'clsx';
 
-export const APP_VERSION = 'v1.1.4';
-
+export const APP_VERSION = 'v1.1.5';
 
 interface DashboardViewProps {
   runs: Run[];
@@ -171,15 +170,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             alt="Runno"
             className="w-8 h-8 rounded-xl object-contain shadow-soft-xs border border-neutral-200/60"
           />
-          <div className="flex items-baseline space-x-2">
-            <h1 className="text-2xl font-black text-neutral-900 tracking-tight">
+          <div className="flex items-center space-x-2">
+            <h1 className="text-2xl font-black text-neutral-900 tracking-tight leading-none">
               Dashboard
             </h1>
-            <span className="text-[10px] font-mono font-black px-1.5 py-0.5 rounded-md bg-orange-100/80 text-[#FF5500] border border-orange-200/90 shadow-2xs">
+            <span className="text-[10px] font-mono font-black px-1.5 py-0.5 rounded-md bg-orange-100/80 text-[#FF5500] border border-orange-200/90 shadow-2xs leading-none">
               {APP_VERSION}
             </span>
           </div>
         </div>
+
         <button
           onClick={handleRefreshClick}
           disabled={isRefreshing}
@@ -381,23 +381,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           return (
             <div className="space-y-2">
               <div className="flex items-center justify-between px-1">
-                <div className="flex items-center space-x-1.5">
-                  <span className="text-xs font-bold uppercase tracking-wider text-neutral-400">
-                    Today's Session
-                  </span>
-                  <span className="text-neutral-300">·</span>
-                  <span className="text-[11px] font-semibold text-neutral-500">
-                    {formatFullWorkoutDate(new Date())}
-                  </span>
-                </div>
+                <span className="text-xs font-black uppercase tracking-wider text-neutral-400">
+                  Today's Session
+                </span>
                 <button
                   onClick={() => onNavigateTab('coach')}
-                  className="text-xs font-bold text-[#FF5500] hover:text-[#E64D00] flex items-center gap-1 active:scale-95 transition-all"
+                  className="text-xs font-bold text-[#FF5500] hover:text-[#E64D00] flex items-center gap-1 active:scale-95 transition-all shrink-0"
                 >
                   <span>Active Plan</span>
                   <ChevronRight className="w-3.5 h-3.5" />
                 </button>
               </div>
+
 
               {dateBoundWorkout ? (
                 <WorkoutCard
