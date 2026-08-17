@@ -13,6 +13,7 @@ import {
   ExternalLink,
   Info,
   X,
+  Pencil,
 } from 'lucide-react';
 import { clsx } from 'clsx';
 
@@ -24,6 +25,7 @@ interface WorkoutCardProps {
   onToggleComplete?: (workoutId: string) => void;
   onSelectWorkout?: (workout: PlanWorkout) => void;
   onSelectRun?: (runId: string) => void;
+  onEditWorkout?: (workout: PlanWorkout) => void;
 }
 
 export const WorkoutCard: React.FC<WorkoutCardProps> = ({
@@ -34,7 +36,9 @@ export const WorkoutCard: React.FC<WorkoutCardProps> = ({
   onToggleComplete,
   onSelectWorkout,
   onSelectRun,
+  onEditWorkout,
 }) => {
+
   const [isInfoOpen, setIsInfoOpen] = useState(false);
   const isRestOrRecovery = workout.type === 'rest' || workout.type === 'recovery' || workout.distanceKm === 0;
 
@@ -211,22 +215,40 @@ export const WorkoutCard: React.FC<WorkoutCardProps> = ({
           </div>
         </div>
 
-        {/* Bottom Right: Info Modal Trigger */}
-        {workout.description && (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              setIsInfoOpen(true);
-            }}
-            className="absolute bottom-2 right-2 p-1.5 rounded-full text-neutral-300 hover:text-[#FF5500] hover:bg-orange-50 active:scale-95 transition-all"
-            aria-label="View workout instructions"
-            title="Workout Details & Description"
-          >
-            <Info className="w-3.5 h-3.5" />
-          </button>
-        )}
+        {/* Bottom Right: Quick Actions (Edit & Info) */}
+        <div className="absolute bottom-2 right-2 flex items-center space-x-1">
+          {onEditWorkout && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onEditWorkout(workout);
+              }}
+              className="p-1.5 rounded-full text-neutral-300 hover:text-neutral-700 hover:bg-neutral-100 active:scale-95 transition-all"
+              aria-label="Edit workout"
+              title="Edit Sesi Latihan"
+            >
+              <Pencil className="w-3.5 h-3.5" />
+            </button>
+          )}
+
+          {workout.description && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsInfoOpen(true);
+              }}
+              className="p-1.5 rounded-full text-neutral-300 hover:text-[#FF5500] hover:bg-orange-50 active:scale-95 transition-all"
+              aria-label="View workout instructions"
+              title="Workout Details & Description"
+            >
+              <Info className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
       </Card>
+
 
 
       {/* Workout Description & Info Modal */}

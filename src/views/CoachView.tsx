@@ -8,6 +8,8 @@ import { Button } from '../components/ui/Button';
 import { WorkoutCard } from '../components/plan/WorkoutCard';
 import { PlanCard } from '../components/plan/PlanCard';
 import { QuickPlanModal } from '../components/plan/QuickPlanModal';
+import { ManualPlanModal } from '../components/plan/ManualPlanModal';
+import { EditWorkoutModal } from '../components/plan/EditWorkoutModal';
 import {
   formatDistance,
   formatFullWorkoutDate,
@@ -34,7 +36,9 @@ import {
   ChevronRight,
   ChevronDown,
   ArrowRight,
+  Pencil,
 } from 'lucide-react';
+
 
 
 
@@ -247,7 +251,10 @@ export const CoachView: React.FC<CoachViewProps> = ({
 
   const [typingMessageId, setTypingMessageId] = useState<string | null>(null);
   const [isQuickModalOpen, setIsQuickModalOpen] = useState<boolean>(false);
+  const [isManualPlanModalOpen, setIsManualPlanModalOpen] = useState<boolean>(false);
+  const [editingWorkout, setEditingWorkout] = useState<PlanWorkout | null>(null);
   const [appliedPlanToast, setAppliedPlanToast] = useState<string | null>(null);
+
 
 
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -698,6 +705,40 @@ export const CoachView: React.FC<CoachViewProps> = ({
     }
   };
 
+  const handleSaveManualPlan = (savedPlan: TrainingPlan) => {
+    storageService.saveActivePlan(savedPlan);
+    setActivePlan(savedPlan);
+    setIsManualPlanModalOpen(false);
+    setAppliedPlanToast('Program latihan berhasil disimpan!');
+    setTimeout(() => setAppliedPlanToast(null), 3000);
+  };
+
+  const handleSaveSingleWorkout = (updatedWorkout: PlanWorkout) => {
+    if (!activePlan) return;
+    const updatedWorkouts = activePlan.workouts.map((w) =>
+      w.id === updatedWorkout.id || w.dayOfWeek === updatedWorkout.dayOfWeek
+        ? updatedWorkout
+        : w
+    );
+    const activeDays = updatedWorkouts.filter((w) => w.type !== 'rest' && w.distanceKm > 0);
+    const totalKm = updatedWorkouts.reduce((sum, w) => sum + (w.type !== 'rest' ? (Number(w.distanceKm) || 0) : 0), 0);
+    const summary = activeDays.map((w) => w.dayName).join(', ');
+
+    const updatedPlan: TrainingPlan = {
+      ...activePlan,
+      workouts: updatedWorkouts,
+      weeklyTargetKm: Number(totalKm.toFixed(1)),
+      selectedDays: activeDays.map((w) => w.dayName),
+      scheduleSummary: summary || 'Custom Schedule',
+      updatedAt: new Date().toISOString(),
+    };
+
+    storageService.saveActivePlan(updatedPlan);
+    setActivePlan(updatedPlan);
+    setAppliedPlanToast(`Sesi ${updatedWorkout.dayName} berhasil diperbarui!`);
+    setTimeout(() => setAppliedPlanToast(null), 3000);
+  };
+
   return (
     <div className="max-w-md mx-auto px-4 pt-4 pb-28 space-y-4">
       {/* Toast Notification */}
@@ -722,14 +763,27 @@ export const CoachView: React.FC<CoachViewProps> = ({
           </div>
         </div>
 
-        <button
-          onClick={() => setIsQuickModalOpen(true)}
-          className="flex items-center space-x-1.5 px-3 py-1.5 rounded-2xl bg-orange-50 hover:bg-orange-100 text-[#FF5500] text-xs font-bold transition-all active:scale-95 border border-orange-200/60"
-        >
-          <Sliders className="w-3.5 h-3.5" />
-          <span>Quick Plan</span>
-        </button>
+        <div className="flex items-center space-x-1.5">
+          <button
+            onClick={() => setIsManualPlanModalOpen(true)}
+            className="flex items-center space-x-1 px-2.5 py-1.5 rounded-2xl bg-neutral-100 hover:bg-neutral-200 text-neutral-800 text-xs font-bold transition-all active:scale-95 border border-neutral-200"
+            title="Create or edit training plan manually"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Manual</span>
+          </button>
+
+          <button
+            onClick={() => setIsQuickModalOpen(true)}
+            className="flex items-center space-x-1 px-2.5 py-1.5 rounded-2xl bg-orange-50 hover:bg-orange-100 text-[#FF5500] text-xs font-bold transition-all active:scale-95 border border-orange-200/60"
+            title="AI Plan Assistant"
+          >
+            <Sliders className="w-3.5 h-3.5" />
+            <span>AI Plan</span>
+          </button>
+        </div>
       </div>
+
 
       {/* Sticky Top Segmented Sub-Tab Switcher */}
       <div className="sticky top-0 z-30 pt-1 pb-1.5 -mx-4 px-4 bg-[#F8F9FA]/90 backdrop-blur-md">
@@ -841,13 +895,23 @@ export const CoachView: React.FC<CoachViewProps> = ({
                     </p>
                   </div>
 
-                  <button
-                    onClick={handleClearPlan}
-                    className="p-1.5 rounded-xl text-neutral-300 hover:text-rose-600 hover:bg-rose-50 transition-colors"
-                    title="Remove plan"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  <div className="flex items-center space-x-1">
+                    <button
+                      onClick={() => setIsManualPlanModalOpen(true)}
+                      className="p-1.5 rounded-xl text-neutral-400 hover:text-neutral-900 hover:bg-neutral-100 transition-colors"
+                      title="Edit plan details & workouts"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </button>
+
+                    <button
+                      onClick={handleClearPlan}
+                      className="p-1.5 rounded-xl text-neutral-300 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                      title="Remove plan"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
 
                 {/* Weekly Mileage Progress (Only for current week) */}
@@ -893,8 +957,6 @@ export const CoachView: React.FC<CoachViewProps> = ({
               </Card>
 
               {/* Weekly Schedule (7 Days for the viewed week) */}
-
-
               <div className="space-y-2.5 pt-1">
                 <div className="flex items-center justify-between px-1">
                   <div className="flex items-center space-x-2">
@@ -905,17 +967,27 @@ export const CoachView: React.FC<CoachViewProps> = ({
                       ({formatWeekRange(selectedWeekBaseDate)})
                     </span>
                   </div>
-                  <button
-                    onClick={() => {
-                      setActiveTab('chat');
-                      setInputPrompt(`Can you help me adjust my Week ${viewedWeek} training schedule?`);
-                      setTimeout(() => chatInputRef.current?.focus(), 150);
-                    }}
-                    className="text-xs font-bold text-[#FF5500] hover:text-[#E64D00] flex items-center gap-1"
-                  >
-                    <Sparkles className="w-3 h-3" />
-                    Adjust with AI
-                  </button>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => setIsManualPlanModalOpen(true)}
+                      className="text-xs font-bold text-neutral-600 hover:text-neutral-900 flex items-center gap-1"
+                    >
+                      <Pencil className="w-3 h-3" />
+                      Edit Plan
+                    </button>
+                    <span className="text-neutral-300">·</span>
+                    <button
+                      onClick={() => {
+                        setActiveTab('chat');
+                        setInputPrompt(`Can you help me adjust my Week ${viewedWeek} training schedule?`);
+                        setTimeout(() => chatInputRef.current?.focus(), 150);
+                      }}
+                      className="text-xs font-bold text-[#FF5500] hover:text-[#E64D00] flex items-center gap-1"
+                    >
+                      <Sparkles className="w-3 h-3" />
+                      AI Adjust
+                    </button>
+                  </div>
                 </div>
 
                 <div className="space-y-2">
@@ -932,6 +1004,7 @@ export const CoachView: React.FC<CoachViewProps> = ({
                         date={workoutDate}
                         onToggleComplete={handleToggleWorkout}
                         onSelectRun={onSelectRun}
+                        onEditWorkout={(wk) => setEditingWorkout(wk)}
                       />
                     );
                   })}
@@ -954,7 +1027,6 @@ export const CoachView: React.FC<CoachViewProps> = ({
             </>
           ) : (
             /* Empty State: No Active Plan */
-
             <Card className="p-7 text-center space-y-4 bg-white border border-neutral-200/90 shadow-soft-sm">
               <div className="w-14 h-14 rounded-full bg-orange-50 text-[#FF5500] flex items-center justify-center mx-auto shadow-soft-xs">
                 <Calendar className="w-7 h-7" />
@@ -965,7 +1037,7 @@ export const CoachView: React.FC<CoachViewProps> = ({
                   No Active Training Plan
                 </h3>
                 <p className="text-xs text-neutral-500 max-w-xs mx-auto leading-relaxed">
-                  Ready to get into a steady rhythm? Let's talk through your preferred running days (like Tuesday, Thursday, Saturday) and your targets.
+                  Ready to get into a steady rhythm? Setup your weekly training manually or let the AI Coach design one for you.
                 </p>
               </div>
 
@@ -973,11 +1045,21 @@ export const CoachView: React.FC<CoachViewProps> = ({
                 <Button
                   variant="primary"
                   size="md"
-                  onClick={() => setIsQuickModalOpen(true)}
-                  leftIcon={<Sliders className="w-4 h-4" />}
+                  onClick={() => setIsManualPlanModalOpen(true)}
+                  leftIcon={<Plus className="w-4 h-4" />}
                   className="font-bold text-xs shadow-glow-orange rounded-2xl py-3"
                 >
-                  Quick Setup Plan (Tue, Thu, Sat)
+                  Create Plan Manually (Custom Days & Pace)
+                </Button>
+
+                <Button
+                  variant="secondary"
+                  size="md"
+                  onClick={() => setIsQuickModalOpen(true)}
+                  leftIcon={<Sliders className="w-4 h-4 text-[#FF5500]" />}
+                  className="font-bold text-xs rounded-2xl py-3"
+                >
+                  Quick Setup Assistant (AI)
                 </Button>
 
                 <Button
@@ -996,6 +1078,7 @@ export const CoachView: React.FC<CoachViewProps> = ({
             </Card>
           )}
         </div>
+
 
       )}
 
@@ -1388,7 +1471,25 @@ export const CoachView: React.FC<CoachViewProps> = ({
           </div>
         </div>
       )}
+
+      {/* Manual Plan Creator & Editor Modal */}
+      <ManualPlanModal
+        isOpen={isManualPlanModalOpen}
+        onClose={() => setIsManualPlanModalOpen(false)}
+        onSave={handleSaveManualPlan}
+        existingPlan={activePlan}
+        unitSystem={unitSystem}
+      />
+
+      {/* Single Workout Editor Modal */}
+      <EditWorkoutModal
+        isOpen={!!editingWorkout}
+        workout={editingWorkout}
+        onClose={() => setEditingWorkout(null)}
+        onSaveWorkout={handleSaveSingleWorkout}
+      />
     </div>
   );
 };
+
 

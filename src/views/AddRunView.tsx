@@ -18,6 +18,8 @@ import {
   ChevronDown,
   Check,
   Timer,
+  Activity,
+  Zap,
 } from 'lucide-react';
 import { clsx } from 'clsx';
 
@@ -87,6 +89,45 @@ export const AddRunView: React.FC<AddRunViewProps> = ({
 
   const [stopwatchSeconds, setStopwatchSeconds] = useState<number>(0);
   const stopwatchIntervalRef = useRef<any>(null);
+
+  // Vision Pre-flight Diagnostics State
+  const [isTestingVision, setIsTestingVision] = useState<boolean>(false);
+  const [visionTestResult, setVisionTestResult] = useState<{
+    success: boolean;
+    durationMs?: number;
+    message?: string;
+    error?: string;
+  } | null>(null);
+
+  const handleTestVision = async () => {
+    setIsTestingVision(true);
+    setVisionTestResult(null);
+    try {
+      const res = await fetch('/api/test-vision', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          model: selectedModelId,
+          customApiKey: customApiKey || undefined,
+        }),
+      });
+      const data = await res.json();
+      setVisionTestResult({
+        success: data.success === true,
+        durationMs: data.durationMs,
+        message: data.message,
+        error: data.error,
+      });
+    } catch (err: any) {
+      setVisionTestResult({
+        success: false,
+        error: err.message || 'Connection timeout or network error',
+      });
+    } finally {
+      setIsTestingVision(false);
+    }
+  };
+
 
   const [screenshotFile, setScreenshotFile] = useState<File | null>(null);
   const [screenshotPreview, setScreenshotPreview] = useState<string | null>(null);
@@ -644,73 +685,133 @@ export const AddRunView: React.FC<AddRunViewProps> = ({
           </div>
         </div>
 
-        {/* Change Model Dropdown Trigger */}
-        <div className="relative shrink-0 ml-2">
+        {/* Actions: Test Vision API & Change Model */}
+        <div className="flex items-center space-x-1.5 shrink-0 ml-2">
+          {/* Test Vision Button */}
           <button
             type="button"
-            onClick={() => setIsModelDropdownOpen(!isModelDropdownOpen)}
-            className="flex items-center space-x-1 px-2.5 py-1.5 rounded-xl border border-neutral-200 bg-neutral-50 hover:bg-neutral-100 text-xs font-bold text-neutral-700 active:scale-95 transition-all shadow-2xs"
+            onClick={handleTestVision}
+            disabled={isTestingVision}
+            className={clsx(
+              "flex items-center space-x-1 px-2.5 py-1.5 rounded-xl border text-xs font-bold transition-all active:scale-95 shadow-2xs",
+              visionTestResult?.success
+                ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
+                : visionTestResult?.success === false
+                ? "bg-red-50 text-red-700 border-red-200 hover:bg-red-100"
+                : "border-neutral-200 bg-neutral-50 hover:bg-neutral-100 text-neutral-700"
+            )}
+            title="Test AI Vision Model latency and readiness before uploading"
           >
-            <span>Change</span>
-            <ChevronDown className="w-3.5 h-3.5 text-neutral-400" />
+            <Activity className={clsx("w-3.5 h-3.5", isTestingVision ? "animate-spin text-[#FF5500]" : "text-neutral-500")} />
+            <span>{isTestingVision ? 'Testing...' : visionTestResult?.durationMs ? `${visionTestResult.durationMs}ms` : 'Test API'}</span>
           </button>
 
-          {isModelDropdownOpen && (
-            <>
-              <div className="fixed inset-0 z-40" onClick={() => setIsModelDropdownOpen(false)} />
-              <div className="absolute bottom-full right-0 mb-2 z-50 w-64 bg-white rounded-2xl border border-neutral-200 shadow-xl p-1.5 space-y-1 animate-in fade-in slide-in-from-bottom-2 duration-150">
-                <div className="px-2.5 py-1 text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
-                  Select Extraction Model
+          {/* Change Model Dropdown Trigger */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setIsModelDropdownOpen(!isModelDropdownOpen)}
+              className="flex items-center space-x-1 px-2.5 py-1.5 rounded-xl border border-neutral-200 bg-neutral-50 hover:bg-neutral-100 text-xs font-bold text-neutral-700 active:scale-95 transition-all shadow-2xs"
+            >
+              <span>Change</span>
+              <ChevronDown className="w-3.5 h-3.5 text-neutral-400" />
+            </button>
+
+            {isModelDropdownOpen && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setIsModelDropdownOpen(false)} />
+                <div className="absolute bottom-full right-0 mb-2 z-50 w-64 bg-white rounded-2xl border border-neutral-200 shadow-xl p-1.5 space-y-1 animate-in fade-in slide-in-from-bottom-2 duration-150">
+                  <div className="px-2.5 py-1 text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
+                    Select Extraction Model
+                  </div>
+                  {OCR_MODELS.map((m) => {
+                    const isSelected = selectedModelId === m.id;
+                    return (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedModelId(m.id);
+                          setIsModelDropdownOpen(false);
+                          setVisionTestResult(null);
+                          try {
+                            localStorage.setItem('runno_ocr_model', m.id);
+                          } catch (_) {}
+                        }}
+                        className={clsx(
+                          'w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-xs transition-all text-left',
+                          isSelected ? 'bg-neutral-900 text-white font-bold' : 'text-neutral-700 hover:bg-neutral-100'
+                        )}
+                      >
+                        <div className="flex items-center space-x-2.5 min-w-0">
+                          <div className={clsx(
+                            "w-7 h-7 rounded-xl flex items-center justify-center shrink-0 border p-0.5 bg-white",
+                            isSelected ? "border-neutral-700 shadow-xs" : "border-neutral-200/80"
+                          )}>
+                            <img src={m.iconSrc} alt={m.name} className="w-4.5 h-4.5 object-contain" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="font-bold leading-tight truncate flex items-center gap-1.5">
+                              <span className="truncate">{m.name}</span>
+                              <span className={clsx(
+                                "text-[8.5px] px-1 py-0.2 rounded font-black border shrink-0",
+                                isSelected ? "bg-neutral-800 border-neutral-700 text-white" : "bg-emerald-50 text-emerald-700 border-emerald-200"
+                              )}>
+                                {m.badge}
+                              </span>
+                            </div>
+                            <div className={clsx('text-[10px] leading-tight mt-0.5 truncate', isSelected ? 'text-neutral-300' : 'text-neutral-400')}>
+                              {m.desc}
+                            </div>
+                          </div>
+                        </div>
+                        {isSelected && <Check className="w-4 h-4 text-[#FF5500] shrink-0 ml-1" />}
+                      </button>
+                    );
+                  })}
                 </div>
-                {OCR_MODELS.map((m) => {
-                  const isSelected = selectedModelId === m.id;
-                  return (
-                    <button
-                      key={m.id}
-                      type="button"
-                      onClick={() => {
-                        setSelectedModelId(m.id);
-                        setIsModelDropdownOpen(false);
-                        try {
-                          localStorage.setItem('runno_ocr_model', m.id);
-                        } catch (_) {}
-                      }}
-                      className={clsx(
-                        'w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-xs transition-all text-left',
-                        isSelected ? 'bg-neutral-900 text-white font-bold' : 'text-neutral-700 hover:bg-neutral-100'
-                      )}
-                    >
-                      <div className="flex items-center space-x-2.5 min-w-0">
-                        <div className={clsx(
-                          "w-7 h-7 rounded-xl flex items-center justify-center shrink-0 border p-0.5 bg-white",
-                          isSelected ? "border-neutral-700 shadow-xs" : "border-neutral-200/80"
-                        )}>
-                          <img src={m.iconSrc} alt={m.name} className="w-4.5 h-4.5 object-contain" />
-                        </div>
-                        <div className="min-w-0">
-                          <div className="font-bold leading-tight truncate flex items-center gap-1.5">
-                            <span className="truncate">{m.name}</span>
-                            <span className={clsx(
-                              "text-[8.5px] px-1 py-0.2 rounded font-black border shrink-0",
-                              isSelected ? "bg-neutral-800 border-neutral-700 text-white" : "bg-emerald-50 text-emerald-700 border-emerald-200"
-                            )}>
-                              {m.badge}
-                            </span>
-                          </div>
-                          <div className={clsx('text-[10px] leading-tight mt-0.5 truncate', isSelected ? 'text-neutral-300' : 'text-neutral-400')}>
-                            {m.desc}
-                          </div>
-                        </div>
-                      </div>
-                      {isSelected && <Check className="w-4 h-4 text-[#FF5500] shrink-0 ml-1" />}
-                    </button>
-                  );
-                })}
-              </div>
-            </>
-          )}
+              </>
+            )}
+          </div>
         </div>
       </div>
+
+      {/* Vision Pre-Flight Test Result Notification */}
+      {visionTestResult && (
+        <div className={clsx(
+          "p-3 rounded-2xl border text-xs flex items-start space-x-2.5 animate-in fade-in duration-150 shadow-soft-xs",
+          visionTestResult.success
+            ? "bg-emerald-50 border-emerald-200 text-emerald-800"
+            : "bg-red-50 border-red-200 text-red-700"
+        )}>
+          {visionTestResult.success ? (
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+          ) : (
+            <AlertCircle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+          )}
+          <div className="flex-1 min-w-0">
+            <div className="font-bold flex items-center gap-1.5 flex-wrap">
+              <span>{activeModelOption.name}: {visionTestResult.success ? 'Ready & Online' : 'Check Required'}</span>
+              {visionTestResult.durationMs && (
+                <span className="font-mono text-[10px] bg-white/90 px-1.5 py-0.2 rounded-md border font-bold">
+                  {visionTestResult.durationMs}ms
+                </span>
+              )}
+            </div>
+            <p className="text-[11px] mt-0.5 leading-snug">
+              {visionTestResult.success ? visionTestResult.message : visionTestResult.error}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setVisionTestResult(null)}
+            className="p-1 text-neutral-400 hover:text-neutral-600 transition-colors"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
+
 
       {/* Single prominent submit button */}
       <div className="pt-1">

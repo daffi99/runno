@@ -495,6 +495,89 @@ Return ONLY a valid JSON object matching this schema (no markdown, no backticks)
 });
 
 // ---------------------------------------------------------------------------
+// Pre-flight AI Vision Diagnostic Endpoint
+// ---------------------------------------------------------------------------
+router.post('/test-vision', async (req, res) => {
+  try {
+    dotenv.config();
+    let body = req.body;
+    if (typeof body === 'string') {
+      try {
+        body = JSON.parse(body);
+      } catch (_) {}
+    }
+    body = body || {};
+
+    const apiKey = (body.customApiKey || process.env.OPENROUTER_API_KEY || '').trim();
+    if (!apiKey) {
+      return res.status(400).json({
+        success: false,
+        error: 'API Key missing. Please configure OPENROUTER_API_KEY in environment or app settings.',
+      });
+    }
+
+    const VISION_MODEL_MAP: Record<string, string> = {
+      nvidia: 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free',
+      dots: 'dots-studio/dots-3-note-preview:free',
+      gemini: 'google/gemini-2.5-flash-lite',
+    };
+
+    const requestedModel = (body.model || 'nvidia').toString().toLowerCase();
+    let targetModel = VISION_MODEL_MAP[requestedModel] || requestedModel;
+    if (!targetModel.includes('/')) {
+      targetModel = 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free';
+    }
+
+    const start = performance.now();
+    const openRouterResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${apiKey}`,
+        'HTTP-Referer': 'https://runno.app',
+        'X-Title': 'Runno Vision Preflight Diagnostic',
+      },
+      body: JSON.stringify({
+        model: targetModel,
+        messages: [{ role: 'user', content: 'Ping: reply with OK.' }],
+        max_tokens: 15,
+        temperature: 0.1,
+      }),
+    });
+
+    const durationMs = Math.round(performance.now() - start);
+
+    if (!openRouterResponse.ok) {
+      const errText = await openRouterResponse.text();
+      let parsedErr: any = {};
+      try { parsedErr = JSON.parse(errText); } catch (_) {}
+      return res.status(200).json({
+        success: false,
+        status: openRouterResponse.status,
+        modelUsed: targetModel,
+        durationMs,
+        error: parsedErr?.error?.message || `HTTP ${openRouterResponse.status}: ${errText.substring(0, 200)}`,
+      });
+    }
+
+    res.json({
+      success: true,
+      status: 200,
+      modelUsed: targetModel,
+      durationMs,
+      message: 'Model is responsive and ready for image extraction.',
+    });
+  } catch (err: any) {
+    res.status(200).json({
+      success: false,
+      status: 500,
+      error: err.message || 'Connection timeout or network error',
+    });
+  }
+});
+
+
+// ---------------------------------------------------------------------------
 // Runs CRUD Endpoints
 // ---------------------------------------------------------------------------
 router.get('/runs', async (_req, res) => {
