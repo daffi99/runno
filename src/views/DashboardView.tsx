@@ -8,7 +8,7 @@ import { formatDuration, formatPace, formatDate, formatDistance, formatWorkoutDa
 import { RefreshCw, ChevronDown, TrendingUp, TrendingDown, Minus, Sparkles, ArrowRight, ChevronRight, Moon } from 'lucide-react';
 import { clsx } from 'clsx';
 
-export const APP_VERSION = 'v2.0.4';
+export const APP_VERSION = 'v2.0.5';
 
 interface DashboardViewProps {
   runs: Run[];
@@ -362,12 +362,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </Card>
       </div>
 
-      {/* Today's Training Session (from Active Training Plan) */}
+      {/* Today's Training Session & 4 Upcoming Days (from Active Training Plan) */}
       {(() => {
         const activePlan = storageService.getActivePlan();
         if (activePlan && activePlan.workouts) {
+          const currentPlanWeek = activePlan.currentWeek || 1;
+          const currentWeekWorkouts = (activePlan.weeklySchedules && activePlan.weeklySchedules[currentPlanWeek]) || activePlan.workouts;
           const currentDayOfWeek = new Date().getDay();
-          const todayWorkout = activePlan.workouts.find((w) => w.dayOfWeek === currentDayOfWeek);
+          const todayWorkout = currentWeekWorkouts.find((w) => w.dayOfWeek === currentDayOfWeek);
           const todayIso = new Date().toISOString().split('T')[0];
           const matchingRun = runs.find((r) => r.date && r.date.split('T')[0] === todayIso);
 
@@ -378,47 +380,125 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             completedRunId: matchingRun?.id || null,
           } : null;
 
+          // Next 4 days calculation
+          const nextDays = [1, 2, 3, 4].map((offset) => {
+            const targetDate = new Date();
+            targetDate.setDate(targetDate.getDate() + offset);
+            const targetDayOfWeek = targetDate.getDay();
+            const targetIso = targetDate.toISOString().split('T')[0];
+
+            // Calculate week offset if crossing past Sunday
+            const dayShift = currentDayOfWeek === 0 ? 6 : currentDayOfWeek - 1 + offset;
+            const weekOffset = Math.floor(dayShift / 7);
+            const targetWeekNum = Math.min(activePlan.totalWeeks || 4, currentPlanWeek + weekOffset);
+
+            const targetWeekWorkouts = (activePlan.weeklySchedules && activePlan.weeklySchedules[targetWeekNum])
+              || activePlan.workouts;
+
+            const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+            const rawWorkout = targetWeekWorkouts.find((w) => w.dayOfWeek === targetDayOfWeek) || {
+              id: `rest_${targetIso}`,
+              dayOfWeek: targetDayOfWeek,
+              dayName: dayNames[targetDayOfWeek],
+              title: 'Rest Day',
+              type: 'rest' as const,
+              distanceKm: 0,
+              targetPaceSecPerKm: null,
+              targetHrZone: null,
+              description: 'Hari pemulihan & istirahat otot.',
+              completed: false,
+            };
+
+            const dayMatchingRun = runs.find((r) => r.date && r.date.split('T')[0] === targetIso);
+            const boundWorkout = {
+              ...rawWorkout,
+              date: targetIso,
+              completed: Boolean(dayMatchingRun),
+              completedRunId: dayMatchingRun?.id || null,
+            };
+
+            return {
+              offset,
+              targetDate,
+              targetIso,
+              workout: boundWorkout,
+            };
+          });
+
           return (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between px-1">
-                <span className="text-xs font-black uppercase tracking-wider text-neutral-400">
-                  Today's Session
-                </span>
-                <button
-                  onClick={() => onNavigateTab('coach')}
-                  className="text-xs font-bold text-[#FF5500] hover:text-[#E64D00] flex items-center gap-1 active:scale-95 transition-all shrink-0"
-                >
-                  <span>Active Plan</span>
-                  <ChevronRight className="w-3.5 h-3.5" />
-                </button>
+            <div className="space-y-4">
+              {/* Today's Session */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between px-1">
+                  <span className="text-xs font-black uppercase tracking-wider text-neutral-400">
+                    Today's Session
+                  </span>
+                  <button
+                    onClick={() => onNavigateTab('coach')}
+                    className="text-xs font-bold text-[#FF5500] hover:text-[#E64D00] flex items-center gap-1 active:scale-95 transition-all shrink-0"
+                  >
+                    <span>Active Plan</span>
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+
+                {dateBoundWorkout ? (
+                  <WorkoutCard
+                    workout={dateBoundWorkout}
+                    unitSystem={unitSystem}
+                    isToday={true}
+                    date={new Date()}
+                    onSelectRun={onSelectRun}
+                    onSelectWorkout={() => onNavigateTab('coach')}
+                  />
+                ) : (
+                  <Card
+                    variant="interactive"
+                    onClick={() => onNavigateTab('coach')}
+                    className="p-3.5 bg-neutral-50/80 border border-neutral-200/80 flex items-center justify-between"
+                  >
+                    <div className="flex items-center space-x-2.5">
+                      <Moon className="w-4 h-4 text-neutral-400" />
+                      <span className="text-xs font-bold text-neutral-700">Hari Istirahat / Tidak ada sesi hari ini</span>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-neutral-400" />
+                  </Card>
+                )}
               </div>
 
+              {/* 4 Upcoming Next Day Sessions (1 Column) */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between px-1">
+                  <span className="text-xs font-black uppercase tracking-wider text-neutral-400">
+                    Upcoming Sessions (Next 4 Days)
+                  </span>
+                  <button
+                    onClick={() => onNavigateTab('coach')}
+                    className="text-xs font-bold text-neutral-500 hover:text-neutral-900 flex items-center gap-1 active:scale-95 transition-all shrink-0"
+                  >
+                    <span>Full Schedule</span>
+                    <ChevronRight className="w-3 h-3" />
+                  </button>
+                </div>
 
-              {dateBoundWorkout ? (
-                <WorkoutCard
-                  workout={dateBoundWorkout}
-                  unitSystem={unitSystem}
-                  isToday={true}
-                  date={new Date()}
-                  onSelectRun={onSelectRun}
-                  onSelectWorkout={() => onNavigateTab('coach')}
-                />
-              ) : (
-                <Card
-                  variant="interactive"
-                  onClick={() => onNavigateTab('coach')}
-                  className="p-3.5 bg-neutral-50/80 border border-neutral-200/80 flex items-center justify-between"
-                >
-                  <div className="flex items-center space-x-2.5">
-                    <Moon className="w-4 h-4 text-neutral-400" />
-                    <span className="text-xs font-bold text-neutral-700">Hari Istirahat / Tidak ada sesi hari ini</span>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-neutral-400" />
-                </Card>
-              )}
+                <div className="space-y-2">
+                  {nextDays.map(({ targetDate, workout }) => (
+                    <WorkoutCard
+                      key={workout.date || workout.id}
+                      workout={workout}
+                      unitSystem={unitSystem}
+                      isToday={false}
+                      date={targetDate}
+                      onSelectRun={onSelectRun}
+                      onSelectWorkout={() => onNavigateTab('coach')}
+                    />
+                  ))}
+                </div>
+              </div>
             </div>
           );
         }
+
 
         return (
           <Card
