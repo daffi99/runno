@@ -3,11 +3,13 @@ import type { Run, UnitSystem } from '../types/run';
 import { storageService } from '../services/storage';
 import { Card } from '../components/ui/Card';
 import { RouteThumbnail } from '../components/ui/RouteThumbnail';
-import { formatDuration, formatPace, formatDate, formatDistance, formatWorkoutDate } from '../utils/formatters';
-import { RefreshCw, ChevronDown, TrendingUp, TrendingDown, Minus, Sparkles, ArrowRight, ChevronRight } from 'lucide-react';
+import { WorkoutCard } from '../components/plan/WorkoutCard';
+import { formatDuration, formatPace, formatDate, formatDistance, formatWorkoutDate, formatFullWorkoutDate } from '../utils/formatters';
+import { RefreshCw, ChevronDown, TrendingUp, TrendingDown, Minus, Sparkles, ArrowRight, ChevronRight, Moon } from 'lucide-react';
 import { clsx } from 'clsx';
 
-export const APP_VERSION = 'v1.1.3';
+export const APP_VERSION = 'v1.1.4';
+
 
 interface DashboardViewProps {
   runs: Run[];
@@ -360,42 +362,66 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </Card>
       </div>
 
-      {/* AI Coach Plan Banner */}
+      {/* Today's Training Session (from Active Training Plan) */}
       {(() => {
         const activePlan = storageService.getActivePlan();
-        if (activePlan) {
-          const todayWorkout = activePlan.workouts.find((w) => w.dayOfWeek === new Date().getDay());
-          return (
-            <Card
-              variant="interactive"
-              onClick={() => onNavigateTab('coach')}
-              className="p-3.5 bg-gradient-to-r from-orange-50/90 to-amber-50/70 border border-orange-200/80 flex items-center justify-between"
-            >
-              <div className="flex items-center space-x-3 min-w-0">
-                <div className="w-10 h-10 rounded-2xl bg-[#FF5500] text-white flex items-center justify-center shrink-0 shadow-soft-xs">
-                  <Sparkles className="w-5 h-5" />
-                </div>
-                <div className="min-w-0">
-                  <div className="flex items-center space-x-1.5">
-                    <span className="text-[10px] font-black uppercase tracking-wider text-[#FF5500]">
-                      Active Schedule · {activePlan.scheduleSummary}
-                    </span>
-                  </div>
-                  <h3 className="text-xs font-bold text-neutral-900 truncate mt-0.5">
-                    {todayWorkout
-                      ? `Today (${formatWorkoutDate(new Date())}): ${todayWorkout.title}`
-                      : activePlan.title}
-                  </h3>
+        if (activePlan && activePlan.workouts) {
+          const currentDayOfWeek = new Date().getDay();
+          const todayWorkout = activePlan.workouts.find((w) => w.dayOfWeek === currentDayOfWeek);
+          const todayIso = new Date().toISOString().split('T')[0];
+          const matchingRun = runs.find((r) => r.date && r.date.split('T')[0] === todayIso);
 
-                  {todayWorkout && todayWorkout.distanceKm > 0 && (
-                    <p className="text-[11px] text-neutral-500 font-mono">
-                      Target: {formatDistance(todayWorkout.distanceKm, unitSystem, true)}
-                    </p>
-                  )}
+          const dateBoundWorkout = todayWorkout ? {
+            ...todayWorkout,
+            date: todayIso,
+            completed: Boolean(matchingRun),
+            completedRunId: matchingRun?.id || null,
+          } : null;
+
+          return (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between px-1">
+                <div className="flex items-center space-x-1.5">
+                  <span className="text-xs font-bold uppercase tracking-wider text-neutral-400">
+                    Today's Session
+                  </span>
+                  <span className="text-neutral-300">·</span>
+                  <span className="text-[11px] font-semibold text-neutral-500">
+                    {formatFullWorkoutDate(new Date())}
+                  </span>
                 </div>
+                <button
+                  onClick={() => onNavigateTab('coach')}
+                  className="text-xs font-bold text-[#FF5500] hover:text-[#E64D00] flex items-center gap-1 active:scale-95 transition-all"
+                >
+                  <span>Active Plan</span>
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
               </div>
-              <ArrowRight className="w-4 h-4 text-[#FF5500] shrink-0 ml-2" />
-            </Card>
+
+              {dateBoundWorkout ? (
+                <WorkoutCard
+                  workout={dateBoundWorkout}
+                  unitSystem={unitSystem}
+                  isToday={true}
+                  date={new Date()}
+                  onSelectRun={onSelectRun}
+                  onSelectWorkout={() => onNavigateTab('coach')}
+                />
+              ) : (
+                <Card
+                  variant="interactive"
+                  onClick={() => onNavigateTab('coach')}
+                  className="p-3.5 bg-neutral-50/80 border border-neutral-200/80 flex items-center justify-between"
+                >
+                  <div className="flex items-center space-x-2.5">
+                    <Moon className="w-4 h-4 text-neutral-400" />
+                    <span className="text-xs font-bold text-neutral-700">Hari Istirahat / Tidak ada sesi hari ini</span>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-neutral-400" />
+                </Card>
+              )}
+            </div>
           );
         }
 
@@ -411,10 +437,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
               <div>
                 <h3 className="text-xs font-bold text-neutral-900">
-                  Create AI Running Schedule
+                  Buat Jadwal Lari dengan AI Coach
                 </h3>
                 <p className="text-[11px] text-neutral-500">
-                  Ask AI Coach to set up your Tue, Thu & Sat routine
+                  Dapatkan program latihan pintar 5K, 10K, Half Marathon
                 </p>
               </div>
             </div>
@@ -422,6 +448,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </Card>
         );
       })()}
+
 
       {/* Recent Runs Section */}
       <div className="space-y-3 pt-1">

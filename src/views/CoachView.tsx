@@ -161,6 +161,37 @@ export interface CoachModelOption {
   textColor: string;
 }
 
+export const ModelIcon: React.FC<{ model: CoachModelKey; className?: string }> = ({ model, className = 'w-3.5 h-3.5' }) => {
+  if (model === 'deepseek') {
+    return (
+      <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 2C6.48 2 2 6.48 2 12C2 17.52 6.48 22 12 22C17.52 22 22 17.52 22 12C22 6.48 17.52 2 12 2ZM11.1 5.6C12.4 4.8 14.1 5.3 14.8 6.6C15.5 7.9 15 9.6 13.7 10.3C12.4 11 10.7 10.5 10 9.2C9.3 7.9 9.8 6.3 11.1 5.6ZM16.8 17.5C14.7 19 11.8 19.3 9.4 18.2C8.3 17.7 7.4 16.9 6.8 15.9C6.2 14.9 6 13.7 6.3 12.6C6.7 11.2 7.7 10.1 9 9.5C9.4 10.8 10.3 11.8 11.6 12.3C12.9 12.8 14.3 12.6 15.4 11.9C15.8 12.8 16 13.8 15.9 14.8C15.7 15.9 15.1 16.8 14.2 17.4L16.8 17.5Z" fill="#1D7BF6"/>
+      </svg>
+    );
+  }
+  if (model === 'qwen') {
+    return (
+      <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 2.5L3.5 7.4V16.6L12 21.5L20.5 16.6V7.4L12 2.5Z" stroke="#615CED" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"/>
+        <path d="M12 7L7 10V14L12 17L17 14V10L12 7Z" fill="#615CED" opacity="0.85"/>
+        <circle cx="12" cy="12" r="1.8" fill="#FFFFFF"/>
+      </svg>
+    );
+  }
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M12 2C12 7.52 7.52 12 2 12C7.52 12 12 16.48 12 22C12 16.48 16.48 12 22 12C16.48 12 12 7.52 12 2Z" fill="url(#gemini-icon-grad)"/>
+      <defs>
+        <linearGradient id="gemini-icon-grad" x1="2" y1="2" x2="22" y2="22" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#4E89FF"/>
+          <stop offset="0.5" stopColor="#9B72CB"/>
+          <stop offset="1" stopColor="#FF7643"/>
+        </linearGradient>
+      </defs>
+    </svg>
+  );
+};
+
 export const COACH_MODELS: CoachModelOption[] = [
   {
     id: 'deepseek',
@@ -190,6 +221,7 @@ export const COACH_MODELS: CoachModelOption[] = [
     textColor: 'text-amber-700',
   },
 ];
+
 
 export const CoachView: React.FC<CoachViewProps> = ({
   runs,
@@ -892,41 +924,8 @@ export const CoachView: React.FC<CoachViewProps> = ({
 
               </Card>
 
-              {/* Today's Workout Focus Card (Shown when viewing Current Week) */}
-              {isViewingCurrentWeek && todayWorkout && (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between px-1">
-                    <div className="flex items-center space-x-1.5">
-                      <span className="text-xs font-bold uppercase tracking-wider text-neutral-400">
-                        Today's Session
-                      </span>
-                      <span className="text-neutral-300">·</span>
-                      <span className="text-[11px] font-semibold text-neutral-500">
-                        {formatFullWorkoutDate(new Date())}
-                      </span>
-                    </div>
-                    {todayWorkout.distanceKm > 0 && !todayWorkout.completed && (
-                      <button
-                        onClick={onNavigateAddRun}
-                        className="text-xs font-bold text-[#FF5500] hover:text-[#E64D00] flex items-center gap-1"
-                      >
-                        <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-                        Log Run Screenshot
-                      </button>
-                    )}
-                  </div>
-                  <WorkoutCard
-                    workout={getWorkoutForDate(todayWorkout, new Date(), true)}
-                    unitSystem={unitSystem}
-                    isToday={true}
-                    date={new Date()}
-                    onToggleComplete={handleToggleWorkout}
-                    onSelectRun={onSelectRun}
-                  />
-                </div>
-              )}
-
               {/* Weekly Schedule (7 Days for the viewed week) */}
+
 
               <div className="space-y-2.5 pt-1">
                 <div className="flex items-center justify-between px-1">
@@ -1174,12 +1173,13 @@ export const CoachView: React.FC<CoachViewProps> = ({
                   type="button"
                   onClick={() => setIsModelDropdownOpen(!isModelDropdownOpen)}
                   className={clsx(
-                    'flex items-center space-x-1 px-2.5 py-1.5 rounded-xl border text-xs font-black transition-all active:scale-95 shadow-2xs',
+                    'flex items-center space-x-1.5 px-2 py-1.5 rounded-xl border text-xs font-black transition-all active:scale-95 shadow-2xs',
                     activeModelOption.badgeColor
                   )}
                   title={`Active Model: ${activeModelOption.name} (${activeModelOption.initial})`}
                 >
-                  <span className="tracking-wide text-[11px] font-black">{activeModelOption.initial}</span>
+                  <ModelIcon model={activeModelOption.id} className="w-3.5 h-3.5 shrink-0" />
+                  <span className="tracking-wide text-[10.5px] font-black">{activeModelOption.initial}</span>
                   <ChevronDown className="w-3 h-3 opacity-60" />
                 </button>
 
@@ -1189,7 +1189,7 @@ export const CoachView: React.FC<CoachViewProps> = ({
                       className="fixed inset-0 z-40"
                       onClick={() => setIsModelDropdownOpen(false)}
                     />
-                    <div className="absolute bottom-full mb-2 left-0 z-50 w-56 bg-white rounded-2xl border border-neutral-200 shadow-xl p-1.5 space-y-1 animate-in fade-in slide-in-from-bottom-2 duration-150">
+                    <div className="absolute bottom-full mb-2 left-0 z-50 w-64 bg-white rounded-2xl border border-neutral-200 shadow-xl p-1.5 space-y-1 animate-in fade-in slide-in-from-bottom-2 duration-150">
                       <div className="px-2.5 py-1 text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
                         Select Coach AI Model
                       </div>
@@ -1213,22 +1213,30 @@ export const CoachView: React.FC<CoachViewProps> = ({
                                 : 'text-neutral-700 hover:bg-neutral-100'
                             )}
                           >
-                            <div className="flex items-center space-x-2">
-                              <span
-                                className={clsx(
-                                  'px-1.5 py-0.5 rounded-md text-[10px] font-black border',
-                                  isSelected
-                                    ? 'bg-neutral-800 border-neutral-700 text-white'
-                                    : m.badgeColor
-                                )}
-                              >
-                                {m.initial}
-                              </span>
-                              <div>
-                                <div className="font-bold leading-tight">{m.name}</div>
+                            <div className="flex items-center space-x-2.5 min-w-0">
+                              <div className={clsx(
+                                "w-7 h-7 rounded-xl flex items-center justify-center shrink-0 border",
+                                isSelected ? "bg-neutral-800 border-neutral-700" : "bg-neutral-50 border-neutral-200/80"
+                              )}>
+                                <ModelIcon model={m.id} className="w-4 h-4" />
+                              </div>
+                              <div className="min-w-0">
+                                <div className="font-bold leading-tight flex items-center gap-1.5">
+                                  <span className="truncate">{m.name}</span>
+                                  <span
+                                    className={clsx(
+                                      'px-1 py-0.2 rounded text-[9px] font-black border shrink-0',
+                                      isSelected
+                                        ? 'bg-neutral-800 border-neutral-700 text-white'
+                                        : m.badgeColor
+                                    )}
+                                  >
+                                    {m.initial}
+                                  </span>
+                                </div>
                                 <div
                                   className={clsx(
-                                    'text-[10px] leading-tight',
+                                    'text-[10px] leading-tight mt-0.5 truncate',
                                     isSelected ? 'text-neutral-300' : 'text-neutral-400'
                                   )}
                                 >
@@ -1236,13 +1244,14 @@ export const CoachView: React.FC<CoachViewProps> = ({
                                 </div>
                               </div>
                             </div>
-                            {isSelected && <Check className="w-4 h-4 text-[#FF5500] shrink-0" />}
+                            {isSelected && <Check className="w-4 h-4 text-[#FF5500] shrink-0 ml-1" />}
                           </button>
                         );
                       })}
                     </div>
                   </>
                 )}
+
               </div>
 
               <input
