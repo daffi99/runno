@@ -61,7 +61,13 @@ const DEFAULT_WELCOME_MESSAGE: AICoachMessage = {
 };
 
 const renderFormattedMessage = (content: string, isUser: boolean, isTyping?: boolean) => {
-  if (!content && isTyping) {
+  // Strip any raw json_plan code blocks so user never sees messy curly braces
+  const cleanContent = content
+    .replace(/```(?:json_plan|json)?\s*\{[\s\S]*?\}\s*```?/g, '')
+    .replace(/```json_plan[\s\S]*?(?:```|$)/g, '')
+    .trim();
+
+  if (!cleanContent && isTyping) {
     return (
       <div className="flex items-center space-x-1 py-0.5">
         <span className="inline-block w-2 h-4 bg-[#FF5500] rounded-xs animate-pulse" />
@@ -69,7 +75,8 @@ const renderFormattedMessage = (content: string, isUser: boolean, isTyping?: boo
     );
   }
 
-  const lines = content.split('\n');
+  const lines = cleanContent.split('\n');
+
   return (
     <div className="space-y-1.5 leading-relaxed">
       {lines.map((line, idx) => {
@@ -1065,16 +1072,39 @@ export const CoachView: React.FC<CoachViewProps> = ({
                     {renderFormattedMessage(msg.content, isUser, msg.id === typingMessageId)}
 
                     {/* Inline Suggested Plan Card (shown once typing is complete) */}
-                    {msg.suggestedPlan && (
-                      <div className="pt-2 animate-in fade-in duration-300">
-                        <PlanCard
-                          plan={msg.suggestedPlan}
-                          unitSystem={unitSystem}
-                          isActive={activePlan?.id === msg.suggestedPlan.id}
-                          onApplyPlan={handleApplyPlan}
-                        />
-                      </div>
-                    )}
+                    {(() => {
+                      const planToRender = msg.suggestedPlan || (msg.role === 'assistant' ? (() => {
+                        const match = msg.content.match(/(\{[\s\r\n]*"title"[\s\S]*?"workouts"[\s\S]*?\})/);
+                        if (match && match[1]) {
+                          try {
+                            const cleaned = match[1].replace(/,\s*([}\]])/g, '$1');
+                            const parsed = JSON.parse(cleaned);
+                            if (parsed.workouts) {
+                              return {
+                                ...parsed,
+                                id: parsed.id || `plan_fallback_${msg.id}`,
+                                status: parsed.status || 'draft',
+                              };
+                            }
+                          } catch (_) {}
+                        }
+                        return null;
+                      })() : null);
+
+                      if (!planToRender || msg.id === typingMessageId) return null;
+
+                      return (
+                        <div className="pt-2 animate-in fade-in duration-300">
+                          <PlanCard
+                            plan={planToRender}
+                            unitSystem={unitSystem}
+                            isActive={activePlan?.id === planToRender.id}
+                            onApplyPlan={handleApplyPlan}
+                          />
+                        </div>
+                      );
+                    })()}
+
 
                     {/* Minimized Search Icon + Status Pill */}
                     {!isUser && msg.debugInfo && (

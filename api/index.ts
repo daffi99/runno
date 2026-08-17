@@ -804,20 +804,44 @@ JSON_PLAN STRUCTURE:
     let suggestedPlan: any = null;
     let cleanReply = rawReply;
 
-    const planMatch = rawReply.match(/```json_plan\s*([\s\S]*?)\s*```/);
-    if (planMatch && planMatch[1]) {
-      try {
-        const parsed = JSON.parse(planMatch[1]);
-        suggestedPlan = sanitizePlan(parsed);
-        cleanReply = rawReply.replace(/```json_plan\s*[\s\S]*?\s*```/, '').trim();
-      } catch (err: any) {
-        console.warn('[Runno AI Coach] Failed to parse json_plan block:', err.message);
+    // Robust extraction for JSON plans (tolerant of missing closing tags, trailing commas, etc.)
+    const patterns = [
+      /```(?:json_plan|json)?\s*(\{[\s\S]*?"workouts"[\s\S]*?\})\s*```?/,
+      /```json_plan\s*([\s\S]*?)(?:```|$)/,
+      /```json\s*([\s\S]*?)(?:```|$)/,
+      /(\{[\s\r\n]*"title"[\s\S]*?"workouts"[\s\S]*?\})/,
+    ];
+
+    for (const regex of patterns) {
+      const match = rawReply.match(regex);
+      if (match && match[1]) {
+        const jsonCandidate = match[1].trim();
+        try {
+          // Clean trailing commas and unicode quotes before parsing
+          const cleanedJson = jsonCandidate
+            .replace(/,\s*([}\]])/g, '$1')
+            .replace(/[\u201C\u201D]/g, '"');
+          const parsed = JSON.parse(cleanedJson);
+          if (parsed && (parsed.workouts || parsed.title)) {
+            suggestedPlan = sanitizePlan(parsed);
+            cleanReply = rawReply.replace(match[0], '').trim();
+            break;
+          }
+        } catch (err: any) {
+          console.warn('[Runno AI Coach] Attempted plan JSON parse error:', err.message);
+        }
       }
     }
 
+    // Ensure raw json_plan code never leaks into cleanReply text
+    cleanReply = cleanReply
+      .replace(/```(?:json_plan|json)?\s*\{[\s\S]*?\}\s*```?/g, '')
+      .replace(/```json_plan[\s\S]*?(?:```|$)/g, '')
+      .trim();
+
     res.json({
       success: true,
-      reply: cleanReply || 'Here is your training plan:',
+      reply: cleanReply || 'Berikut adalah jadwal latihan yang telah saya susun untuk kamu:',
       suggestedPlan,
       debugInfo: {
         endpoint: '/api/ai-coach',
@@ -830,6 +854,7 @@ JSON_PLAN STRUCTURE:
         clientTimestamp: new Date().toISOString(),
       },
     });
+
 
 
   } catch (err: any) {
