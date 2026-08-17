@@ -299,10 +299,11 @@ export const CoachView: React.FC<CoachViewProps> = ({
 
       setMessages((prev) =>
         prev.map((m) =>
-          m.id === msgId ? { ...m, content: accumulated } : m
+          m.id === msgId ? { ...m, content: accumulated, suggestedPlan, debugInfo } : m
         )
       );
-    }, 22);
+    }, 18);
+
   };
 
   // Sync plan from server and match completion with run log on mount and runs update
@@ -632,13 +633,13 @@ export const CoachView: React.FC<CoachViewProps> = ({
       const debugInfo = data?.debugInfo || errorDebug || null;
       const assistantMsgId = `msg_asst_${Date.now()}`;
 
-      // Insert assistant message placeholder
+      // Insert assistant message placeholder with plan attached
       const initialAssistantMsg: AICoachMessage = {
         id: assistantMsgId,
         role: 'assistant',
         content: '',
         timestamp: new Date().toISOString(),
-        suggestedPlan: null,
+        suggestedPlan: plan,
         debugInfo,
       };
 
@@ -647,6 +648,7 @@ export const CoachView: React.FC<CoachViewProps> = ({
 
       // Stream text word-by-word in real time
       streamTextWordByWord(assistantMsgId, fullReply, plan, debugInfo);
+
     } catch (err: any) {
       console.error('[Runno Coach] Error sending message:', err);
       const errorMsg: AICoachMessage = {
@@ -1091,10 +1093,11 @@ export const CoachView: React.FC<CoachViewProps> = ({
                         return null;
                       })() : null);
 
-                      if (!planToRender || msg.id === typingMessageId) return null;
+                      if (!planToRender) return null;
 
                       return (
                         <div className="pt-2 animate-in fade-in duration-300">
+
                           <PlanCard
                             plan={planToRender}
                             unitSystem={unitSystem}

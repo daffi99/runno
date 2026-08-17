@@ -639,52 +639,54 @@ ${planContext}
 
 COACHING & RESPONSE PRINCIPLES:
 1. Direct, Straightforward & Concise:
-   - Always answer user questions directly without unnecessary rambling, robotic disclaimers, or debating internal backend data structures.
-   - If the user asks for total distance, total runs, or overall statistics, give the exact answer immediately from the summary (e.g. "Total jarak lari kamu saat ini adalah 37.6 km dari 10 sesi lari.") in 1-2 clear, encouraging sentences.
+   - Always answer user questions directly without unnecessary rambling or robotic disclaimers.
+   - If the user asks for total distance, total runs, or overall statistics, give the exact answer immediately from the summary in 1-2 clear, encouraging sentences.
 2. Natural, Friendly Persona:
    - Talk like a genuine human running coach (Indonesian by default if the user speaks Indonesian, or English if user speaks English).
    - Keep answers practical, actionable, and easy to read.
 3. Structured Plan Generation:
-   - When generating or updating a training plan, provide your short coaching explanation AND append the complete structured plan inside a \`\`\`json_plan ... \`\`\` code block.
+   - When proposing, adapting, advancing, or adjusting any training plan/schedule, write your brief coaching notes AND append the complete structured plan inside a \`\`\`json_plan ... \`\`\` code block.
+   - Keep each workout's "description" short and concise (1 sentence) to keep generation fast and complete.
 
 JSON_PLAN STRUCTURE:
 \`\`\`json_plan
 {
-  "title": "Sub-30 Min 5K Plan - Week 1",
-  "goal": "Break 30 minutes in 5K",
-  "scheduleSummary": "Tuesday, Thursday, Saturday",
+  "title": "Sub-35 Min 5K Plan - Week 2",
+  "goal": "Mencapai Sub-35 Menit 5K",
+  "scheduleSummary": "Selasa, Kamis, Sabtu",
   "selectedDays": ["Tuesday", "Thursday", "Saturday"],
-  "weeklyTargetKm": 14.5,
-  "totalWeeks": 6,
-  "currentWeek": 1,
+  "weeklyTargetKm": 13.5,
+  "totalWeeks": 16,
+  "currentWeek": 2,
   "fitnessLevel": "beginner",
-  "aiAdvice": "Keep easy runs conversational so you recover well for threshold days.",
+  "aiAdvice": "Jaga lari santai tetap konversasional untuk pemulihan optimal.",
   "workouts": [
     {
       "dayOfWeek": 1,
-      "dayName": "Monday",
+      "dayName": "Senin",
       "title": "Rest & Recovery",
       "type": "rest",
       "distanceKm": 0,
       "targetPaceSecPerKm": null,
       "targetHrZone": "Rest",
-      "description": "Full rest day to recover muscles and replenish glycogen stores."
+      "description": "Istirahat total agar otot pulih optimal."
     },
     {
       "dayOfWeek": 2,
-      "dayName": "Tuesday",
+      "dayName": "Selasa",
       "title": "Easy Aerobic Run",
       "type": "easy",
       "distanceKm": 4.0,
       "targetPaceSecPerKm": 390,
       "targetHrZone": "Zone 2 (Aerobic)",
-      "description": "Smooth conversational pace to build aerobic base."
+      "description": "Lari santai dengan ritme stabil dan nafas teratur."
     }
   ]
 }
 \`\`\``;
 
     const lowerMsg = message.toLowerCase();
+
     const isExplicitPlan =
       lowerMsg.includes('buatkan jadwal') ||
       lowerMsg.includes('jadwal latihan') ||
@@ -694,11 +696,13 @@ JSON_PLAN STRUCTURE:
       lowerMsg.includes('create plan') ||
       lowerMsg.includes('buatkan plan') ||
       lowerMsg.includes('training plan') ||
-      lowerMsg.includes('buatkan jadwal lari');
+      lowerMsg.includes('minggu') ||
+      lowerMsg.includes('week') ||
+      lowerMsg.includes('jadwal');
 
     let modeDirective = '';
     if (isExplicitPlan) {
-      modeDirective = '\n\nIMPORTANT: The user wants an active training plan. You MUST provide the full ```json_plan ... ``` code block with all 7 days alongside your coaching notes.';
+      modeDirective = '\n\nIMPORTANT: The user wants a training plan or schedule update. You MUST provide the full ```json_plan ... ``` code block containing all 7 days alongside your coaching notes.';
     }
 
     const chatMessages: any[] = [
@@ -763,7 +767,7 @@ JSON_PLAN STRUCTURE:
           body: JSON.stringify({
             model: m,
             messages: chatMessages,
-            max_tokens: 2500,
+            max_tokens: 4000,
             temperature: 0.6,
           }),
         });
@@ -801,42 +805,79 @@ JSON_PLAN STRUCTURE:
     const data = await openRouterResponse.json();
     const rawReply = data.choices?.[0]?.message?.content || '';
 
+    // Robust plan extraction with auto-repair
+    function repairAndParseJson(text: string) {
+      if (!text) return null;
+      const clean = text.trim();
+      try { return JSON.parse(clean); } catch (_) {}
+
+      const cleaned = clean
+        .replace(/,\s*([}\]])/g, '$1')
+        .replace(/[\u201C\u201D]/g, '"');
+
+      try { return JSON.parse(cleaned); } catch (_) {}
+
+      const lastObjEnd = cleaned.lastIndexOf('}');
+      if (lastObjEnd !== -1) {
+        let candidate = cleaned.substring(0, lastObjEnd + 1);
+        let openBraces = 0;
+        let openBrackets = 0;
+        let inString = false;
+        let escaped = false;
+
+        for (let i = 0; i < candidate.length; i++) {
+          const char = candidate[i];
+          if (char === '"' && !escaped) inString = !inString;
+          else if (!inString) {
+            if (char === '{') openBraces++;
+            else if (char === '}') openBraces--;
+            else if (char === '[') openBrackets++;
+            else if (char === ']') openBrackets--;
+          }
+          escaped = (char === '\\' && !escaped);
+        }
+
+        while (openBrackets > 0) { candidate += ']'; openBrackets--; }
+        while (openBraces > 0) { candidate += '}'; openBraces--; }
+
+        try { return JSON.parse(candidate); } catch (_) {}
+      }
+      return null;
+    }
+
     let suggestedPlan: any = null;
     let cleanReply = rawReply;
 
-    // Robust extraction for JSON plans (tolerant of missing closing tags, trailing commas, etc.)
-    const patterns = [
-      /```(?:json_plan|json)?\s*(\{[\s\S]*?"workouts"[\s\S]*?\})\s*```?/,
-      /```json_plan\s*([\s\S]*?)(?:```|$)/,
-      /```json\s*([\s\S]*?)(?:```|$)/,
-      /(\{[\s\r\n]*"title"[\s\S]*?"workouts"[\s\S]*?\})/,
-    ];
+    // Strategy 1: Look for ```json_plan ... ``` or ```json ... ``` code blocks
+    const codeBlockMatch = rawReply.match(/```(?:json_plan|json)?\s*([\s\S]*?)(?:```|$)/);
+    if (codeBlockMatch && codeBlockMatch[1] && codeBlockMatch[1].includes('"workouts"')) {
+      const parsed = repairAndParseJson(codeBlockMatch[1]);
+      if (parsed && (parsed.workouts || parsed.title)) {
+        suggestedPlan = sanitizePlan(parsed);
+        cleanReply = rawReply.replace(codeBlockMatch[0], '').trim();
+      }
+    }
 
-    for (const regex of patterns) {
-      const match = rawReply.match(regex);
-      if (match && match[1]) {
-        const jsonCandidate = match[1].trim();
-        try {
-          // Clean trailing commas and unicode quotes before parsing
-          const cleanedJson = jsonCandidate
-            .replace(/,\s*([}\]])/g, '$1')
-            .replace(/[\u201C\u201D]/g, '"');
-          const parsed = JSON.parse(cleanedJson);
+    // Strategy 2: Look for raw JSON object containing "workouts"
+    if (!suggestedPlan) {
+      const firstBrace = rawReply.indexOf('{');
+      const lastBrace = rawReply.lastIndexOf('}');
+      if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+        const candidate = rawReply.substring(firstBrace, lastBrace + 1);
+        if (candidate.includes('"workouts"')) {
+          const parsed = repairAndParseJson(candidate);
           if (parsed && (parsed.workouts || parsed.title)) {
             suggestedPlan = sanitizePlan(parsed);
-            cleanReply = rawReply.replace(match[0], '').trim();
-            break;
+            cleanReply = (rawReply.substring(0, firstBrace) + ' ' + rawReply.substring(lastBrace + 1)).trim();
           }
-        } catch (err: any) {
-          console.warn('[Runno AI Coach] Attempted plan JSON parse error:', err.message);
         }
       }
     }
 
-    // Ensure raw json_plan code never leaks into cleanReply text
+    // Final cleanReply cleanup: strip any lingering raw code blocks
     cleanReply = cleanReply
-      .replace(/```(?:json_plan|json)?\s*\{[\s\S]*?\}\s*```?/g, '')
-      .replace(/```json_plan[\s\S]*?(?:```|$)/g, '')
+      .replace(/```(?:json_plan|json)?[\s\S]*?(?:```|$)/g, '')
+      .replace(/```[\s\S]*?```/g, '')
       .trim();
 
     res.json({
@@ -854,6 +895,7 @@ JSON_PLAN STRUCTURE:
         clientTimestamp: new Date().toISOString(),
       },
     });
+
 
 
 
