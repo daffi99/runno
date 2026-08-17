@@ -8,7 +8,8 @@ import { formatDuration, formatPace, formatDate, formatDistance, formatWorkoutDa
 import { RefreshCw, ChevronDown, TrendingUp, TrendingDown, Minus, Sparkles, ArrowRight, ChevronRight, Moon } from 'lucide-react';
 import { clsx } from 'clsx';
 
-export const APP_VERSION = 'v2.0.5';
+export const APP_VERSION = 'v2.0.6';
+
 
 interface DashboardViewProps {
   runs: Run[];
@@ -215,8 +216,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <ChevronDown className="w-4 h-4 text-neutral-500 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
       </div>
 
-      {/* 4 Summary Cards (KPIs) */}
-      <div className="grid grid-cols-2 gap-3.5">
+      {/* 4 Summary Cards (KPIs) - 1 Column Each */}
+      <div className="grid grid-cols-1 gap-3.5">
         {/* Distance Card */}
         <Card className="p-4 flex flex-col justify-between min-h-[110px]">
           <div>
@@ -362,7 +363,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </Card>
       </div>
 
-      {/* Today's Training Session & 4 Upcoming Days (from Active Training Plan) */}
+      {/* Today's Training Session & Tomorrow's Session (from Active Training Plan) */}
       {(() => {
         const activePlan = storageService.getActivePlan();
         if (activePlan && activePlan.workouts) {
@@ -380,50 +381,39 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             completedRunId: matchingRun?.id || null,
           } : null;
 
-          // Next 4 days calculation
-          const nextDays = [1, 2, 3, 4].map((offset) => {
-            const targetDate = new Date();
-            targetDate.setDate(targetDate.getDate() + offset);
-            const targetDayOfWeek = targetDate.getDay();
-            const targetIso = targetDate.toISOString().split('T')[0];
+          // Tomorrow's session calculation
+          const tomorrowDate = new Date();
+          tomorrowDate.setDate(tomorrowDate.getDate() + 1);
+          const tomorrowDayOfWeek = tomorrowDate.getDay();
+          const tomorrowIso = tomorrowDate.toISOString().split('T')[0];
 
-            // Calculate week offset if crossing past Sunday
-            const dayShift = currentDayOfWeek === 0 ? 6 : currentDayOfWeek - 1 + offset;
-            const weekOffset = Math.floor(dayShift / 7);
-            const targetWeekNum = Math.min(activePlan.totalWeeks || 4, currentPlanWeek + weekOffset);
+          // Check if tomorrow enters next week (if today is Sunday, tomorrow is Monday in next week)
+          const tomorrowWeekNum = currentDayOfWeek === 0
+            ? Math.min(activePlan.totalWeeks || 4, currentPlanWeek + 1)
+            : currentPlanWeek;
+          const tomorrowWeekWorkouts = (activePlan.weeklySchedules && activePlan.weeklySchedules[tomorrowWeekNum]) || activePlan.workouts;
 
-            const targetWeekWorkouts = (activePlan.weeklySchedules && activePlan.weeklySchedules[targetWeekNum])
-              || activePlan.workouts;
+          const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+          const rawTomorrowWorkout = tomorrowWeekWorkouts.find((w) => w.dayOfWeek === tomorrowDayOfWeek) || {
+            id: `rest_${tomorrowIso}`,
+            dayOfWeek: tomorrowDayOfWeek,
+            dayName: dayNames[tomorrowDayOfWeek],
+            title: 'Rest Day',
+            type: 'rest' as const,
+            distanceKm: 0,
+            targetPaceSecPerKm: null,
+            targetHrZone: null,
+            description: 'Hari pemulihan & istirahat otot.',
+            completed: false,
+          };
 
-            const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-            const rawWorkout = targetWeekWorkouts.find((w) => w.dayOfWeek === targetDayOfWeek) || {
-              id: `rest_${targetIso}`,
-              dayOfWeek: targetDayOfWeek,
-              dayName: dayNames[targetDayOfWeek],
-              title: 'Rest Day',
-              type: 'rest' as const,
-              distanceKm: 0,
-              targetPaceSecPerKm: null,
-              targetHrZone: null,
-              description: 'Hari pemulihan & istirahat otot.',
-              completed: false,
-            };
-
-            const dayMatchingRun = runs.find((r) => r.date && r.date.split('T')[0] === targetIso);
-            const boundWorkout = {
-              ...rawWorkout,
-              date: targetIso,
-              completed: Boolean(dayMatchingRun),
-              completedRunId: dayMatchingRun?.id || null,
-            };
-
-            return {
-              offset,
-              targetDate,
-              targetIso,
-              workout: boundWorkout,
-            };
-          });
+          const tomorrowMatchingRun = runs.find((r) => r.date && r.date.split('T')[0] === tomorrowIso);
+          const tomorrowBoundWorkout = {
+            ...rawTomorrowWorkout,
+            date: tomorrowIso,
+            completed: Boolean(tomorrowMatchingRun),
+            completedRunId: tomorrowMatchingRun?.id || null,
+          };
 
           return (
             <div className="space-y-4">
@@ -466,11 +456,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 )}
               </div>
 
-              {/* 4 Upcoming Next Day Sessions (1 Column) */}
+              {/* Tomorrow's Session */}
               <div className="space-y-2">
                 <div className="flex items-center justify-between px-1">
                   <span className="text-xs font-black uppercase tracking-wider text-neutral-400">
-                    Upcoming Sessions (Next 4 Days)
+                    Tomorrow's Session
                   </span>
                   <button
                     onClick={() => onNavigateTab('coach')}
@@ -481,23 +471,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   </button>
                 </div>
 
-                <div className="space-y-2">
-                  {nextDays.map(({ targetDate, workout }) => (
-                    <WorkoutCard
-                      key={workout.date || workout.id}
-                      workout={workout}
-                      unitSystem={unitSystem}
-                      isToday={false}
-                      date={targetDate}
-                      onSelectRun={onSelectRun}
-                      onSelectWorkout={() => onNavigateTab('coach')}
-                    />
-                  ))}
-                </div>
+                <WorkoutCard
+                  workout={tomorrowBoundWorkout}
+                  unitSystem={unitSystem}
+                  isToday={false}
+                  date={tomorrowDate}
+                  onSelectRun={onSelectRun}
+                  onSelectWorkout={() => onNavigateTab('coach')}
+                />
               </div>
             </div>
           );
         }
+
 
 
         return (

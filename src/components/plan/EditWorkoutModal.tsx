@@ -35,7 +35,7 @@ const WORKOUT_TYPES: {
     label: 'Easy Run',
     desc: 'Lari santai ritme nyaman untuk membangun aerobik dasar.',
     icon: <Heart className="w-5 h-5 text-emerald-500" />,
-    activeColor: 'border-emerald-500 bg-emerald-50/50 ring-2 ring-emerald-400/30',
+    activeColor: 'border-emerald-500 bg-emerald-50/60 ring-2 ring-emerald-400/30',
     badgeBg: 'bg-emerald-100 text-emerald-800',
   },
   {
@@ -43,7 +43,7 @@ const WORKOUT_TYPES: {
     label: 'Tempo Run',
     desc: 'Lari ritme stabil & cepat terkontrol di batas threshold.',
     icon: <Zap className="w-5 h-5 text-amber-500" />,
-    activeColor: 'border-amber-500 bg-amber-50/50 ring-2 ring-amber-400/30',
+    activeColor: 'border-amber-500 bg-amber-50/60 ring-2 ring-amber-400/30',
     badgeBg: 'bg-amber-100 text-amber-800',
   },
   {
@@ -51,7 +51,7 @@ const WORKOUT_TYPES: {
     label: 'Intervals',
     desc: 'Sesi lari cepat bergantian dengan istirahat untuk VO2Max.',
     icon: <Zap className="w-5 h-5 text-purple-500" />,
-    activeColor: 'border-purple-500 bg-purple-50/50 ring-2 ring-purple-400/30',
+    activeColor: 'border-purple-500 bg-purple-50/60 ring-2 ring-purple-400/30',
     badgeBg: 'bg-purple-100 text-purple-800',
   },
   {
@@ -59,7 +59,7 @@ const WORKOUT_TYPES: {
     label: 'Long Run',
     desc: 'Lari jarak jauh dengan pace stabil untuk melatih daya tahan.',
     icon: <Flame className="w-5 h-5 text-[#FF5500]" />,
-    activeColor: 'border-[#FF5500] bg-orange-50/50 ring-2 ring-[#FF5500]/30',
+    activeColor: 'border-[#FF5500] bg-orange-50/60 ring-2 ring-[#FF5500]/30',
     badgeBg: 'bg-orange-100 text-orange-800',
   },
   {
@@ -67,7 +67,7 @@ const WORKOUT_TYPES: {
     label: 'Recovery Run',
     desc: 'Lari sangat santai untuk regenerasi otot & kelancaran darah.',
     icon: <Heart className="w-5 h-5 text-teal-500" />,
-    activeColor: 'border-teal-500 bg-teal-50/50 ring-2 ring-teal-400/30',
+    activeColor: 'border-teal-500 bg-teal-50/60 ring-2 ring-teal-400/30',
     badgeBg: 'bg-teal-100 text-teal-800',
   },
   {
@@ -81,23 +81,27 @@ const WORKOUT_TYPES: {
 ];
 
 const HR_ZONES_DATA = [
-  { zone: 'Zone 1 (Warm Up)', label: 'Zone 1', desc: 'Pemanasan sangat ringan (< 60% HR Max)' },
-  { zone: 'Zone 2 (Aerobic Base)', label: 'Zone 2', desc: 'Fondasi aerobik nyaman (60-70% HR Max)' },
-  { zone: 'Zone 3 (Tempo / Aerobic)', label: 'Zone 3', desc: 'Pace tempo sedang (70-80% HR Max)' },
-  { zone: 'Zone 4 (Threshold)', label: 'Zone 4', desc: 'Pace keras / threshold (80-90% HR Max)' },
-  { zone: 'Zone 5 (Max Effort)', label: 'Zone 5', desc: 'Sprint / batas maksimal (90-100% HR Max)' },
+  { zone: 'Zone 1 (Warm Up)', label: 'Zone 1 (Warm Up)', desc: 'Pemanasan sangat ringan (< 60% HR Max)' },
+  { zone: 'Zone 2 (Aerobic Base)', label: 'Zone 2 (Aerobic Base)', desc: 'Fondasi aerobik nyaman (60-70% HR Max)' },
+  { zone: 'Zone 3 (Tempo / Aerobic)', label: 'Zone 3 (Tempo / Aerobic)', desc: 'Pace tempo sedang (70-80% HR Max)' },
+  { zone: 'Zone 4 (Threshold)', label: 'Zone 4 (Threshold)', desc: 'Pace keras / threshold (80-90% HR Max)' },
+  { zone: 'Zone 5 (Max Effort)', label: 'Zone 5 (Max Effort)', desc: 'Sprint / batas maksimal (90-100% HR Max)' },
 ];
 
 const QUICK_DISTANCES = [3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 10.0, 12.0, 15.0, 21.1];
 
 const QUICK_PACES = [
-  { label: '4:30', sec: 270 },
   { label: '5:00', sec: 300 },
   { label: '5:30', sec: 330 },
   { label: '6:00', sec: 360 },
   { label: '6:30', sec: 390 },
   { label: '7:00', sec: 420 },
   { label: '7:30', sec: 450 },
+  { label: '8:00', sec: 480 },
+  { label: '8:30', sec: 510 },
+  { label: '9:00', sec: 540 },
+  { label: '9:30', sec: 570 },
+  { label: '10:00', sec: 600 },
 ];
 
 const DAY_LABELS: Record<string, string> = {
@@ -118,7 +122,7 @@ export const EditWorkoutModal: React.FC<EditWorkoutModalProps> = ({
 }) => {
   if (!isOpen || !workout) return null;
 
-  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
+  const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
   const [type, setType] = useState<WorkoutType>(workout.type || 'easy');
   const [distanceKm, setDistanceKm] = useState<number>(workout.distanceKm || 4.0);
   const [targetPaceSec, setTargetPaceSec] = useState<number | null>(workout.targetPaceSecPerKm || 360);
@@ -166,7 +170,7 @@ export const EditWorkoutModal: React.FC<EditWorkoutModalProps> = ({
       handleSave();
       return;
     }
-    if (step < 4) {
+    if (step < 5) {
       setStep((prev) => (prev + 1) as any);
     } else {
       handleSave();
@@ -185,49 +189,52 @@ export const EditWorkoutModal: React.FC<EditWorkoutModalProps> = ({
         {/* Header */}
         <div className="flex items-center justify-between p-4 sm:p-5 pb-3 border-b border-neutral-100 shrink-0">
           <div className="flex items-center space-x-2 min-w-0">
-            {step > 1 ? (
-              <button
-                type="button"
-                onClick={prevStep}
-                className="p-1.5 -ml-1 rounded-full hover:bg-neutral-100 text-neutral-600 active:scale-95 transition-all shrink-0"
-                title="Kembali"
-              >
-                <ChevronLeft className="w-5 h-5" />
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={onClose}
-                className="p-1.5 -ml-1 rounded-full hover:bg-neutral-100 text-neutral-400 hover:text-neutral-600 transition-colors shrink-0"
-                title="Batal"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-1.5 -ml-1 rounded-full hover:bg-neutral-100 text-neutral-400 hover:text-neutral-600 transition-colors shrink-0"
+              title="Tutup / Batal"
+            >
+              <X className="w-5 h-5" />
+            </button>
             <div className="min-w-0">
               <h3 className="text-base font-black text-neutral-900 truncate">
                 Edit Sesi {DAY_LABELS[workout.dayName] || workout.dayName}
               </h3>
               <p className="text-[11px] text-neutral-400 font-medium truncate">
-                Langkah {step} dari 4: {step === 1 ? 'Tipe Latihan' : step === 2 ? 'Target Jarak' : step === 3 ? 'Target Pace' : 'Detail & Heart Rate'}
+                Langkah {step} dari 5: {step === 1 ? 'Tipe Latihan' : step === 2 ? 'Target Jarak' : step === 3 ? 'Target Pace' : step === 4 ? 'Heart Rate' : 'Nama & Catatan'}
               </p>
             </div>
           </div>
 
-          {/* Top Right Direct Save Button */}
-          <button
-            type="button"
-            onClick={handleSave}
-            className="flex items-center space-x-1.5 px-3.5 py-1.5 rounded-xl bg-[#FF5500] hover:bg-[#E64D00] text-white text-xs font-black shadow-glow-orange active:scale-95 transition-all shrink-0 ml-2"
-          >
-            <Check className="w-4 h-4 text-white stroke-[3]" />
-            <span>Simpan</span>
-          </button>
+          {/* Top Right Action Buttons: Back & Simpan side by side */}
+          <div className="flex items-center space-x-1.5 shrink-0 ml-2">
+            {step > 1 && (
+              <button
+                type="button"
+                onClick={prevStep}
+                className="flex items-center space-x-0.5 px-2.5 py-1.5 rounded-xl border border-neutral-200 bg-neutral-50 hover:bg-neutral-100 text-neutral-700 text-xs font-bold active:scale-95 transition-all shadow-2xs"
+                title="Kembali ke langkah sebelumnya"
+              >
+                <ChevronLeft className="w-4 h-4" />
+                <span>Back</span>
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={handleSave}
+              className="flex items-center space-x-1 px-3 py-1.5 rounded-xl bg-[#FF5500] hover:bg-[#E64D00] text-white text-xs font-black shadow-glow-orange active:scale-95 transition-all"
+            >
+              <Check className="w-4 h-4 text-white stroke-[3]" />
+              <span>Simpan</span>
+            </button>
+          </div>
         </div>
 
         {/* Step Progress Bar */}
         <div className="flex items-center space-x-1.5 px-4 pt-3 shrink-0">
-          {[1, 2, 3, 4].map((s) => (
+          {[1, 2, 3, 4, 5].map((s) => (
             <div
               key={s}
               onClick={() => setStep(s as any)}
@@ -241,12 +248,12 @@ export const EditWorkoutModal: React.FC<EditWorkoutModalProps> = ({
 
         {/* Scrollable Content Wizard */}
         <div className="flex-1 overflow-y-auto overscroll-contain p-4 sm:p-5 space-y-4">
-          {/* STEP 1: TIPE LATIHAN (Big Cards) */}
+          {/* STEP 1: TIPE LATIHAN (Big Cards -> 1-click auto advance) */}
           {step === 1 && (
             <div className="space-y-3 animate-in fade-in duration-150">
               <div>
-                <h4 className="text-sm font-black text-neutral-900">Pilih Tipe Latihan</h4>
-                <p className="text-xs text-neutral-400">Pilih jenis sesi untuk hari {DAY_LABELS[workout.dayName] || workout.dayName}</p>
+                <h4 className="text-sm font-black text-neutral-900">1. Pilih Tipe Latihan</h4>
+                <p className="text-xs text-neutral-400">Tap salah satu kartu untuk langsung lanjut</p>
               </div>
 
               <div className="grid grid-cols-1 gap-2.5">
@@ -263,15 +270,20 @@ export const EditWorkoutModal: React.FC<EditWorkoutModalProps> = ({
                           setTargetPaceSec(null);
                           setTitle('Rest & Recovery');
                           setDescription('Hari istirahat pemulihan otot.');
-                        } else if (workout.type === 'rest' || distanceKm === 0) {
-                          setDistanceKm(5.0);
-                          setTargetPaceSec(360);
-                          setTitle(`${t.label} Session`);
-                          setDescription('Fokus ritme stabil dan nafas teratur.');
+                          setTimeout(() => handleSave(), 100);
+                        } else {
+                          if (workout.type === 'rest' || distanceKm === 0) {
+                            setDistanceKm(5.0);
+                            setTargetPaceSec(360);
+                            setTitle(`${t.label} Session`);
+                            setDescription('Fokus ritme stabil dan nafas teratur.');
+                          }
+                          // Single click auto-advance to step 2!
+                          setStep(2);
                         }
                       }}
                       className={clsx(
-                        'w-full text-left p-3.5 rounded-2xl border-2 transition-all flex items-center justify-between active:scale-[0.99] shadow-soft-xs',
+                        'w-full text-left p-3.5 rounded-2xl border-2 transition-all flex items-center justify-between active:scale-[0.98] shadow-soft-xs',
                         isSelected ? t.activeColor : 'border-neutral-200/90 bg-white hover:bg-neutral-50'
                       )}
                     >
@@ -294,7 +306,7 @@ export const EditWorkoutModal: React.FC<EditWorkoutModalProps> = ({
                         'w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 ml-2',
                         isSelected ? 'border-[#FF5500] bg-[#FF5500] text-white' : 'border-neutral-300'
                       )}>
-                        {isSelected && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                        {isSelected ? <Check className="w-3.5 h-3.5 stroke-[3]" /> : <ChevronRight className="w-4 h-4 text-neutral-300" />}
                       </div>
                     </button>
                   );
@@ -307,8 +319,8 @@ export const EditWorkoutModal: React.FC<EditWorkoutModalProps> = ({
           {step === 2 && (
             <div className="space-y-4 animate-in fade-in duration-150">
               <div>
-                <h4 className="text-sm font-black text-neutral-900">Target Jarak Lari</h4>
-                <p className="text-xs text-neutral-400">Atur jarak latihan dengan tombol + / - (kelipatan 0.5 km)</p>
+                <h4 className="text-sm font-black text-neutral-900">2. Target Jarak Lari</h4>
+                <p className="text-xs text-neutral-400">Atur jarak dengan tombol + / - (kelipatan 0.5 km) atau pilih jarak cepat</p>
               </div>
 
               {/* Big Stepper Display */}
@@ -322,7 +334,7 @@ export const EditWorkoutModal: React.FC<EditWorkoutModalProps> = ({
                 </div>
 
                 {/* Big + and - Buttons */}
-                <div className="flex items-center justify-center space-x-6 pt-2">
+                <div className="flex items-center justify-center space-x-6 pt-1">
                   <button
                     type="button"
                     onClick={handleDecrementDistance}
@@ -345,11 +357,14 @@ export const EditWorkoutModal: React.FC<EditWorkoutModalProps> = ({
                 </div>
               </div>
 
-              {/* Quick Distance Presets */}
+              {/* Quick Distance Presets (1-click auto-advance to step 3!) */}
               <div className="space-y-2">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-400">
-                  Pilihan Jarak Cepat
-                </span>
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-400">
+                    Pilihan Jarak Cepat
+                  </span>
+                  <span className="text-[10px] text-neutral-400">Tap untuk langsung lanjut</span>
+                </div>
                 <div className="grid grid-cols-5 gap-1.5">
                   {QUICK_DISTANCES.map((d) => {
                     const isSelected = distanceKm === d;
@@ -357,9 +372,12 @@ export const EditWorkoutModal: React.FC<EditWorkoutModalProps> = ({
                       <button
                         key={d}
                         type="button"
-                        onClick={() => setDistanceKm(d)}
+                        onClick={() => {
+                          setDistanceKm(d);
+                          setStep(3);
+                        }}
                         className={clsx(
-                          'py-2 px-1 rounded-xl text-xs font-black transition-all border text-center',
+                          'py-2 px-1 rounded-xl text-xs font-black transition-all border text-center active:scale-95',
                           isSelected
                             ? 'bg-neutral-900 text-white border-neutral-900 shadow-2xs'
                             : 'bg-neutral-50 text-neutral-700 border-neutral-200 hover:bg-neutral-100'
@@ -374,16 +392,16 @@ export const EditWorkoutModal: React.FC<EditWorkoutModalProps> = ({
             </div>
           )}
 
-          {/* STEP 3: TARGET PACE */}
+          {/* STEP 3: TARGET PACE (5:00 to 10:00 /km) */}
           {step === 3 && (
             <div className="space-y-4 animate-in fade-in duration-150">
               <div>
-                <h4 className="text-sm font-black text-neutral-900">Target Pace Lari</h4>
-                <p className="text-xs text-neutral-400">Atur kecepatan target per kilometer</p>
+                <h4 className="text-sm font-black text-neutral-900">3. Target Pace Lari</h4>
+                <p className="text-xs text-neutral-400">Pilih kecepatan target dari pace 5:00 s/d 10:00 /km</p>
               </div>
 
               {/* Big Pace Display */}
-              <div className="p-6 rounded-3xl bg-orange-50/50 border border-orange-200/80 text-center space-y-4 shadow-soft-sm">
+              <div className="p-5 rounded-3xl bg-orange-50/50 border border-orange-200/80 text-center space-y-3 shadow-soft-sm">
                 <div className="space-y-1">
                   <div className="text-5xl font-black font-mono text-neutral-900 tracking-tight">
                     {formatPaceText(targetPaceSec)}
@@ -393,13 +411,13 @@ export const EditWorkoutModal: React.FC<EditWorkoutModalProps> = ({
                 </div>
 
                 {/* Pace Steppers */}
-                <div className="flex items-center justify-center space-x-3 pt-2">
+                <div className="flex items-center justify-center space-x-3 pt-1">
                   <button
                     type="button"
                     onClick={() => handleAdjustPace(-5)}
                     className="px-4 py-2.5 rounded-xl bg-white border border-neutral-200 hover:border-neutral-400 text-xs font-black text-neutral-800 active:scale-95 shadow-2xs"
                   >
-                    - 5s (Lebih Cepat)
+                    - 5s (Cepat)
                   </button>
 
                   <button
@@ -407,16 +425,19 @@ export const EditWorkoutModal: React.FC<EditWorkoutModalProps> = ({
                     onClick={() => handleAdjustPace(5)}
                     className="px-4 py-2.5 rounded-xl bg-white border border-neutral-200 hover:border-neutral-400 text-xs font-black text-neutral-800 active:scale-95 shadow-2xs"
                   >
-                    + 5s (Lebih Santai)
+                    + 5s (Santai)
                   </button>
                 </div>
               </div>
 
-              {/* Quick Pace Presets */}
+              {/* Quick Pace Presets 5:00 to 10:00 (1-click auto-advance to step 4!) */}
               <div className="space-y-2">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-400">
-                  Pilihan Pace Cepat
-                </span>
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-400">
+                    Pilihan Pace Cepat (Pace 5 s/d 10)
+                  </span>
+                  <span className="text-[10px] text-neutral-400">Tap untuk lanjut</span>
+                </div>
                 <div className="grid grid-cols-4 gap-1.5">
                   {QUICK_PACES.map((p) => {
                     const isSelected = targetPaceSec === p.sec;
@@ -424,9 +445,12 @@ export const EditWorkoutModal: React.FC<EditWorkoutModalProps> = ({
                       <button
                         key={p.sec}
                         type="button"
-                        onClick={() => setTargetPaceSec(p.sec)}
+                        onClick={() => {
+                          setTargetPaceSec(p.sec);
+                          setStep(4);
+                        }}
                         className={clsx(
-                          'py-2 px-1 rounded-xl text-xs font-black transition-all border text-center font-mono',
+                          'py-2 px-1 rounded-xl text-xs font-black transition-all border text-center font-mono active:scale-95',
                           isSelected
                             ? 'bg-neutral-900 text-white border-neutral-900 shadow-2xs'
                             : 'bg-neutral-50 text-neutral-700 border-neutral-200 hover:bg-neutral-100'
@@ -441,46 +465,69 @@ export const EditWorkoutModal: React.FC<EditWorkoutModalProps> = ({
             </div>
           )}
 
-          {/* STEP 4: HEART RATE & NOTES */}
+          {/* STEP 4: HEART RATE ZONE (Big Cards -> 1-click auto-advance to step 5!) */}
           {step === 4 && (
             <div className="space-y-4 animate-in fade-in duration-150">
               <div>
-                <h4 className="text-sm font-black text-neutral-900">Zona Heart Rate & Catatan</h4>
-                <p className="text-xs text-neutral-400">Pilih intensitas detak jantung dan instruksi lari</p>
+                <h4 className="text-sm font-black text-neutral-900">4. Target Heart Rate Zone</h4>
+                <p className="text-xs text-neutral-400">Pilih intensitas detak jantung (tap untuk lanjut)</p>
               </div>
 
-              {/* HR Zone Big Cards */}
               <div className="space-y-2">
-                <label className="block text-[11px] font-bold text-neutral-500 uppercase tracking-wider">
-                  Target Heart Rate Zone
-                </label>
-                <div className="space-y-1.5">
-                  {HR_ZONES_DATA.map((z) => {
-                    const isSelected = targetHrZone === z.zone;
-                    return (
-                      <button
-                        key={z.zone}
-                        type="button"
-                        onClick={() => setTargetHrZone(z.zone)}
-                        className={clsx(
-                          'w-full p-2.5 rounded-xl border text-left flex items-center justify-between transition-all active:scale-[0.99]',
-                          isSelected
-                            ? 'bg-orange-50 border-[#FF5500] text-neutral-900 font-bold shadow-2xs'
-                            : 'bg-neutral-50 border-neutral-200/80 text-neutral-700 hover:bg-neutral-100'
-                        )}
-                      >
-                        <div>
-                          <div className="text-xs font-black">{z.label}</div>
-                          <div className="text-[11px] text-neutral-500">{z.desc}</div>
-                        </div>
-                        {isSelected && <Check className="w-4 h-4 text-[#FF5500] shrink-0 ml-2" />}
-                      </button>
-                    );
-                  })}
+                {HR_ZONES_DATA.map((z) => {
+                  const isSelected = targetHrZone === z.zone;
+                  return (
+                    <button
+                      key={z.zone}
+                      type="button"
+                      onClick={() => {
+                        setTargetHrZone(z.zone);
+                        setStep(5);
+                      }}
+                      className={clsx(
+                        'w-full p-3 rounded-2xl border-2 text-left flex items-center justify-between transition-all active:scale-[0.98]',
+                        isSelected
+                          ? 'bg-orange-50/70 border-[#FF5500] text-neutral-900 font-bold shadow-2xs ring-2 ring-[#FF5500]/20'
+                          : 'bg-white border-neutral-200/90 text-neutral-700 hover:bg-neutral-50'
+                      )}
+                    >
+                      <div>
+                        <div className="text-xs font-black text-neutral-900">{z.label}</div>
+                        <div className="text-[11px] text-neutral-500 mt-0.5">{z.desc}</div>
+                      </div>
+                      <div className={clsx(
+                        'w-5 h-5 rounded-full border flex items-center justify-center shrink-0 ml-2',
+                        isSelected ? 'border-[#FF5500] bg-[#FF5500] text-white' : 'border-neutral-300'
+                      )}>
+                        {isSelected ? <Check className="w-3 h-3 stroke-[3]" /> : <ChevronRight className="w-3.5 h-3.5 text-neutral-300" />}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* STEP 5: NAMA SESI & CATATAN (Dedicated Step!) */}
+          {step === 5 && (
+            <div className="space-y-4 animate-in fade-in duration-150">
+              <div>
+                <h4 className="text-sm font-black text-neutral-900">5. Nama Sesi & Catatan Latihan</h4>
+                <p className="text-xs text-neutral-400">Lengkapi judul latihan dan instruksi khusus</p>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-neutral-50 border border-neutral-200/80 space-y-2">
+                <div className="text-xs font-bold text-neutral-500 uppercase tracking-wider">Ringkasan Sesi:</div>
+                <div className="flex items-center space-x-2 text-xs font-black text-neutral-800">
+                  <span className="px-2 py-0.5 rounded-md bg-orange-100 text-[#FF5500] uppercase text-[10px]">{type}</span>
+                  <span>{distanceKm.toFixed(1)} km</span>
+                  <span>·</span>
+                  <span>Pace {formatPaceText(targetPaceSec)}/km</span>
+                  <span>·</span>
+                  <span className="text-neutral-500 text-[11px]">{targetHrZone.split(' ')[0]}</span>
                 </div>
               </div>
 
-              {/* Workout Title & Description */}
               <div className="space-y-3 pt-1">
                 <div>
                   <label className="block text-[11px] font-bold text-neutral-500 mb-1 uppercase tracking-wider">
@@ -491,7 +538,7 @@ export const EditWorkoutModal: React.FC<EditWorkoutModalProps> = ({
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     placeholder="Contoh: Easy Aerobic Run"
-                    className="w-full bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2.5 text-xs font-bold text-neutral-800 focus:outline-none focus:ring-2 focus:ring-[#FF5500]/20"
+                    className="w-full bg-white border border-neutral-200 rounded-xl px-3 py-2.5 text-xs font-bold text-neutral-800 focus:outline-none focus:ring-2 focus:ring-[#FF5500]/20 focus:border-[#FF5500]"
                   />
                 </div>
 
@@ -500,11 +547,11 @@ export const EditWorkoutModal: React.FC<EditWorkoutModalProps> = ({
                     Instruksi / Catatan Latihan
                   </label>
                   <textarea
-                    rows={2}
+                    rows={3}
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     placeholder="Contoh: 1km warmup santai, 3km steady tempo @ 5:30/km, 1km cooldown"
-                    className="w-full bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2.5 text-xs text-neutral-700 focus:outline-none focus:ring-2 focus:ring-[#FF5500]/20"
+                    className="w-full bg-white border border-neutral-200 rounded-xl px-3 py-2.5 text-xs text-neutral-700 focus:outline-none focus:ring-2 focus:ring-[#FF5500]/20 focus:border-[#FF5500]"
                   />
                 </div>
               </div>
@@ -538,12 +585,12 @@ export const EditWorkoutModal: React.FC<EditWorkoutModalProps> = ({
             variant="primary"
             size="md"
             onClick={nextStep}
-            rightIcon={step < 4 && !isRest ? <ChevronRight className="w-4 h-4" /> : <Check className="w-4 h-4" />}
+            rightIcon={step < 5 && !isRest ? <ChevronRight className="w-4 h-4" /> : <Check className="w-4 h-4" />}
             className="flex-2 font-bold text-xs shadow-glow-orange py-3"
           >
             {step === 1 && isRest
               ? 'Simpan Rest Day'
-              : step === 4
+              : step === 5
               ? 'Simpan Perubahan Sesi'
               : 'Lanjut'}
           </Button>
