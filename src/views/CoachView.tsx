@@ -522,9 +522,16 @@ export const CoachView: React.FC<CoachViewProps> = ({
     setIsLoading(true);
 
     try {
+      // Strip heavy raw json_plan block from previous messages to cut ~70% input tokens while preserving conversation context
       const cleanHistory = messages
         .filter((m) => !m.content.includes('Sorry, I encountered an issue') && !m.content.includes('API error'))
-        .slice(-20);
+        .slice(-20)
+        .map((m) => ({
+          role: m.role,
+          content: m.content.replace(/```json_plan\s*[\s\S]*?\s*```/g, '').trim(),
+        }))
+        .filter((m) => m.content.length > 0);
+
 
       // Sanitize all runs so AI has complete visibility into 100% of uploaded runs without heavy image payloads
       const sanitizedRuns = runs.map((r) => ({
@@ -919,42 +926,8 @@ export const CoachView: React.FC<CoachViewProps> = ({
                 </div>
               )}
 
-              {/* Tomorrow's Workout Sneak Peek (Especially on Sunday or if today is rest/completed) */}
-              {isViewingCurrentWeek && tomorrowWorkout && (isSunday || todayWorkout?.completed || todayWorkout?.type === 'rest') && (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between px-1">
-                    <div className="flex items-center space-x-1.5">
-                      <span className="text-xs font-bold uppercase tracking-wider text-indigo-600 flex items-center gap-1">
-                        <Sparkles className="w-3.5 h-3.5 text-indigo-500" />
-                        Tomorrow's Session (Sneak Peek)
-                      </span>
-                      <span className="text-neutral-300">·</span>
-                      <span className="text-[11px] font-semibold text-neutral-500">
-                        {formatFullWorkoutDate(tomorrowDate)}
-                      </span>
-                    </div>
-                    {isSunday && (
-                      <button
-                        onClick={() => setViewedWeek(currentPlanWeek + 1)}
-                        className="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1"
-                      >
-                        <span>Week 2 Plan</span>
-                        <ArrowRight className="w-3 h-3" />
-                      </button>
-                    )}
-                  </div>
-                  <WorkoutCard
-                    workout={getWorkoutForDate(tomorrowWorkout, tomorrowDate, false)}
-                    unitSystem={unitSystem}
-                    isToday={false}
-                    date={tomorrowDate}
-                    onToggleComplete={handleToggleWorkout}
-                    onSelectRun={onSelectRun}
-                  />
-                </div>
-              )}
-
               {/* Weekly Schedule (7 Days for the viewed week) */}
+
               <div className="space-y-2.5 pt-1">
                 <div className="flex items-center justify-between px-1">
                   <div className="flex items-center space-x-2">
