@@ -36,11 +36,13 @@ export interface TrainingPlan {
   currentWeek: number; // e.g. 1
   fitnessLevel: 'beginner' | 'intermediate' | 'advanced';
   status: 'active' | 'completed' | 'archived';
-  workouts: PlanWorkout[]; // 7 days of workouts for the schedule
+  workouts: PlanWorkout[]; // Default / active week workouts
+  weeklySchedules?: Record<number, PlanWorkout[]>; // Independent workouts per week (Week 1, Week 2, Week 3, etc.)
   aiAdvice?: string; // Strategic coaching tips
   createdAt: string;
   updatedAt: string;
 }
+
 
 
 export interface AICoachMessage {

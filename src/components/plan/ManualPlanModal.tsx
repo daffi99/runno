@@ -82,16 +82,10 @@ export const ManualPlanModal: React.FC<ManualPlanModalProps> = ({
     existingPlan?.fitnessLevel || 'beginner'
   );
 
-  // Initialize 7 days of workouts (order: Monday=1 to Sunday=0)
-  const initialWorkouts = (): PlanWorkout[] => {
-    if (existingPlan?.workouts && existingPlan.workouts.length >= 7) {
-      return existingPlan.workouts;
-    }
-
+  const generateDefault7DayWorkouts = (): PlanWorkout[] => {
     const defaultDayOrder = [1, 2, 3, 4, 5, 6, 0]; // Mon, Tue, Wed, Thu, Fri, Sat, Sun
     return defaultDayOrder.map((dayNum) => {
       const dayName = DAY_NAMES[dayNum];
-      // Default: Tue, Thu, Sat active runs
       const isRunDay = dayNum === 2 || dayNum === 4 || dayNum === 6;
       return {
         id: `workout_custom_${Date.now()}_${dayNum}`,
@@ -111,25 +105,64 @@ export const ManualPlanModal: React.FC<ManualPlanModalProps> = ({
     });
   };
 
-  const [workouts, setWorkouts] = useState<PlanWorkout[]>(initialWorkouts);
+  // Initialize multi-week schedules dictionary
+  const initialWeeklySchedules = (): Record<number, PlanWorkout[]> => {
+    if (existingPlan?.weeklySchedules && Object.keys(existingPlan.weeklySchedules).length > 0) {
+      return existingPlan.weeklySchedules;
+    }
+    const defaultWorkouts = existingPlan?.workouts && existingPlan.workouts.length >= 7
+      ? existingPlan.workouts
+      : generateDefault7DayWorkouts();
+    const schedules: Record<number, PlanWorkout[]> = {};
+    const total = existingPlan?.totalWeeks || 8;
+    for (let w = 1; w <= total; w++) {
+      schedules[w] = JSON.parse(JSON.stringify(defaultWorkouts));
+    }
+    return schedules;
+  };
+
+  const [weeklySchedules, setWeeklySchedules] = useState<Record<number, PlanWorkout[]>>(initialWeeklySchedules);
+  const [selectedWeekNum, setSelectedWeekNum] = useState<number>(existingPlan?.currentWeek || 1);
   const [activeDayTab, setActiveDayTab] = useState<number>(1); // Default to Monday (1)
 
   if (!isOpen) return null;
 
-  const currentWorkout = workouts.find((w) => w.dayOfWeek === activeDayTab) || workouts[0];
+  const currentWeekWorkouts = weeklySchedules[selectedWeekNum] || weeklySchedules[1] || generateDefault7DayWorkouts();
+  const currentWorkout = currentWeekWorkouts.find((w) => w.dayOfWeek === activeDayTab) || currentWeekWorkouts[0];
 
   const updateWorkout = (dayOfWeek: number, updates: Partial<PlanWorkout>) => {
-    setWorkouts((prev) =>
-      prev.map((w) => (w.dayOfWeek === dayOfWeek ? { ...w, ...updates } : w))
-    );
+    setWeeklySchedules((prev) => {
+      const currentList = prev[selectedWeekNum] || currentWeekWorkouts;
+      const updatedList = currentList.map((w) =>
+        w.dayOfWeek === dayOfWeek ? { ...w, ...updates } : w
+      );
+      return {
+        ...prev,
+        [selectedWeekNum]: updatedList,
+      };
+    });
   };
 
-  const activeRunningDays = workouts.filter((w) => w.type !== 'rest' && w.distanceKm > 0);
-  const totalWeeklyKm = workouts.reduce((sum, w) => sum + (w.type !== 'rest' ? (Number(w.distanceKm) || 0) : 0), 0);
+  const copyCurrentWeekToAll = () => {
+    if (confirm(`Salin jadwal latihan Week ${selectedWeekNum} ke semua ${totalWeeks} minggu?`)) {
+      setWeeklySchedules(() => {
+        const updated: Record<number, PlanWorkout[]> = {};
+        const numWeeks = Number(totalWeeks) || 8;
+        for (let w = 1; w <= numWeeks; w++) {
+          updated[w] = JSON.parse(JSON.stringify(currentWeekWorkouts));
+        }
+        return updated;
+      });
+    }
+  };
+
+  const activeRunningDays = currentWeekWorkouts.filter((w) => w.type !== 'rest' && w.distanceKm > 0);
+  const totalWeeklyKm = currentWeekWorkouts.reduce((sum, w) => sum + (w.type !== 'rest' ? (Number(w.distanceKm) || 0) : 0), 0);
   const scheduleSummaryText = activeRunningDays.map((w) => DAY_LABELS[w.dayName] || w.dayName).join(', ');
 
   const handleSave = () => {
     const planId = existingPlan?.id || `plan_manual_${Date.now()}`;
+    const defaultWeekWorkouts = weeklySchedules[currentWeek] || currentWeekWorkouts;
     const newPlan: TrainingPlan = {
       id: planId,
       title: title.trim() || 'Custom Training Plan',
@@ -142,7 +175,8 @@ export const ManualPlanModal: React.FC<ManualPlanModalProps> = ({
       currentWeek: Number(currentWeek) || 1,
       fitnessLevel,
       status: 'active',
-      workouts,
+      workouts: defaultWeekWorkouts,
+      weeklySchedules,
       aiAdvice: existingPlan?.aiAdvice || 'Program latihan kustom Anda siap dijalankan!',
       createdAt: existingPlan?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -150,6 +184,7 @@ export const ManualPlanModal: React.FC<ManualPlanModalProps> = ({
 
     onSave(newPlan);
   };
+
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs p-0 sm:p-4 animate-in fade-in">
@@ -251,20 +286,67 @@ export const ManualPlanModal: React.FC<ManualPlanModalProps> = ({
           </div>
         </div>
 
-        {/* 2. 7-Day Interactive Day Selector Tabs */}
+        {/* 2. Multi-Week Switcher & Action */}
+        <div className="space-y-1.5 bg-neutral-50/80 p-3 rounded-2xl border border-neutral-200/70">
+          <div className="flex items-center justify-between px-0.5">
+            <span className="text-[11px] font-black uppercase tracking-wider text-neutral-500">
+              Pilih Minggu yang Diedit
+            </span>
+            <button
+              type="button"
+              onClick={copyCurrentWeekToAll}
+              className="text-[10px] font-bold text-[#FF5500] hover:text-[#E64D00] flex items-center gap-1 bg-orange-50 px-2 py-0.5 rounded-lg border border-orange-200/60 active:scale-95 transition-all"
+              title="Salin konfigurasi 7 hari minggu ini ke seluruh minggu lainnya"
+            >
+              <span>📋 Salin ke Semua Minggu</span>
+            </button>
+          </div>
+
+          <div className="flex items-center space-x-1.5 overflow-x-auto pb-1 no-scrollbar pt-0.5">
+            {Array.from({ length: totalWeeks }, (_, i) => i + 1).map((weekNum) => {
+              const isSelected = selectedWeekNum === weekNum;
+              const isCurrent = currentWeek === weekNum;
+              return (
+                <button
+                  key={weekNum}
+                  type="button"
+                  onClick={() => setSelectedWeekNum(weekNum)}
+                  className={clsx(
+                    'px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 transition-all border flex items-center space-x-1',
+                    isSelected
+                      ? 'bg-neutral-900 text-white border-neutral-900 shadow-2xs'
+                      : 'bg-white text-neutral-700 border-neutral-200 hover:bg-neutral-100'
+                  )}
+                >
+                  <span>Week {weekNum}</span>
+                  {isCurrent && (
+                    <span className={clsx(
+                      'text-[9px] px-1 py-0.2 rounded font-black',
+                      isSelected ? 'bg-orange-500 text-white' : 'bg-orange-100 text-[#FF5500]'
+                    )}>
+                      Active
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* 3. 7-Day Interactive Day Selector Tabs */}
         <div className="space-y-2">
           <div className="flex items-center justify-between px-1">
             <span className="text-xs font-black uppercase tracking-wider text-neutral-500">
-              Konfigurasi 7 Hari Latihan
+              Jadwal Week {selectedWeekNum} (7 Hari)
             </span>
             <span className="text-[11px] font-mono font-bold text-[#FF5500]">
-              Total: {totalWeeklyKm.toFixed(1)} km / minggu ({activeRunningDays.length} hari lari)
+              Total: {totalWeeklyKm.toFixed(1)} km ({activeRunningDays.length} hari lari)
             </span>
           </div>
 
           <div className="grid grid-cols-7 gap-1 bg-neutral-100 p-1 rounded-2xl">
             {[1, 2, 3, 4, 5, 6, 0].map((dayNum) => {
-              const w = workouts.find((item) => item.dayOfWeek === dayNum);
+              const w = currentWeekWorkouts.find((item) => item.dayOfWeek === dayNum);
               const isSelected = activeDayTab === dayNum;
               const isRest = w?.type === 'rest' || !w || w.distanceKm === 0;
 
@@ -296,6 +378,7 @@ export const ManualPlanModal: React.FC<ManualPlanModalProps> = ({
             })}
           </div>
         </div>
+
 
         {/* 3. Day Session Editor Card */}
         {currentWorkout && (

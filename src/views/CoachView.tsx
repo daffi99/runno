@@ -443,17 +443,32 @@ export const CoachView: React.FC<CoachViewProps> = ({
   // If today is Sunday (day 0), tomorrow (Monday) begins next week
   const isSunday = currentDayOfWeek === 0;
 
-  // Find today's workout in the active plan
+  // Helper to fetch workouts for a specific week (preserves distinct per-week workouts)
+  const getViewedWeekWorkouts = (weekNum: number): PlanWorkout[] => {
+    if (!activePlan) return [];
+    if (activePlan.weeklySchedules && activePlan.weeklySchedules[weekNum]) {
+      return activePlan.weeklySchedules[weekNum];
+    }
+    return activePlan.workouts;
+  };
+
+  const currentViewedWorkouts = useMemo(() => {
+    return getViewedWeekWorkouts(viewedWeek);
+  }, [activePlan, viewedWeek]);
+
+  // Find today's workout in the active plan (from current week's schedule)
   const todayWorkout = useMemo(() => {
     if (!activePlan) return null;
-    return activePlan.workouts.find((w) => w.dayOfWeek === currentDayOfWeek) || null;
-  }, [activePlan, currentDayOfWeek]);
+    const currentWeekWorkouts = getViewedWeekWorkouts(currentPlanWeek);
+    return currentWeekWorkouts.find((w) => w.dayOfWeek === currentDayOfWeek) || null;
+  }, [activePlan, currentPlanWeek, currentDayOfWeek]);
 
   // Weekly progress calculation
   const weeklyProgress = useMemo(() => {
     if (!activePlan) return { completedKm: 0, targetKm: 0, percent: 0, completedCount: 0, totalWorkouts: 0 };
-    const runningWorkouts = activePlan.workouts.filter((w) => w.type !== 'rest' && w.distanceKm > 0);
-    const targetKm = activePlan.weeklyTargetKm || runningWorkouts.reduce((acc, w) => acc + w.distanceKm, 0);
+    const weekWorkouts = getViewedWeekWorkouts(viewedWeek);
+    const runningWorkouts = weekWorkouts.filter((w) => w.type !== 'rest' && w.distanceKm > 0);
+    const targetKm = runningWorkouts.reduce((acc, w) => acc + (Number(w.distanceKm) || 0), 0) || activePlan.weeklyTargetKm;
 
     if (isViewingCurrentWeek) {
       const evaluatedWorkouts = runningWorkouts.map((w) => {
@@ -461,7 +476,7 @@ export const CoachView: React.FC<CoachViewProps> = ({
         return getWorkoutForDate(w, targetDate, true);
       });
       const completedWorkouts = evaluatedWorkouts.filter((w) => w.completed);
-      const completedKm = completedWorkouts.reduce((acc, w) => acc + w.distanceKm, 0);
+      const completedKm = completedWorkouts.reduce((acc, w) => acc + (Number(w.distanceKm) || 0), 0);
       const percent = targetKm > 0 ? Math.min(100, Math.round((completedKm / targetKm) * 100)) : 0;
       return {
         completedKm,
@@ -471,7 +486,7 @@ export const CoachView: React.FC<CoachViewProps> = ({
         totalWorkouts: runningWorkouts.length,
       };
     } else {
-      const weekDates = activePlan.workouts.map((w) =>
+      const weekDates = weekWorkouts.map((w) =>
         getDateForDayOfWeek(w.dayOfWeek, selectedWeekBaseDate).toISOString().split('T')[0]
       );
       const completedRunsThisWeek = runs.filter((r) => r.date && weekDates.includes(r.date.split('T')[0]));
@@ -486,15 +501,46 @@ export const CoachView: React.FC<CoachViewProps> = ({
         totalWorkouts: runningWorkouts.length,
       };
     }
-
-  }, [activePlan, isViewingCurrentWeek, selectedWeekBaseDate, runs]);
+  }, [activePlan, isViewingCurrentWeek, viewedWeek, selectedWeekBaseDate, runs]);
 
   const handleToggleWorkout = (workoutId: string) => {
-    const updated = storageService.toggleWorkoutCompletion(workoutId);
-    if (updated) {
-      setActivePlan({ ...updated });
-    }
+    if (!activePlan) return;
+    const existingWeeklySchedules: Record<number, PlanWorkout[]> = {
+      ...(activePlan.weeklySchedules || {}),
+    };
+
+    const baseWeekWorkouts = existingWeeklySchedules[viewedWeek]
+      ? [...existingWeeklySchedules[viewedWeek]]
+      : [...activePlan.workouts];
+
+    const updatedWeekWorkouts = baseWeekWorkouts.map((w) =>
+      w.id === workoutId
+        ? { ...w, completed: !w.completed, completedAt: !w.completed ? new Date().toISOString() : null }
+        : w
+    );
+
+    existingWeeklySchedules[viewedWeek] = updatedWeekWorkouts;
+
+    const isCurrentWeek = viewedWeek === currentPlanWeek;
+    const updatedDefaultWorkouts = isCurrentWeek
+      ? updatedWeekWorkouts
+      : activePlan.workouts.map((w) =>
+          w.id === workoutId
+            ? { ...w, completed: !w.completed, completedAt: !w.completed ? new Date().toISOString() : null }
+            : w
+        );
+
+    const updatedPlan: TrainingPlan = {
+      ...activePlan,
+      workouts: updatedDefaultWorkouts,
+      weeklySchedules: existingWeeklySchedules,
+      updatedAt: new Date().toISOString(),
+    };
+
+    storageService.saveActivePlan(updatedPlan);
+    setActivePlan(updatedPlan);
   };
+
 
 
   const handleApplyPlan = (planToApply: TrainingPlan) => {
@@ -715,29 +761,48 @@ export const CoachView: React.FC<CoachViewProps> = ({
 
   const handleSaveSingleWorkout = (updatedWorkout: PlanWorkout) => {
     if (!activePlan) return;
-    const updatedWorkouts = activePlan.workouts.map((w) =>
+
+    const existingWeeklySchedules: Record<number, PlanWorkout[]> = {
+      ...(activePlan.weeklySchedules || {}),
+    };
+
+    // Base workouts for this specific viewed week
+    const baseWeekWorkouts = existingWeeklySchedules[viewedWeek]
+      ? [...existingWeeklySchedules[viewedWeek]]
+      : [...activePlan.workouts];
+
+    const updatedWeekWorkouts = baseWeekWorkouts.map((w) =>
       w.id === updatedWorkout.id || w.dayOfWeek === updatedWorkout.dayOfWeek
         ? updatedWorkout
         : w
     );
-    const activeDays = updatedWorkouts.filter((w) => w.type !== 'rest' && w.distanceKm > 0);
-    const totalKm = updatedWorkouts.reduce((sum, w) => sum + (w.type !== 'rest' ? (Number(w.distanceKm) || 0) : 0), 0);
+
+    existingWeeklySchedules[viewedWeek] = updatedWeekWorkouts;
+
+    const isCurrentWeek = viewedWeek === currentPlanWeek;
+    const updatedDefaultWorkouts = isCurrentWeek ? updatedWeekWorkouts : activePlan.workouts;
+
+    const activeDays = updatedWeekWorkouts.filter((w) => w.type !== 'rest' && w.distanceKm > 0);
+    const totalKm = updatedWeekWorkouts.reduce(
+      (sum, w) => sum + (w.type !== 'rest' ? (Number(w.distanceKm) || 0) : 0),
+      0
+    );
     const summary = activeDays.map((w) => w.dayName).join(', ');
 
     const updatedPlan: TrainingPlan = {
       ...activePlan,
-      workouts: updatedWorkouts,
-      weeklyTargetKm: Number(totalKm.toFixed(1)),
-      selectedDays: activeDays.map((w) => w.dayName),
-      scheduleSummary: summary || 'Custom Schedule',
+      workouts: updatedDefaultWorkouts,
+      weeklySchedules: existingWeeklySchedules,
+      weeklyTargetKm: isCurrentWeek ? Number(totalKm.toFixed(1)) : activePlan.weeklyTargetKm,
       updatedAt: new Date().toISOString(),
     };
 
     storageService.saveActivePlan(updatedPlan);
     setActivePlan(updatedPlan);
-    setAppliedPlanToast(`Sesi ${updatedWorkout.dayName} berhasil diperbarui!`);
+    setAppliedPlanToast(`Sesi ${updatedWorkout.dayName} (Week ${viewedWeek}) berhasil diperbarui!`);
     setTimeout(() => setAppliedPlanToast(null), 3000);
   };
+
 
   return (
     <div className="max-w-md mx-auto px-4 pt-4 pb-28 space-y-4">
@@ -991,13 +1056,14 @@ export const CoachView: React.FC<CoachViewProps> = ({
                 </div>
 
                 <div className="space-y-2">
-                  {activePlan.workouts.map((w) => {
+                  {currentViewedWorkouts.map((w) => {
                     const workoutDate = getDateForDayOfWeek(w.dayOfWeek, selectedWeekBaseDate);
                     const isToday = isViewingCurrentWeek && w.dayOfWeek === currentDayOfWeek;
                     const dateBoundWorkout = getWorkoutForDate(w, workoutDate, isViewingCurrentWeek);
                     return (
                       <WorkoutCard
                         key={`${w.id}_w${viewedWeek}`}
+
                         workout={dateBoundWorkout}
                         unitSystem={unitSystem}
                         isToday={isToday}
