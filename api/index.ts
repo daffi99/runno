@@ -393,36 +393,75 @@ Return ONLY a valid JSON object matching this schema (no markdown, no backticks)
 }`;
 
 
-    const model = 'google/gemini-2.5-flash-lite';
-    const openRouterResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
-        'HTTP-Referer': 'https://runno.app',
-        'X-Title': 'Runno Running Tracker',
-      },
-      body: JSON.stringify({
-        model,
-        messages: [
-          {
-            role: 'user',
-            content: [
-              { type: 'text', text: systemPrompt },
-              ...imageContentItems,
-            ],
+    const VISION_MODEL_MAP: Record<string, string> = {
+      nvidia: 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free',
+      dots: 'dots-studio/dots-3-note-preview:free',
+      gemini: 'google/gemini-2.5-flash-lite',
+    };
+
+    const requestedModel = (body.model || 'nvidia').toString().toLowerCase();
+    let targetModel = VISION_MODEL_MAP[requestedModel] || requestedModel;
+    if (!targetModel.includes('/')) {
+      targetModel = 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free';
+    }
+
+    const candidateModels = [
+      targetModel,
+      targetModel !== 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free' ? 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free' : null,
+      targetModel !== 'dots-studio/dots-3-note-preview:free' ? 'dots-studio/dots-3-note-preview:free' : null,
+      'google/gemini-2.5-flash-lite',
+      'google/gemini-2.0-flash-lite-preview:free',
+    ].filter(Boolean) as string[];
+
+    const startTime = performance.now();
+    let openRouterResponse: any = null;
+    let modelUsed = targetModel;
+    let lastErrorText = '';
+
+    for (const m of candidateModels) {
+      modelUsed = m;
+      try {
+        openRouterResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${apiKey}`,
+            'HTTP-Referer': 'https://runno.app',
+            'X-Title': 'Runno Running Tracker',
           },
-        ],
-        max_tokens: 3500,
-        temperature: 0.1,
-      }),
-    });
+          body: JSON.stringify({
+            model: m,
+            messages: [
+              {
+                role: 'user',
+                content: [
+                  { type: 'text', text: systemPrompt },
+                  ...imageContentItems,
+                ],
+              },
+            ],
+            max_tokens: 2500,
+            temperature: 0.1,
+          }),
+        });
 
+        if (openRouterResponse.ok) break;
+        lastErrorText = await openRouterResponse.text();
+        console.warn(`[Runno OCR] Model ${m} returned ${openRouterResponse.status}: ${lastErrorText}`);
+      } catch (err: any) {
+        lastErrorText = err.message;
+        console.warn(`[Runno OCR] Error with model ${m}:`, err.message);
+      }
+    }
 
-    if (!openRouterResponse.ok) {
-      const errText = await openRouterResponse.text();
-      return res.status(openRouterResponse.status).json({
-        error: `OpenRouter API error: ${openRouterResponse.status} ${errText}`,
+    const durationMs = Math.round(performance.now() - startTime);
+    const durationSeconds = Number((durationMs / 1000).toFixed(2));
+
+    if (!openRouterResponse || !openRouterResponse.ok) {
+      return res.status(openRouterResponse?.status || 500).json({
+        error: `OpenRouter API error: ${openRouterResponse?.status || 500} ${lastErrorText}`,
+        durationMs,
+        durationSeconds,
       });
     }
 
@@ -432,12 +471,25 @@ Return ONLY a valid JSON object matching this schema (no markdown, no backticks)
 
     try {
       const parsedData = JSON.parse(cleanedJson);
-      res.json({ success: true, data: parsedData });
+      res.json({
+        success: true,
+        data: parsedData,
+        modelUsed,
+        durationMs,
+        durationSeconds,
+      });
     } catch (parseError) {
-      res.json({ success: true, data: { raw_notes: rawContent } });
+      res.json({
+        success: true,
+        data: { raw_notes: rawContent },
+        modelUsed,
+        durationMs,
+        durationSeconds,
+      });
     }
   } catch (error: any) {
     console.error('[Runno] Screenshot Analysis Error:', error);
+
     res.status(500).json({ error: error.message || 'Internal Server Error' });
   }
 });
@@ -728,12 +780,12 @@ JSON_PLAN STRUCTURE:
     chatMessages.push({ role: 'user', content: message });
 
     const MODEL_MAP: Record<string, string> = {
-      deepseek: 'deepseek/deepseek-v4-flash-0731',
-      qwen: 'qwen/qwen3.7-flash',
+      nvidia: 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free',
+      dots: 'dots-studio/dots-3-note-preview:free',
       gemini: 'google/gemini-2.5-flash',
     };
 
-    let targetModel = 'deepseek/deepseek-v4-flash-0731'; // Default: DeepSeek V4 Flash
+    let targetModel = 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free'; // Default: NVIDIA Nemotron Free
     if (coachModel) {
       if (MODEL_MAP[coachModel]) {
         targetModel = MODEL_MAP[coachModel];
@@ -748,10 +800,12 @@ JSON_PLAN STRUCTURE:
 
     const candidateModels = [
       targetModel,
-      targetModel.includes('deepseek') ? 'deepseek/deepseek-chat' : null,
-      targetModel.includes('qwen') ? 'qwen/qwen-2.5-72b-instruct' : null,
+      targetModel !== 'dots-studio/dots-3-note-preview:free' ? 'dots-studio/dots-3-note-preview:free' : null,
+      targetModel !== 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free' ? 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free' : null,
       'google/gemini-2.5-flash',
+      'google/gemini-2.0-flash-lite-preview:free',
     ].filter(Boolean) as string[];
+
 
     for (const m of candidateModels) {
       modelUsed = m;

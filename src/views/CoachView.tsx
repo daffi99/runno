@@ -156,7 +156,7 @@ const renderFormattedMessage = (content: string, isUser: boolean, isTyping?: boo
 };
 
 
-export type CoachModelKey = 'deepseek' | 'qwen' | 'gemini';
+export type CoachModelKey = 'nvidia' | 'dots' | 'gemini';
 
 export interface CoachModelOption {
   id: CoachModelKey;
@@ -167,16 +167,16 @@ export interface CoachModelOption {
 
 export const COACH_MODELS: CoachModelOption[] = [
   {
-    id: 'deepseek',
-    iconSrc: '/models/deepseek.png',
-    name: 'DeepSeek V4 Flash',
-    desc: 'Default · Cepat & Analitis',
+    id: 'nvidia',
+    iconSrc: '/models/nvidia.png',
+    name: 'NVIDIA Nemotron',
+    desc: 'Default · Free & Reasoning',
   },
   {
-    id: 'qwen',
-    iconSrc: '/models/qwen.png',
-    name: 'Qwen 3.7 Flash',
-    desc: 'Multimodal & Reasoning',
+    id: 'dots',
+    iconSrc: '/models/dots.png',
+    name: 'Dots 3 Note',
+    desc: 'Free · Ringkas & Cepat',
   },
   {
     id: 'gemini',
@@ -214,13 +214,14 @@ export const CoachView: React.FC<CoachViewProps> = ({
   const [selectedModelId, setSelectedModelId] = useState<CoachModelKey>(() => {
     try {
       const saved = localStorage.getItem('runno_coach_model') as CoachModelKey;
-      if (saved === 'deepseek' || saved === 'qwen' || saved === 'gemini') {
+      if (saved === 'nvidia' || saved === 'dots' || saved === 'gemini') {
         return saved;
       }
     } catch (_) {}
-    return 'deepseek'; // Default to DeepSeek
+    return 'nvidia'; // Default to NVIDIA
   });
   const [isModelDropdownOpen, setIsModelDropdownOpen] = useState<boolean>(false);
+
 
   const activeModelOption = useMemo(() => {
     return COACH_MODELS.find((m) => m.id === selectedModelId) || COACH_MODELS[0];

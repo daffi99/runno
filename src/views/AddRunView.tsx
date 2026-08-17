@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
 import { parseGpx } from '../utils/gpx';
@@ -15,7 +15,45 @@ import {
   X,
   Layers,
   Clipboard,
+  ChevronDown,
+  Check,
+  Timer,
 } from 'lucide-react';
+import { clsx } from 'clsx';
+
+export type OCRModelKey = 'nvidia' | 'dots' | 'gemini';
+
+export interface OCRModelOption {
+  id: OCRModelKey;
+  iconSrc: string;
+  name: string;
+  desc: string;
+  badge: string;
+}
+
+export const OCR_MODELS: OCRModelOption[] = [
+  {
+    id: 'nvidia',
+    iconSrc: '/models/nvidia.png',
+    name: 'NVIDIA Nemotron',
+    desc: 'Default · Free & Reasoning',
+    badge: 'Free',
+  },
+  {
+    id: 'dots',
+    iconSrc: '/models/dots.png',
+    name: 'Dots 3 Note',
+    desc: 'Fast · Free Tier',
+    badge: 'Free',
+  },
+  {
+    id: 'gemini',
+    iconSrc: '/models/gemini.png',
+    name: 'Gemini 2.5 Flash',
+    desc: 'Google · Ultra Fast',
+    badge: 'Flash',
+  },
+];
 
 interface AddRunViewProps {
   onBack: () => void;
@@ -32,6 +70,24 @@ export const AddRunView: React.FC<AddRunViewProps> = ({
   onAnalysisComplete,
   customApiKey,
 }) => {
+  const [selectedModelId, setSelectedModelId] = useState<OCRModelKey>(() => {
+    try {
+      const saved = localStorage.getItem('runno_ocr_model') as OCRModelKey;
+      if (saved === 'nvidia' || saved === 'dots' || saved === 'gemini') {
+        return saved;
+      }
+    } catch (_) {}
+    return 'nvidia'; // Default: NVIDIA Nemotron
+  });
+  const [isModelDropdownOpen, setIsModelDropdownOpen] = useState<boolean>(false);
+
+  const activeModelOption = useMemo(() => {
+    return OCR_MODELS.find((m) => m.id === selectedModelId) || OCR_MODELS[0];
+  }, [selectedModelId]);
+
+  const [stopwatchSeconds, setStopwatchSeconds] = useState<number>(0);
+  const stopwatchIntervalRef = useRef<any>(null);
+
   const [screenshotFile, setScreenshotFile] = useState<File | null>(null);
   const [screenshotPreview, setScreenshotPreview] = useState<string | null>(null);
   const [intervalScreenshotFile, setIntervalScreenshotFile] = useState<File | null>(null);
@@ -43,6 +99,7 @@ export const AddRunView: React.FC<AddRunViewProps> = ({
   const [analysisStep, setAnalysisStep] = useState<string>('Preparing upload...');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [clipboardToast, setClipboardToast] = useState<string | null>(null);
+
 
   const [isDraggingImage, setIsDraggingImage] = useState<boolean>(false);
   const [isDraggingInterval, setIsDraggingInterval] = useState<boolean>(false);
@@ -233,13 +290,19 @@ export const AddRunView: React.FC<AddRunViewProps> = ({
 
     setIsAnalyzing(true);
     setErrorMsg(null);
+    setStopwatchSeconds(0);
+
+    const startTs = performance.now();
+    if (stopwatchIntervalRef.current) clearInterval(stopwatchIntervalRef.current);
+    stopwatchIntervalRef.current = setInterval(() => {
+      setStopwatchSeconds(Number(((performance.now() - startTs) / 1000).toFixed(1)));
+    }, 100);
 
     try {
-      setAnalysisStep('Uploading screenshot(s)...');
       setAnalysisStep(
         intervalScreenshotPreview
-          ? 'Gemini 2.5 Flash Lite analyzing main & interval screenshots...'
-          : 'Gemini 2.5 Flash Lite analyzing screenshot...'
+          ? `Analyzing main & interval screenshots with ${activeModelOption.name}...`
+          : `Analyzing screenshot with ${activeModelOption.name}...`
       );
 
       const response = await fetch('/api/analyze-screenshot', {
@@ -248,6 +311,7 @@ export const AddRunView: React.FC<AddRunViewProps> = ({
         body: JSON.stringify({
           imageBase64: screenshotPreview,
           intervalImageBase64: intervalScreenshotPreview || undefined,
+          model: selectedModelId,
           customApiKey: customApiKey || undefined,
         }),
       });
@@ -257,11 +321,14 @@ export const AddRunView: React.FC<AddRunViewProps> = ({
         throw new Error(errJson.error || `Server returned error status ${response.status}`);
       }
 
-      setAnalysisStep('Extracting running statistics & interval splits...');
+      setAnalysisStep('Extracting metrics & interval splits...');
       const result = await response.json();
       const extracted: ExtractedRunData = result.data;
 
-      await new Promise((r) => setTimeout(r, 400));
+      const elapsedSec = result.durationSeconds || Number(((performance.now() - startTs) / 1000).toFixed(2));
+      setStopwatchSeconds(elapsedSec);
+
+      await new Promise((r) => setTimeout(r, 300));
 
       onAnalysisComplete({
         screenshotBase64: screenshotPreview,
@@ -272,9 +339,14 @@ export const AddRunView: React.FC<AddRunViewProps> = ({
       console.error('Extraction error:', err);
       setErrorMsg(`AI Extraction failed: ${err.message || 'Check your OpenRouter connection'}`);
     } finally {
+      if (stopwatchIntervalRef.current) {
+        clearInterval(stopwatchIntervalRef.current);
+        stopwatchIntervalRef.current = null;
+      }
       setIsAnalyzing(false);
     }
   };
+
 
 
   return (
@@ -555,9 +627,93 @@ export const AddRunView: React.FC<AddRunViewProps> = ({
         </Card>
       </div>
 
-      {/* Single prominent submit button */}
+      {/* AI Extraction Model Selector Bar */}
+      <div className="flex items-center justify-between px-3 py-2 bg-white rounded-2xl border border-neutral-200/80 shadow-2xs">
+        <div className="flex items-center space-x-2.5 min-w-0">
+          <div className="w-8 h-8 rounded-xl bg-neutral-50 border border-neutral-200/80 flex items-center justify-center p-1 shrink-0">
+            <img src={activeModelOption.iconSrc} alt={activeModelOption.name} className="w-5 h-5 object-contain" />
+          </div>
+          <div className="min-w-0">
+            <div className="text-xs font-black text-neutral-900 flex items-center gap-1.5 truncate">
+              <span className="truncate">{activeModelOption.name}</span>
+              <span className="text-[9px] font-black uppercase px-1.5 py-0.2 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200/80 shrink-0">
+                {activeModelOption.badge}
+              </span>
+            </div>
+            <div className="text-[10px] text-neutral-400 font-medium">Vision Extraction Engine</div>
+          </div>
+        </div>
 
-      <div className="pt-3">
+        {/* Change Model Dropdown Trigger */}
+        <div className="relative shrink-0 ml-2">
+          <button
+            type="button"
+            onClick={() => setIsModelDropdownOpen(!isModelDropdownOpen)}
+            className="flex items-center space-x-1 px-2.5 py-1.5 rounded-xl border border-neutral-200 bg-neutral-50 hover:bg-neutral-100 text-xs font-bold text-neutral-700 active:scale-95 transition-all shadow-2xs"
+          >
+            <span>Change</span>
+            <ChevronDown className="w-3.5 h-3.5 text-neutral-400" />
+          </button>
+
+          {isModelDropdownOpen && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setIsModelDropdownOpen(false)} />
+              <div className="absolute bottom-full right-0 mb-2 z-50 w-64 bg-white rounded-2xl border border-neutral-200 shadow-xl p-1.5 space-y-1 animate-in fade-in slide-in-from-bottom-2 duration-150">
+                <div className="px-2.5 py-1 text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
+                  Select Extraction Model
+                </div>
+                {OCR_MODELS.map((m) => {
+                  const isSelected = selectedModelId === m.id;
+                  return (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedModelId(m.id);
+                        setIsModelDropdownOpen(false);
+                        try {
+                          localStorage.setItem('runno_ocr_model', m.id);
+                        } catch (_) {}
+                      }}
+                      className={clsx(
+                        'w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-xs transition-all text-left',
+                        isSelected ? 'bg-neutral-900 text-white font-bold' : 'text-neutral-700 hover:bg-neutral-100'
+                      )}
+                    >
+                      <div className="flex items-center space-x-2.5 min-w-0">
+                        <div className={clsx(
+                          "w-7 h-7 rounded-xl flex items-center justify-center shrink-0 border p-0.5 bg-white",
+                          isSelected ? "border-neutral-700 shadow-xs" : "border-neutral-200/80"
+                        )}>
+                          <img src={m.iconSrc} alt={m.name} className="w-4.5 h-4.5 object-contain" />
+                        </div>
+                        <div className="min-w-0">
+                          <div className="font-bold leading-tight truncate flex items-center gap-1.5">
+                            <span className="truncate">{m.name}</span>
+                            <span className={clsx(
+                              "text-[8.5px] px-1 py-0.2 rounded font-black border shrink-0",
+                              isSelected ? "bg-neutral-800 border-neutral-700 text-white" : "bg-emerald-50 text-emerald-700 border-emerald-200"
+                            )}>
+                              {m.badge}
+                            </span>
+                          </div>
+                          <div className={clsx('text-[10px] leading-tight mt-0.5 truncate', isSelected ? 'text-neutral-300' : 'text-neutral-400')}>
+                            {m.desc}
+                          </div>
+                        </div>
+                      </div>
+                      {isSelected && <Check className="w-4 h-4 text-[#FF5500] shrink-0 ml-1" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Single prominent submit button */}
+      <div className="pt-1">
         <Button
           variant="primary"
           size="lg"
@@ -574,10 +730,17 @@ export const AddRunView: React.FC<AddRunViewProps> = ({
       {isAnalyzing && (
         <div className="fixed inset-0 z-50 bg-neutral-900/60 backdrop-blur-sm flex items-center justify-center p-4">
           <Card className="p-6 max-w-sm w-full text-center space-y-4 shadow-2xl animate-in zoom-in-95">
-            <div className="w-14 h-14 rounded-full bg-orange-100 text-[#FF5500] flex items-center justify-center mx-auto animate-pulse">
-              <Sparkles className="w-7 h-7" />
+            <div className="relative w-16 h-16 rounded-full bg-orange-100 text-[#FF5500] flex items-center justify-center mx-auto animate-pulse">
+              <Sparkles className="w-8 h-8" />
+              <div className="absolute -bottom-1 -right-1 w-6 h-6 rounded-full bg-white border border-neutral-200 flex items-center justify-center p-0.5 shadow-xs">
+                <img src={activeModelOption.iconSrc} alt={activeModelOption.name} className="w-4 h-4 object-contain" />
+              </div>
             </div>
             <div>
+              <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-neutral-100 text-neutral-800 font-mono text-sm font-black mb-2">
+                <Timer className="w-4 h-4 text-[#FF5500] animate-spin" />
+                <span>{stopwatchSeconds.toFixed(1)}s</span>
+              </div>
               <h3 className="text-base font-extrabold text-neutral-900 mb-1">
                 Analyzing Run
               </h3>
@@ -592,3 +755,4 @@ export const AddRunView: React.FC<AddRunViewProps> = ({
     </div>
   );
 };
+
