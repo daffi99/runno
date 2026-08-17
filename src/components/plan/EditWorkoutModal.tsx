@@ -86,31 +86,41 @@ export const EditWorkoutModal: React.FC<EditWorkoutModalProps> = ({
       <div className="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl max-h-[90dvh] h-[85dvh] sm:h-auto sm:max-h-[85vh] flex flex-col shadow-2xl border border-neutral-100 overflow-hidden">
         {/* Header - Fixed */}
         <div className="flex items-center justify-between p-4 sm:p-5 pb-3 border-b border-neutral-100 shrink-0">
-          <div className="flex items-center space-x-2.5">
-            <div className="w-8 h-8 rounded-xl bg-orange-100 text-[#FF5500] flex items-center justify-center">
-              <Pencil className="w-4 h-4" />
-            </div>
-            <div>
-              <h3 className="text-base font-black text-neutral-900">
+          <div className="flex items-center space-x-2.5 min-w-0">
+            <button
+              type="button"
+              onClick={onClose}
+              className="p-1.5 -ml-1 rounded-full hover:bg-neutral-100 text-neutral-400 hover:text-neutral-600 transition-colors shrink-0"
+              title="Batal"
+              aria-label="Batal"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            <div className="min-w-0">
+              <h3 className="text-base font-black text-neutral-900 truncate">
                 Edit Sesi {DAY_LABELS[workout.dayName] || workout.dayName}
               </h3>
-              <p className="text-[11px] text-neutral-400 font-medium">
-                Sesuaikan target jarak, pace, dan tipe latihan
+              <p className="text-[11px] text-neutral-400 font-medium truncate">
+                Sesuaikan target jarak & pace
               </p>
             </div>
           </div>
 
+          {/* Top Right Primary Submit Button */}
           <button
-            onClick={onClose}
-            className="p-1.5 rounded-full hover:bg-neutral-100 text-neutral-400 hover:text-neutral-600 transition-colors"
+            type="button"
+            onClick={handleSave}
+            className="flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-[#FF5500] hover:bg-[#E64D00] text-white text-xs font-black shadow-glow-orange active:scale-95 transition-all shrink-0 ml-2"
           >
-            <X className="w-5 h-5" />
+            <Check className="w-4 h-4 text-white stroke-[3]" />
+            <span>Simpan</span>
           </button>
         </div>
 
         {/* Scrollable Content Body */}
         <div className="flex-1 overflow-y-auto overscroll-contain p-4 sm:p-5 space-y-4">
           {/* Workout Type Selector */}
+
 
         <div>
           <label className="block text-[11px] font-bold text-neutral-500 mb-1.5 uppercase tracking-wider">
