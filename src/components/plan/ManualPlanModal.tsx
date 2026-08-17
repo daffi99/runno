@@ -2,21 +2,19 @@ import React, { useState } from 'react';
 import type { TrainingPlan, PlanWorkout, WorkoutType, UnitSystem } from '../../types/run';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
-import { formatPace, formatDistance } from '../../utils/formatters';
 import {
   X,
   Plus,
-  Trash2,
+  Minus,
   Calendar,
+  Clock,
   Zap,
   Flame,
   Heart,
   Moon,
-  Clock,
-  Activity,
   Check,
-  Sparkles,
-  ArrowRight,
+  ChevronRight,
+  Info,
 } from 'lucide-react';
 import { clsx } from 'clsx';
 
@@ -28,17 +26,8 @@ interface ManualPlanModalProps {
   unitSystem?: UnitSystem;
 }
 
-const DAY_NAMES = [
-  'Sunday',
-  'Monday',
-  'Tuesday',
-  'Wednesday',
-  'Thursday',
-  'Friday',
-  'Saturday',
-];
+const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-// Indonesian display for days
 const DAY_LABELS: Record<string, string> = {
   Monday: 'Senin',
   Tuesday: 'Selasa',
@@ -49,13 +38,13 @@ const DAY_LABELS: Record<string, string> = {
   Sunday: 'Minggu',
 };
 
-const WORKOUT_TYPES: { type: WorkoutType; label: string; icon: React.ReactNode; color: string }[] = [
-  { type: 'easy', label: 'Easy Run', icon: <Heart className="w-3.5 h-3.5" />, color: 'text-emerald-600 bg-emerald-50 border-emerald-200' },
-  { type: 'tempo', label: 'Tempo Run', icon: <Zap className="w-3.5 h-3.5" />, color: 'text-amber-600 bg-amber-50 border-amber-200' },
-  { type: 'intervals', label: 'Intervals', icon: <Zap className="w-3.5 h-3.5" />, color: 'text-purple-600 bg-purple-50 border-purple-200' },
-  { type: 'long_run', label: 'Long Run', icon: <Flame className="w-3.5 h-3.5" />, color: 'text-[#FF5500] bg-orange-50 border-orange-200' },
-  { type: 'recovery', label: 'Recovery', icon: <Heart className="w-3.5 h-3.5" />, color: 'text-teal-600 bg-teal-50 border-teal-200' },
-  { type: 'rest', label: 'Rest Day', icon: <Moon className="w-3.5 h-3.5" />, color: 'text-neutral-500 bg-neutral-100 border-neutral-200' },
+const WORKOUT_TYPES: { type: WorkoutType; label: string; icon: React.ReactNode }[] = [
+  { type: 'easy', label: 'Easy Run', icon: <Heart className="w-3.5 h-3.5" /> },
+  { type: 'tempo', label: 'Tempo Run', icon: <Zap className="w-3.5 h-3.5" /> },
+  { type: 'intervals', label: 'Intervals', icon: <Zap className="w-3.5 h-3.5" /> },
+  { type: 'long_run', label: 'Long Run', icon: <Flame className="w-3.5 h-3.5" /> },
+  { type: 'recovery', label: 'Recovery', icon: <Heart className="w-3.5 h-3.5" /> },
+  { type: 'rest', label: 'Rest Day', icon: <Moon className="w-3.5 h-3.5" /> },
 ];
 
 const HR_ZONES = [
@@ -66,16 +55,30 @@ const HR_ZONES = [
   'Zone 5 (Max Effort)',
 ];
 
+const QUICK_DISTANCES = [3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 10.0, 12.0, 15.0, 21.1];
+
+const QUICK_PACES = [
+  { label: '5:00', sec: 300 },
+  { label: '5:30', sec: 330 },
+  { label: '6:00', sec: 360 },
+  { label: '6:30', sec: 390 },
+  { label: '7:00', sec: 420 },
+  { label: '7:30', sec: 450 },
+  { label: '8:00', sec: 480 },
+  { label: '8:30', sec: 510 },
+  { label: '9:00', sec: 540 },
+  { label: '9:30', sec: 570 },
+  { label: '10:00', sec: 600 },
+];
+
 export const ManualPlanModal: React.FC<ManualPlanModalProps> = ({
   isOpen,
   onClose,
   onSave,
   existingPlan,
-  unitSystem = 'metric',
 }) => {
-  // Plan meta details
-  const [title, setTitle] = useState<string>(existingPlan?.title || 'Sub-35 Min 5K Plan');
-  const [goal, setGoal] = useState<string>(existingPlan?.goal || 'Mencapai Target 5K Sub-35 Menit');
+  const [title, setTitle] = useState<string>(existingPlan?.title || 'Custom Running Plan');
+  const [goal, setGoal] = useState<string>(existingPlan?.goal || 'Build 5K Endurance');
   const [totalWeeks, setTotalWeeks] = useState<number>(existingPlan?.totalWeeks || 8);
   const [currentWeek, setCurrentWeek] = useState<number>(existingPlan?.currentWeek || 1);
   const [fitnessLevel, setFitnessLevel] = useState<'beginner' | 'intermediate' | 'advanced'>(
@@ -105,64 +108,42 @@ export const ManualPlanModal: React.FC<ManualPlanModalProps> = ({
     });
   };
 
-  // Initialize multi-week schedules dictionary
-  const initialWeeklySchedules = (): Record<number, PlanWorkout[]> => {
-    if (existingPlan?.weeklySchedules && Object.keys(existingPlan.weeklySchedules).length > 0) {
-      return existingPlan.weeklySchedules;
-    }
-    const defaultWorkouts = existingPlan?.workouts && existingPlan.workouts.length >= 7
+  const [workouts, setWorkouts] = useState<PlanWorkout[]>(
+    existingPlan?.workouts && existingPlan.workouts.length >= 7
       ? existingPlan.workouts
-      : generateDefault7DayWorkouts();
-    const schedules: Record<number, PlanWorkout[]> = {};
-    const total = existingPlan?.totalWeeks || 8;
-    for (let w = 1; w <= total; w++) {
-      schedules[w] = JSON.parse(JSON.stringify(defaultWorkouts));
-    }
-    return schedules;
-  };
+      : generateDefault7DayWorkouts()
+  );
 
-  const [weeklySchedules, setWeeklySchedules] = useState<Record<number, PlanWorkout[]>>(initialWeeklySchedules);
-  const [selectedWeekNum, setSelectedWeekNum] = useState<number>(existingPlan?.currentWeek || 1);
   const [activeDayTab, setActiveDayTab] = useState<number>(1); // Default to Monday (1)
 
   if (!isOpen) return null;
 
-  const currentWeekWorkouts = weeklySchedules[selectedWeekNum] || weeklySchedules[1] || generateDefault7DayWorkouts();
-  const currentWorkout = currentWeekWorkouts.find((w) => w.dayOfWeek === activeDayTab) || currentWeekWorkouts[0];
+  const currentWorkout = workouts.find((w) => w.dayOfWeek === activeDayTab) || workouts[0];
 
   const updateWorkout = (dayOfWeek: number, updates: Partial<PlanWorkout>) => {
-    setWeeklySchedules((prev) => {
-      const currentList = prev[selectedWeekNum] || currentWeekWorkouts;
-      const updatedList = currentList.map((w) =>
-        w.dayOfWeek === dayOfWeek ? { ...w, ...updates } : w
-      );
-      return {
-        ...prev,
-        [selectedWeekNum]: updatedList,
-      };
+    setWorkouts((prev) =>
+      prev.map((w) => (w.dayOfWeek === dayOfWeek ? { ...w, ...updates } : w))
+    );
+  };
+
+  const handleIncrementDistance = (dayOfWeek: number) => {
+    updateWorkout(dayOfWeek, {
+      distanceKm: Number((Math.max(0.5, (currentWorkout.distanceKm || 0) + 0.5)).toFixed(1)),
     });
   };
 
-  const copyCurrentWeekToAll = () => {
-    if (confirm(`Salin jadwal latihan Week ${selectedWeekNum} ke semua ${totalWeeks} minggu?`)) {
-      setWeeklySchedules(() => {
-        const updated: Record<number, PlanWorkout[]> = {};
-        const numWeeks = Number(totalWeeks) || 8;
-        for (let w = 1; w <= numWeeks; w++) {
-          updated[w] = JSON.parse(JSON.stringify(currentWeekWorkouts));
-        }
-        return updated;
-      });
-    }
+  const handleDecrementDistance = (dayOfWeek: number) => {
+    updateWorkout(dayOfWeek, {
+      distanceKm: Number((Math.max(0.5, (currentWorkout.distanceKm || 1.0) - 0.5)).toFixed(1)),
+    });
   };
 
-  const activeRunningDays = currentWeekWorkouts.filter((w) => w.type !== 'rest' && w.distanceKm > 0);
-  const totalWeeklyKm = currentWeekWorkouts.reduce((sum, w) => sum + (w.type !== 'rest' ? (Number(w.distanceKm) || 0) : 0), 0);
+  const activeRunningDays = workouts.filter((w) => w.type !== 'rest' && w.distanceKm > 0);
+  const totalWeeklyKm = workouts.reduce((sum, w) => sum + (w.type !== 'rest' ? (Number(w.distanceKm) || 0) : 0), 0);
   const scheduleSummaryText = activeRunningDays.map((w) => DAY_LABELS[w.dayName] || w.dayName).join(', ');
 
   const handleSave = () => {
     const planId = existingPlan?.id || `plan_manual_${Date.now()}`;
-    const defaultWeekWorkouts = weeklySchedules[currentWeek] || currentWeekWorkouts;
     const newPlan: TrainingPlan = {
       id: planId,
       title: title.trim() || 'Custom Training Plan',
@@ -175,8 +156,7 @@ export const ManualPlanModal: React.FC<ManualPlanModalProps> = ({
       currentWeek: Number(currentWeek) || 1,
       fitnessLevel,
       status: 'active',
-      workouts: defaultWeekWorkouts,
-      weeklySchedules,
+      workouts,
       aiAdvice: existingPlan?.aiAdvice || 'Program latihan kustom Anda siap dijalankan!',
       createdAt: existingPlan?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -184,7 +164,6 @@ export const ManualPlanModal: React.FC<ManualPlanModalProps> = ({
 
     onSave(newPlan);
   };
-
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs p-0 sm:p-4 animate-in fade-in">
@@ -206,7 +185,7 @@ export const ManualPlanModal: React.FC<ManualPlanModalProps> = ({
                 {existingPlan ? 'Edit Training Plan' : 'Create Manual Plan'}
               </h3>
               <p className="text-[11px] text-neutral-400 font-medium truncate">
-                Atur jadwal mingguan, pace & jarak
+                Atur jadwal mingguan per hari (Senin s/d Minggu)
               </p>
             </div>
           </div>
@@ -222,343 +201,321 @@ export const ManualPlanModal: React.FC<ManualPlanModalProps> = ({
           </button>
         </div>
 
-
         {/* Scrollable Content Body */}
         <div className="flex-1 overflow-y-auto overscroll-contain p-4 sm:p-5 space-y-4">
           {/* 1. Plan Details (Title, Goal, Total Weeks, Level) */}
-
-        <div className="space-y-3 bg-neutral-50/80 p-3.5 rounded-2xl border border-neutral-200/70">
-          <div>
-            <label className="block text-[11px] font-bold uppercase tracking-wider text-neutral-500 mb-1">
-              Nama Program Latihan
-            </label>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Contoh: Sub-35 Min 5K Plan"
-              className="w-full bg-white border border-neutral-200 rounded-xl px-3 py-2 text-xs font-bold text-neutral-800 focus:outline-none focus:ring-2 focus:ring-[#FF5500]/20 focus:border-[#FF5500]"
-            />
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+          <div className="space-y-3 bg-neutral-50/80 p-3.5 rounded-2xl border border-neutral-200/70">
             <div>
               <label className="block text-[11px] font-bold uppercase tracking-wider text-neutral-500 mb-1">
-                Target / Goal
+                Nama Program Latihan
               </label>
               <input
                 type="text"
-                value={goal}
-                onChange={(e) => setGoal(e.target.value)}
-                placeholder="Contoh: Sub-35 Menit 5K"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Contoh: Sub-35 Min 5K Plan"
                 className="w-full bg-white border border-neutral-200 rounded-xl px-3 py-2 text-xs font-bold text-neutral-800 focus:outline-none focus:ring-2 focus:ring-[#FF5500]/20 focus:border-[#FF5500]"
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               <div>
                 <label className="block text-[11px] font-bold uppercase tracking-wider text-neutral-500 mb-1">
-                  Durasi Minggu
+                  Target / Goal
                 </label>
                 <input
-                  type="number"
-                  min="1"
-                  max="24"
-                  value={totalWeeks}
-                  onChange={(e) => setTotalWeeks(Math.max(1, parseInt(e.target.value) || 1))}
-                  className="w-full bg-white border border-neutral-200 rounded-xl px-3 py-2 text-xs font-bold text-neutral-800 focus:outline-none focus:ring-2 focus:ring-[#FF5500]/20"
+                  type="text"
+                  value={goal}
+                  onChange={(e) => setGoal(e.target.value)}
+                  placeholder="Contoh: Sub-35 Menit 5K"
+                  className="w-full bg-white border border-neutral-200 rounded-xl px-3 py-2 text-xs font-bold text-neutral-800 focus:outline-none focus:ring-2 focus:ring-[#FF5500]/20 focus:border-[#FF5500]"
                 />
               </div>
-              <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-neutral-500 mb-1">
-                  Minggu Ke-
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  max={totalWeeks}
-                  value={currentWeek}
-                  onChange={(e) => setCurrentWeek(Math.max(1, Math.min(totalWeeks, parseInt(e.target.value) || 1)))}
-                  className="w-full bg-white border border-neutral-200 rounded-xl px-3 py-2 text-xs font-bold text-neutral-800 focus:outline-none focus:ring-2 focus:ring-[#FF5500]/20"
-                />
-              </div>
-            </div>
-          </div>
-        </div>
 
-        {/* 2. Multi-Week Switcher & Action */}
-        <div className="space-y-1.5 bg-neutral-50/80 p-3 rounded-2xl border border-neutral-200/70">
-          <div className="flex items-center justify-between px-0.5">
-            <span className="text-[11px] font-black uppercase tracking-wider text-neutral-500">
-              Pilih Minggu yang Diedit
-            </span>
-            <button
-              type="button"
-              onClick={copyCurrentWeekToAll}
-              className="text-[10px] font-bold text-[#FF5500] hover:text-[#E64D00] flex items-center gap-1 bg-orange-50 px-2 py-0.5 rounded-lg border border-orange-200/60 active:scale-95 transition-all"
-              title="Salin konfigurasi 7 hari minggu ini ke seluruh minggu lainnya"
-            >
-              <span>📋 Salin ke Semua Minggu</span>
-            </button>
-          </div>
-
-          <div className="flex items-center space-x-1.5 overflow-x-auto pb-1 no-scrollbar pt-0.5">
-            {Array.from({ length: totalWeeks }, (_, i) => i + 1).map((weekNum) => {
-              const isSelected = selectedWeekNum === weekNum;
-              const isCurrent = currentWeek === weekNum;
-              return (
-                <button
-                  key={weekNum}
-                  type="button"
-                  onClick={() => setSelectedWeekNum(weekNum)}
-                  className={clsx(
-                    'px-3 py-1.5 rounded-xl text-xs font-bold shrink-0 transition-all border flex items-center space-x-1',
-                    isSelected
-                      ? 'bg-neutral-900 text-white border-neutral-900 shadow-2xs'
-                      : 'bg-white text-neutral-700 border-neutral-200 hover:bg-neutral-100'
-                  )}
-                >
-                  <span>Week {weekNum}</span>
-                  {isCurrent && (
-                    <span className={clsx(
-                      'text-[9px] px-1 py-0.2 rounded font-black',
-                      isSelected ? 'bg-orange-500 text-white' : 'bg-orange-100 text-[#FF5500]'
-                    )}>
-                      Active
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* 3. 7-Day Interactive Day Selector Tabs */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between px-1">
-            <span className="text-xs font-black uppercase tracking-wider text-neutral-500">
-              Jadwal Week {selectedWeekNum} (7 Hari)
-            </span>
-            <span className="text-[11px] font-mono font-bold text-[#FF5500]">
-              Total: {totalWeeklyKm.toFixed(1)} km ({activeRunningDays.length} hari lari)
-            </span>
-          </div>
-
-          <div className="grid grid-cols-7 gap-1 bg-neutral-100 p-1 rounded-2xl">
-            {[1, 2, 3, 4, 5, 6, 0].map((dayNum) => {
-              const w = currentWeekWorkouts.find((item) => item.dayOfWeek === dayNum);
-              const isSelected = activeDayTab === dayNum;
-              const isRest = w?.type === 'rest' || !w || w.distanceKm === 0;
-
-              return (
-                <button
-                  key={dayNum}
-                  type="button"
-                  onClick={() => setActiveDayTab(dayNum)}
-                  className={clsx(
-                    'py-2 px-1 rounded-xl text-center transition-all flex flex-col items-center justify-center space-y-0.5',
-                    isSelected
-                      ? 'bg-neutral-900 text-white font-bold shadow-xs'
-                      : isRest
-                      ? 'bg-white/60 text-neutral-400 hover:bg-white'
-                      : 'bg-white text-neutral-800 font-semibold hover:bg-neutral-50 shadow-2xs'
-                  )}
-                >
-                  <span className="text-[10px] uppercase font-bold tracking-tight">
-                    {DAY_NAMES[dayNum].substring(0, 3)}
-                  </span>
-                  <span className={clsx(
-                    'text-[9px] font-mono leading-none',
-                    isSelected ? 'text-[#FF5500] font-bold' : isRest ? 'text-neutral-400' : 'text-emerald-600 font-bold'
-                  )}>
-                    {isRest ? 'Rest' : `${w?.distanceKm}k`}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-
-        {/* 3. Day Session Editor Card */}
-        {currentWorkout && (
-          <Card className="p-4 bg-white border border-neutral-200/90 shadow-soft-sm space-y-3">
-            <div className="flex items-center justify-between pb-1 border-b border-neutral-100">
-              <span className="text-xs font-black uppercase text-neutral-800">
-                Sesi Hari {DAY_LABELS[currentWorkout.dayName] || currentWorkout.dayName}
-              </span>
-              <button
-                type="button"
-                onClick={() => {
-                  const isCurrentlyRest = currentWorkout.type === 'rest';
-                  updateWorkout(currentWorkout.dayOfWeek, {
-                    type: isCurrentlyRest ? 'easy' : 'rest',
-                    distanceKm: isCurrentlyRest ? 4.0 : 0,
-                    targetPaceSecPerKm: isCurrentlyRest ? 360 : null,
-                    title: isCurrentlyRest ? 'Easy Aerobic Run' : 'Rest & Recovery',
-                    description: isCurrentlyRest ? 'Lari santai ritme teratur.' : 'Hari istirahat pemulihan otot.',
-                  });
-                }}
-                className={clsx(
-                  'text-[11px] font-bold px-2.5 py-1 rounded-xl border transition-all active:scale-95',
-                  currentWorkout.type === 'rest'
-                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                    : 'bg-neutral-100 text-neutral-600 border-neutral-200'
-                )}
-              >
-                {currentWorkout.type === 'rest' ? '+ Aktifkan Jadi Hari Lari' : 'Ubah Jadi Hari Rest'}
-              </button>
-            </div>
-
-            {/* Workout Type Selector */}
-            <div>
-              <label className="block text-[11px] font-bold text-neutral-500 mb-1.5 uppercase tracking-wider">
-                Tipe Sesi Latihan
-              </label>
-              <div className="grid grid-cols-3 gap-1.5">
-                {WORKOUT_TYPES.map((t) => {
-                  const isChosen = currentWorkout.type === t.type;
-                  return (
-                    <button
-                      key={t.type}
-                      type="button"
-                      onClick={() => {
-                        updateWorkout(currentWorkout.dayOfWeek, {
-                          type: t.type,
-                          distanceKm: t.type === 'rest' ? 0 : (currentWorkout.distanceKm || 4.0),
-                          title: t.type === 'rest' ? 'Rest & Recovery' : (currentWorkout.title === 'Rest & Recovery' ? `${t.label} Session` : currentWorkout.title),
-                          targetPaceSecPerKm: t.type === 'rest' ? null : (currentWorkout.targetPaceSecPerKm || 360),
-                        });
-                      }}
-                      className={clsx(
-                        'flex items-center space-x-1.5 p-2 rounded-xl text-xs font-bold border transition-all text-left',
-                        isChosen
-                          ? 'bg-neutral-900 text-white border-neutral-900 shadow-xs'
-                          : 'bg-neutral-50 text-neutral-700 border-neutral-200/70 hover:bg-neutral-100'
-                      )}
-                    >
-                      <span className={clsx(isChosen ? 'text-[#FF5500]' : 'text-neutral-400')}>
-                        {t.icon}
-                      </span>
-                      <span className="truncate">{t.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Distance & Pace Inputs (Only when not Rest) */}
-            {currentWorkout.type !== 'rest' && (
-              <div className="space-y-3 pt-1">
-                <div className="grid grid-cols-2 gap-2.5">
-                  <div>
-                    <label className="block text-[11px] font-bold text-neutral-500 mb-1 uppercase tracking-wider">
-                      Target Jarak (km)
-                    </label>
-                    <div className="flex items-center space-x-1">
-                      <input
-                        type="number"
-                        step="0.5"
-                        min="0.5"
-                        max="50"
-                        value={currentWorkout.distanceKm}
-                        onChange={(e) =>
-                          updateWorkout(currentWorkout.dayOfWeek, {
-                            distanceKm: Math.max(0, parseFloat(e.target.value) || 0),
-                          })
-                        }
-                        className="w-full bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2 text-xs font-bold text-neutral-800 font-mono focus:outline-none focus:ring-2 focus:ring-[#FF5500]/20"
-                      />
-                      <span className="text-xs font-bold text-neutral-400 pr-1">km</span>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-[11px] font-bold text-neutral-500 mb-1 uppercase tracking-wider">
-                      Target Pace (/km)
-                    </label>
-                    <div className="flex items-center space-x-1.5">
-                      {/* Min / Sec helper */}
-                      <input
-                        type="text"
-                        placeholder="e.g. 5:30"
-                        value={
-                          currentWorkout.targetPaceSecPerKm
-                            ? `${Math.floor(currentWorkout.targetPaceSecPerKm / 60)}:${String(currentWorkout.targetPaceSecPerKm % 60).padStart(2, '0')}`
-                            : ''
-                        }
-                        onChange={(e) => {
-                          const val = e.target.value.trim();
-                          if (val.includes(':')) {
-                            const [m, s] = val.split(':').map(Number);
-                            if (!isNaN(m) && !isNaN(s)) {
-                              updateWorkout(currentWorkout.dayOfWeek, { targetPaceSecPerKm: m * 60 + s });
-                            }
-                          } else {
-                            const num = parseFloat(val);
-                            if (!isNaN(num)) {
-                              updateWorkout(currentWorkout.dayOfWeek, { targetPaceSecPerKm: Math.round(num * 60) });
-                            }
-                          }
-                        }}
-                        className="w-full bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2 text-xs font-bold text-neutral-800 font-mono focus:outline-none focus:ring-2 focus:ring-[#FF5500]/20"
-                      />
-                      <span className="text-xs font-bold text-neutral-400">/km</span>
-                    </div>
-                  </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-neutral-500 mb-1">
+                    Durasi Minggu
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="24"
+                    value={totalWeeks}
+                    onChange={(e) => setTotalWeeks(Math.max(1, parseInt(e.target.value) || 1))}
+                    className="w-full bg-white border border-neutral-200 rounded-xl px-3 py-2 text-xs font-bold text-neutral-800 focus:outline-none focus:ring-2 focus:ring-[#FF5500]/20"
+                  />
                 </div>
+                <div>
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-neutral-500 mb-1">
+                    Minggu Ke-
+                  </label>
+                  <input
+                    type="number"
+                    min="1"
+                    max={totalWeeks}
+                    value={currentWeek}
+                    onChange={(e) => setCurrentWeek(Math.max(1, Math.min(totalWeeks, parseInt(e.target.value) || 1)))}
+                    className="w-full bg-white border border-neutral-200 rounded-xl px-3 py-2 text-xs font-bold text-neutral-800 focus:outline-none focus:ring-2 focus:ring-[#FF5500]/20"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  <div>
-                    <label className="block text-[11px] font-bold text-neutral-500 mb-1 uppercase tracking-wider">
-                      Judul Sesi
-                    </label>
-                    <input
-                      type="text"
-                      value={currentWorkout.title}
-                      onChange={(e) => updateWorkout(currentWorkout.dayOfWeek, { title: e.target.value })}
-                      placeholder="Contoh: Easy Run 5K"
-                      className="w-full bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2 text-xs font-bold text-neutral-800 focus:outline-none focus:ring-2 focus:ring-[#FF5500]/20"
-                    />
+          {/* 2. 7-Day Interactive Day Selector Tabs */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between px-1">
+              <span className="text-xs font-black uppercase tracking-wider text-neutral-500">
+                Pilih Hari Latihan (7 Hari)
+              </span>
+              <span className="text-[11px] font-mono font-bold text-[#FF5500]">
+                Total: {totalWeeklyKm.toFixed(1)} km ({activeRunningDays.length} hari lari)
+              </span>
+            </div>
+
+            <div className="grid grid-cols-7 gap-1 bg-neutral-100 p-1 rounded-2xl">
+              {[1, 2, 3, 4, 5, 6, 0].map((dayNum) => {
+                const w = workouts.find((item) => item.dayOfWeek === dayNum);
+                const isSelected = activeDayTab === dayNum;
+                const isRest = w?.type === 'rest' || !w || w.distanceKm === 0;
+
+                return (
+                  <button
+                    key={dayNum}
+                    type="button"
+                    onClick={() => setActiveDayTab(dayNum)}
+                    className={clsx(
+                      'py-2 px-1 rounded-xl text-center transition-all flex flex-col items-center justify-center space-y-0.5',
+                      isSelected
+                        ? 'bg-neutral-900 text-white font-bold shadow-xs'
+                        : isRest
+                        ? 'bg-white/60 text-neutral-400 hover:bg-white'
+                        : 'bg-white text-neutral-800 font-semibold hover:bg-neutral-50 shadow-2xs'
+                    )}
+                  >
+                    <span className="text-[10px] uppercase font-bold tracking-tight">
+                      {DAY_NAMES[dayNum].substring(0, 3)}
+                    </span>
+                    <span className={clsx(
+                      'text-[9px] font-mono leading-none',
+                      isSelected ? 'text-[#FF5500] font-bold' : isRest ? 'text-neutral-400' : 'text-emerald-600 font-bold'
+                    )}>
+                      {isRest ? 'Rest' : `${w?.distanceKm}k`}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 3. Day Session Editor Card */}
+          {currentWorkout && (
+            <Card className="p-4 bg-white border border-neutral-200/90 shadow-soft-sm space-y-3">
+              <div className="flex items-center justify-between pb-1 border-b border-neutral-100">
+                <span className="text-xs font-black uppercase text-neutral-800">
+                  Sesi Hari {DAY_LABELS[currentWorkout.dayName] || currentWorkout.dayName}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const isCurrentlyRest = currentWorkout.type === 'rest';
+                    updateWorkout(currentWorkout.dayOfWeek, {
+                      type: isCurrentlyRest ? 'easy' : 'rest',
+                      distanceKm: isCurrentlyRest ? 4.0 : 0,
+                      targetPaceSecPerKm: isCurrentlyRest ? 360 : null,
+                      title: isCurrentlyRest ? 'Easy Aerobic Run' : 'Rest & Recovery',
+                      description: isCurrentlyRest ? 'Lari santai ritme teratur.' : 'Hari istirahat pemulihan otot.',
+                    });
+                  }}
+                  className={clsx(
+                    'text-[11px] font-bold px-2.5 py-1 rounded-xl border transition-all active:scale-95',
+                    currentWorkout.type === 'rest'
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                      : 'bg-neutral-100 text-neutral-600 border-neutral-200'
+                  )}
+                >
+                  {currentWorkout.type === 'rest' ? '+ Jadikan Hari Lari' : 'Ubah Jadi Hari Rest'}
+                </button>
+              </div>
+
+              {/* Workout Type Selector */}
+              <div>
+                <label className="block text-[11px] font-bold text-neutral-500 mb-1.5 uppercase tracking-wider">
+                  Tipe Sesi Latihan
+                </label>
+                <div className="grid grid-cols-3 gap-1.5">
+                  {WORKOUT_TYPES.map((t) => {
+                    const isChosen = currentWorkout.type === t.type;
+                    return (
+                      <button
+                        key={t.type}
+                        type="button"
+                        onClick={() => {
+                          updateWorkout(currentWorkout.dayOfWeek, {
+                            type: t.type,
+                            distanceKm: t.type === 'rest' ? 0 : (currentWorkout.distanceKm || 4.0),
+                            title: t.type === 'rest' ? 'Rest & Recovery' : (currentWorkout.title === 'Rest & Recovery' ? `${t.label} Session` : currentWorkout.title),
+                            targetPaceSecPerKm: t.type === 'rest' ? null : (currentWorkout.targetPaceSecPerKm || 360),
+                          });
+                        }}
+                        className={clsx(
+                          'flex items-center space-x-1.5 p-2 rounded-xl text-xs font-bold border transition-all text-left',
+                          isChosen
+                            ? 'bg-neutral-900 text-white border-neutral-900 shadow-xs'
+                            : 'bg-neutral-50 text-neutral-700 border-neutral-200/70 hover:bg-neutral-100'
+                        )}
+                      >
+                        <span className={clsx(isChosen ? 'text-[#FF5500]' : 'text-neutral-400')}>
+                          {t.icon}
+                        </span>
+                        <span className="truncate">{t.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Distance & Pace Inputs (Only when not Rest) */}
+              {currentWorkout.type !== 'rest' && (
+                <div className="space-y-3 pt-1">
+                  {/* Distance Section with Stepper */}
+                  <div className="space-y-2 bg-orange-50/40 p-3 rounded-2xl border border-orange-200/60">
+                    <div className="flex items-center justify-between">
+                      <label className="block text-[11px] font-bold text-neutral-500 uppercase tracking-wider">
+                        Target Jarak
+                      </label>
+                      <div className="flex items-center space-x-2">
+                        <button
+                          type="button"
+                          onClick={() => handleDecrementDistance(currentWorkout.dayOfWeek)}
+                          className="w-7 h-7 rounded-lg bg-white border border-neutral-200 text-neutral-800 flex items-center justify-center active:scale-90 font-bold"
+                        >
+                          <Minus className="w-3.5 h-3.5" />
+                        </button>
+                        <span className="text-sm font-black font-mono text-neutral-900 px-1">
+                          {(currentWorkout.distanceKm || 0).toFixed(1)} km
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleIncrementDistance(currentWorkout.dayOfWeek)}
+                          className="w-7 h-7 rounded-lg bg-[#FF5500] text-white flex items-center justify-center active:scale-90 font-bold"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-5 gap-1 pt-1">
+                      {QUICK_DISTANCES.map((d) => (
+                        <button
+                          key={d}
+                          type="button"
+                          onClick={() => updateWorkout(currentWorkout.dayOfWeek, { distanceKm: d })}
+                          className={clsx(
+                            'py-1 rounded-lg text-[11px] font-bold border transition-all text-center',
+                            currentWorkout.distanceKm === d
+                              ? 'bg-neutral-900 text-white border-neutral-900'
+                              : 'bg-white text-neutral-700 border-neutral-200 hover:bg-neutral-50'
+                          )}
+                        >
+                          {d}k
+                        </button>
+                      ))}
+                    </div>
                   </div>
 
+                  {/* Target Pace Section */}
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <label className="block text-[11px] font-bold text-neutral-500 uppercase tracking-wider">
+                        Target Pace (5:00 - 10:00 /km)
+                      </label>
+                      <span className="text-xs font-black font-mono text-[#FF5500]">
+                        {currentWorkout.targetPaceSecPerKm
+                          ? `${Math.floor(currentWorkout.targetPaceSecPerKm / 60)}:${String(currentWorkout.targetPaceSecPerKm % 60).padStart(2, '0')} /km`
+                          : 'None'}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-4 gap-1">
+                      {QUICK_PACES.map((p) => (
+                        <button
+                          key={p.sec}
+                          type="button"
+                          onClick={() => updateWorkout(currentWorkout.dayOfWeek, { targetPaceSecPerKm: p.sec })}
+                          className={clsx(
+                            'py-1.5 rounded-lg text-[11px] font-mono font-bold border transition-all text-center',
+                            currentWorkout.targetPaceSecPerKm === p.sec
+                              ? 'bg-neutral-900 text-white border-neutral-900'
+                              : 'bg-neutral-50 text-neutral-700 border-neutral-200 hover:bg-neutral-100'
+                          )}
+                        >
+                          {p.label}/k
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Target HR Zone */}
                   <div>
                     <label className="block text-[11px] font-bold text-neutral-500 mb-1 uppercase tracking-wider">
-                      Zona Heart Rate
+                      Target Heart Rate Zone
                     </label>
                     <select
                       value={currentWorkout.targetHrZone || HR_ZONES[1]}
-                      onChange={(e) => updateWorkout(currentWorkout.dayOfWeek, { targetHrZone: e.target.value })}
-                      className="w-full bg-neutral-50 border border-neutral-200 rounded-xl px-2.5 py-2 text-xs font-bold text-neutral-800 focus:outline-none focus:ring-2 focus:ring-[#FF5500]/20"
+                      onChange={(e) =>
+                        updateWorkout(currentWorkout.dayOfWeek, { targetHrZone: e.target.value })
+                      }
+                      className="w-full bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2 text-xs font-bold text-neutral-800 focus:outline-none focus:ring-2 focus:ring-[#FF5500]/20"
                     >
-                      {HR_ZONES.map((z) => (
-                        <option key={z} value={z}>
-                          {z}
+                      {HR_ZONES.map((zone) => (
+                        <option key={zone} value={zone}>
+                          {zone}
                         </option>
                       ))}
                     </select>
                   </div>
-                </div>
 
-                <div>
-                  <label className="block text-[11px] font-bold text-neutral-500 mb-1 uppercase tracking-wider">
-                    Catatan / Instruksi Latihan
-                  </label>
-                  <input
-                    type="text"
-                    value={currentWorkout.description}
-                    onChange={(e) => updateWorkout(currentWorkout.dayOfWeek, { description: e.target.value })}
-                    placeholder="Contoh: 1km warmup santai, 3km tempo @ 5:30/km, 1km cooldown"
-                    className="w-full bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2 text-xs text-neutral-700 focus:outline-none focus:ring-2 focus:ring-[#FF5500]/20"
-                  />
+                  {/* Workout Title & Description */}
+                  <div className="grid grid-cols-1 gap-2 pt-1">
+                    <div>
+                      <label className="block text-[11px] font-bold text-neutral-500 mb-1 uppercase tracking-wider">
+                        Judul Sesi
+                      </label>
+                      <input
+                        type="text"
+                        value={currentWorkout.title}
+                        onChange={(e) =>
+                          updateWorkout(currentWorkout.dayOfWeek, { title: e.target.value })
+                        }
+                        placeholder="Contoh: Easy Aerobic Run"
+                        className="w-full bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2 text-xs font-bold text-neutral-800 focus:outline-none focus:ring-2 focus:ring-[#FF5500]/20"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-[11px] font-bold text-neutral-500 mb-1 uppercase tracking-wider">
+                        Catatan Latihan
+                      </label>
+                      <textarea
+                        rows={2}
+                        value={currentWorkout.description || ''}
+                        onChange={(e) =>
+                          updateWorkout(currentWorkout.dayOfWeek, { description: e.target.value })
+                        }
+                        placeholder="Contoh: 1km pemanasan santai, 3km steady tempo"
+                        className="w-full bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2 text-xs text-neutral-700 focus:outline-none focus:ring-2 focus:ring-[#FF5500]/20"
+                      />
+                    </div>
+                  </div>
                 </div>
-              </div>
-            )}
-          </Card>
-        )}
+              )}
+            </Card>
+          )}
         </div>
 
-        {/* Action Buttons - Pinned Sticky Footer */}
+        {/* Fixed Footer */}
         <div className="p-4 border-t border-neutral-100 bg-white flex items-center space-x-2.5 shrink-0 shadow-[0_-4px_16px_rgba(0,0,0,0.04)] pb-[max(1rem,env(safe-area-inset-bottom))]">
           <Button
             variant="secondary"
@@ -573,14 +530,13 @@ export const ManualPlanModal: React.FC<ManualPlanModalProps> = ({
             variant="primary"
             size="md"
             onClick={handleSave}
-            leftIcon={<Check className="w-4 h-4 text-white" />}
+            rightIcon={<Check className="w-4 h-4" />}
             className="flex-2 font-bold text-xs shadow-glow-orange py-3"
           >
-            Simpan Program Latihan
+            Simpan Program ({activeRunningDays.length} Hari Lari)
           </Button>
         </div>
       </div>
     </div>
   );
 };
-

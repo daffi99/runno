@@ -8,7 +8,7 @@ import { formatDuration, formatPace, formatDate, formatDistance, formatWorkoutDa
 import { RefreshCw, ChevronDown, TrendingUp, TrendingDown, Minus, Sparkles, ArrowRight, ChevronRight, Moon } from 'lucide-react';
 import { clsx } from 'clsx';
 
-export const APP_VERSION = 'v2.0.6';
+export const APP_VERSION = 'v2.0.7';
 
 
 interface DashboardViewProps {
@@ -216,30 +216,31 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <ChevronDown className="w-4 h-4 text-neutral-500 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
       </div>
 
-      {/* 4 Summary Cards (KPIs) - 1 Column Each */}
-      <div className="grid grid-cols-1 gap-3.5">
+      {/* 4 Summary Cards (KPIs) - Single Line Horizontal & Compact Padding */}
+      <div className="grid grid-cols-1 gap-2">
         {/* Distance Card */}
-        <Card className="p-4 flex flex-col justify-between min-h-[110px]">
-          <div>
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-400">
+        <Card className="px-3.5 py-2.5 flex items-center justify-between">
+          <div className="flex items-center space-x-3 min-w-0">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-400 shrink-0">
               Distance
             </span>
-            <div className="mt-1 flex items-baseline">
-              <span className="text-2xl font-black text-neutral-900 tracking-tight">
+            <div className="flex items-baseline space-x-0.5">
+              <span className="text-base font-black text-neutral-900 font-mono tracking-tight">
                 {stats.totalDist.toFixed(1)}
               </span>
-              <span className="text-xs font-semibold text-neutral-400 ml-1">
+              <span className="text-[11px] font-bold text-neutral-400">
                 {unitSystem === 'metric' ? 'km' : 'mi'}
               </span>
             </div>
           </div>
-          <div className="mt-2 flex items-center text-[11px] font-semibold">
+
+          <div className="text-[11px] font-bold shrink-0 ml-2">
             {stats.distDiffPercent !== null ? (
-              <div className={`flex items-center ${Number(stats.distDiffPercent) >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+              <div className={`flex items-center space-x-1 ${Number(stats.distDiffPercent) >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
                 {Number(stats.distDiffPercent) >= 0 ? (
-                  <TrendingUp className="w-3.5 h-3.5 mr-1 shrink-0" />
+                  <TrendingUp className="w-3.5 h-3.5 shrink-0" />
                 ) : (
-                  <TrendingDown className="w-3.5 h-3.5 mr-1 shrink-0" />
+                  <TrendingDown className="w-3.5 h-3.5 shrink-0" />
                 )}
                 <span>
                   {Number(stats.distDiffPercent) >= 0 ? '+' : ''}
@@ -248,33 +249,34 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
             ) : (
               <div className="flex items-center text-neutral-400">
-                <Minus className="w-3.5 h-3.5 mr-1 shrink-0" />
-                <span>No previous data</span>
+                <Minus className="w-3.5 h-3.5 mr-0.5 shrink-0" />
+                <span>No data</span>
               </div>
             )}
           </div>
         </Card>
 
         {/* Runs Card */}
-        <Card className="p-4 flex flex-col justify-between min-h-[110px]">
-          <div>
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-400">
+        <Card className="px-3.5 py-2.5 flex items-center justify-between">
+          <div className="flex items-center space-x-3 min-w-0">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-400 shrink-0">
               Runs
             </span>
-            <div className="mt-1 flex items-baseline">
-              <span className="text-2xl font-black text-neutral-900 tracking-tight">
+            <div className="flex items-baseline space-x-0.5">
+              <span className="text-base font-black text-neutral-900 font-mono tracking-tight">
                 {stats.runCount}
               </span>
-              <span className="text-xs font-semibold text-neutral-400 ml-1">runs</span>
+              <span className="text-[11px] font-bold text-neutral-400">runs</span>
             </div>
           </div>
-          <div className="mt-2 flex items-center text-[11px] font-semibold">
+
+          <div className="text-[11px] font-bold shrink-0 ml-2">
             {stats.countDiff !== null ? (
-              <div className={`flex items-center ${stats.countDiff >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+              <div className={`flex items-center space-x-1 ${stats.countDiff >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
                 {stats.countDiff >= 0 ? (
-                  <TrendingUp className="w-3.5 h-3.5 mr-1 shrink-0" />
+                  <TrendingUp className="w-3.5 h-3.5 shrink-0" />
                 ) : (
-                  <TrendingDown className="w-3.5 h-3.5 mr-1 shrink-0" />
+                  <TrendingDown className="w-3.5 h-3.5 shrink-0" />
                 )}
                 <span>
                   {stats.countDiff >= 0 ? '+' : ''}
@@ -283,35 +285,36 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
             ) : (
               <div className="flex items-center text-neutral-400">
-                <Minus className="w-3.5 h-3.5 mr-1 shrink-0" />
-                <span>No previous data</span>
+                <Minus className="w-3.5 h-3.5 mr-0.5 shrink-0" />
+                <span>No data</span>
               </div>
             )}
           </div>
         </Card>
 
         {/* Avg Pace Card */}
-        <Card className="p-4 flex flex-col justify-between min-h-[110px]">
-          <div>
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-400">
+        <Card className="px-3.5 py-2.5 flex items-center justify-between">
+          <div className="flex items-center space-x-3 min-w-0">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-400 shrink-0">
               Avg Pace
             </span>
-            <div className="mt-1 flex items-baseline">
-              <span className="text-2xl font-black text-neutral-900 tracking-tight font-mono">
+            <div className="flex items-baseline space-x-0.5">
+              <span className="text-base font-black text-neutral-900 font-mono tracking-tight">
                 {stats.avgPaceSec ? formatPace(stats.avgPaceSec, unitSystem, false) : '--:--'}
               </span>
-              <span className="text-xs font-semibold text-neutral-400 ml-1">
+              <span className="text-[11px] font-bold text-neutral-400">
                 /{unitSystem === 'metric' ? 'km' : 'mi'}
               </span>
             </div>
           </div>
-          <div className="mt-2 flex items-center text-[11px] font-semibold">
+
+          <div className="text-[11px] font-bold shrink-0 ml-2">
             {stats.paceDiffSec !== null ? (
-              <div className={`flex items-center ${stats.paceDiffSec <= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+              <div className={`flex items-center space-x-1 ${stats.paceDiffSec <= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
                 {stats.paceDiffSec <= 0 ? (
-                  <TrendingDown className="w-3.5 h-3.5 mr-1 shrink-0" />
+                  <TrendingDown className="w-3.5 h-3.5 shrink-0" />
                 ) : (
-                  <TrendingUp className="w-3.5 h-3.5 mr-1 shrink-0" />
+                  <TrendingUp className="w-3.5 h-3.5 shrink-0" />
                 )}
                 <span>
                   {stats.paceDiffSec <= 0 ? '-' : '+'}
@@ -321,32 +324,33 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
             ) : (
               <div className="flex items-center text-neutral-400">
-                <Minus className="w-3.5 h-3.5 mr-1 shrink-0" />
-                <span>No previous data</span>
+                <Minus className="w-3.5 h-3.5 mr-0.5 shrink-0" />
+                <span>No data</span>
               </div>
             )}
           </div>
         </Card>
 
         {/* Total Time Card */}
-        <Card className="p-4 flex flex-col justify-between min-h-[110px]">
-          <div>
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-neutral-400">
+        <Card className="px-3.5 py-2.5 flex items-center justify-between">
+          <div className="flex items-center space-x-3 min-w-0">
+            <span className="text-[11px] font-bold uppercase tracking-wider text-neutral-400 shrink-0">
               Total Time
             </span>
-            <div className="mt-1 flex items-baseline">
-              <span className="text-2xl font-black text-neutral-900 tracking-tight font-mono">
+            <div className="flex items-baseline">
+              <span className="text-base font-black text-neutral-900 font-mono tracking-tight">
                 {stats.totalDuration > 0 ? formatDuration(stats.totalDuration) : '00:00:00'}
               </span>
             </div>
           </div>
-          <div className="mt-2 flex items-center text-[11px] font-semibold">
+
+          <div className="text-[11px] font-bold shrink-0 ml-2">
             {stats.timeDiffSec !== null ? (
-              <div className={`flex items-center ${stats.timeDiffSec >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+              <div className={`flex items-center space-x-1 ${stats.timeDiffSec >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
                 {stats.timeDiffSec >= 0 ? (
-                  <TrendingUp className="w-3.5 h-3.5 mr-1 shrink-0" />
+                  <TrendingUp className="w-3.5 h-3.5 shrink-0" />
                 ) : (
-                  <TrendingDown className="w-3.5 h-3.5 mr-1 shrink-0" />
+                  <TrendingDown className="w-3.5 h-3.5 shrink-0" />
                 )}
                 <span>
                   {stats.timeDiffSec >= 0 ? '+' : '-'}
@@ -355,8 +359,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
             ) : (
               <div className="flex items-center text-neutral-400">
-                <Minus className="w-3.5 h-3.5 mr-1 shrink-0" />
-                <span>No previous data</span>
+                <Minus className="w-3.5 h-3.5 mr-0.5 shrink-0" />
+                <span>No data</span>
               </div>
             )}
           </div>
