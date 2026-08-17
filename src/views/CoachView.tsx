@@ -32,8 +32,10 @@ import {
   Search,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
   ArrowRight,
 } from 'lucide-react';
+
 
 
 
@@ -147,6 +149,48 @@ const renderFormattedMessage = (content: string, isUser: boolean, isTyping?: boo
 };
 
 
+export type CoachModelKey = 'deepseek' | 'qwen' | 'gemini';
+
+export interface CoachModelOption {
+  id: CoachModelKey;
+  initial: string;
+  name: string;
+  desc: string;
+  badgeColor: string;
+  badgeBg: string;
+  textColor: string;
+}
+
+export const COACH_MODELS: CoachModelOption[] = [
+  {
+    id: 'deepseek',
+    initial: 'DS',
+    name: 'DeepSeek V4 Flash',
+    desc: 'Default · Analitis & Cepat',
+    badgeColor: 'border-blue-200 text-blue-700 bg-blue-50/90',
+    badgeBg: 'bg-blue-600',
+    textColor: 'text-blue-700',
+  },
+  {
+    id: 'qwen',
+    initial: 'QW',
+    name: 'Qwen 3.7 Flash',
+    desc: 'Multimodal & Reasoning',
+    badgeColor: 'border-purple-200 text-purple-700 bg-purple-50/90',
+    badgeBg: 'bg-purple-600',
+    textColor: 'text-purple-700',
+  },
+  {
+    id: 'gemini',
+    initial: 'GE',
+    name: 'Gemini 2.5 Flash',
+    desc: 'Google · Ultra Cepat',
+    badgeColor: 'border-amber-200 text-amber-700 bg-amber-50/90',
+    badgeBg: 'bg-amber-600',
+    textColor: 'text-amber-700',
+  },
+];
+
 export const CoachView: React.FC<CoachViewProps> = ({
   runs,
   unitSystem,
@@ -170,6 +214,21 @@ export const CoachView: React.FC<CoachViewProps> = ({
     } catch (_) {}
   }, [activeTab]);
 
+  const [selectedModelId, setSelectedModelId] = useState<CoachModelKey>(() => {
+    try {
+      const saved = localStorage.getItem('runno_coach_model') as CoachModelKey;
+      if (saved === 'deepseek' || saved === 'qwen' || saved === 'gemini') {
+        return saved;
+      }
+    } catch (_) {}
+    return 'deepseek'; // Default to DeepSeek
+  });
+  const [isModelDropdownOpen, setIsModelDropdownOpen] = useState<boolean>(false);
+
+  const activeModelOption = useMemo(() => {
+    return COACH_MODELS.find((m) => m.id === selectedModelId) || COACH_MODELS[0];
+  }, [selectedModelId]);
+
   const [activePlan, setActivePlan] = useState<TrainingPlan | null>(storageService.getActivePlan());
   const [messages, setMessages] = useState<AICoachMessage[]>(() => {
     const saved = storageService.getCoachMessages();
@@ -191,6 +250,7 @@ export const CoachView: React.FC<CoachViewProps> = ({
   const [typingMessageId, setTypingMessageId] = useState<string | null>(null);
   const [isQuickModalOpen, setIsQuickModalOpen] = useState<boolean>(false);
   const [appliedPlanToast, setAppliedPlanToast] = useState<string | null>(null);
+
 
   const chatEndRef = useRef<HTMLDivElement>(null);
   const chatInputRef = useRef<HTMLInputElement>(null);
@@ -487,12 +547,14 @@ export const CoachView: React.FC<CoachViewProps> = ({
         message: trimmed,
         history: cleanHistory,
         currentPlan: activePlan,
+        coachModel: selectedModelId,
         runnerContext: {
           recentRuns: sanitizedRuns,
           unitSystem,
         },
         customApiKey,
       };
+
 
 
 
@@ -1123,8 +1185,85 @@ export const CoachView: React.FC<CoachViewProps> = ({
                 e.preventDefault();
                 handleSendMessage(inputPrompt);
               }}
-              className="flex items-center space-x-2 bg-white p-1.5 rounded-2xl border border-neutral-300/80 shadow-lg focus-within:ring-2 focus-within:ring-[#FF5500]/30 focus-within:border-[#FF5500]"
+              className="relative flex items-center space-x-1.5 bg-white p-1.5 rounded-2xl border border-neutral-300/80 shadow-lg focus-within:ring-2 focus-within:ring-[#FF5500]/30 focus-within:border-[#FF5500]"
             >
+              {/* Compact Model Selector Dropdown */}
+              <div className="relative shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setIsModelDropdownOpen(!isModelDropdownOpen)}
+                  className={clsx(
+                    'flex items-center space-x-1 px-2.5 py-1.5 rounded-xl border text-xs font-black transition-all active:scale-95 shadow-2xs',
+                    activeModelOption.badgeColor
+                  )}
+                  title={`Active Model: ${activeModelOption.name} (${activeModelOption.initial})`}
+                >
+                  <span className="tracking-wide text-[11px] font-black">{activeModelOption.initial}</span>
+                  <ChevronDown className="w-3 h-3 opacity-60" />
+                </button>
+
+                {isModelDropdownOpen && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-40"
+                      onClick={() => setIsModelDropdownOpen(false)}
+                    />
+                    <div className="absolute bottom-full mb-2 left-0 z-50 w-56 bg-white rounded-2xl border border-neutral-200 shadow-xl p-1.5 space-y-1 animate-in fade-in slide-in-from-bottom-2 duration-150">
+                      <div className="px-2.5 py-1 text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
+                        Select Coach AI Model
+                      </div>
+                      {COACH_MODELS.map((m) => {
+                        const isSelected = selectedModelId === m.id;
+                        return (
+                          <button
+                            key={m.id}
+                            type="button"
+                            onClick={() => {
+                              setSelectedModelId(m.id);
+                              setIsModelDropdownOpen(false);
+                              try {
+                                localStorage.setItem('runno_coach_model', m.id);
+                              } catch (_) {}
+                            }}
+                            className={clsx(
+                              'w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-xs transition-all text-left',
+                              isSelected
+                                ? 'bg-neutral-900 text-white font-bold'
+                                : 'text-neutral-700 hover:bg-neutral-100'
+                            )}
+                          >
+                            <div className="flex items-center space-x-2">
+                              <span
+                                className={clsx(
+                                  'px-1.5 py-0.5 rounded-md text-[10px] font-black border',
+                                  isSelected
+                                    ? 'bg-neutral-800 border-neutral-700 text-white'
+                                    : m.badgeColor
+                                )}
+                              >
+                                {m.initial}
+                              </span>
+                              <div>
+                                <div className="font-bold leading-tight">{m.name}</div>
+                                <div
+                                  className={clsx(
+                                    'text-[10px] leading-tight',
+                                    isSelected ? 'text-neutral-300' : 'text-neutral-400'
+                                  )}
+                                >
+                                  {m.desc}
+                                </div>
+                              </div>
+                            </div>
+                            {isSelected && <Check className="w-4 h-4 text-[#FF5500] shrink-0" />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
+              </div>
+
               <input
                 ref={chatInputRef}
                 type="text"
@@ -1136,7 +1275,7 @@ export const CoachView: React.FC<CoachViewProps> = ({
                     : 'Ask coach (e.g. Tue, Thu, Sat for 10K)...'
                 }
                 disabled={isLoading || !!typingMessageId}
-                className="flex-1 px-3 py-2 text-xs text-neutral-900 bg-transparent focus:outline-none placeholder:text-neutral-400 disabled:opacity-60"
+                className="flex-1 px-2 py-2 text-xs text-neutral-900 bg-transparent focus:outline-none placeholder:text-neutral-400 disabled:opacity-60"
               />
 
               <button
@@ -1149,6 +1288,7 @@ export const CoachView: React.FC<CoachViewProps> = ({
               </button>
             </form>
           </div>
+
 
         </div>
       )}

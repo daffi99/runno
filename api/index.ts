@@ -560,7 +560,9 @@ router.post('/ai-coach', async (req, res) => {
       currentPlan = null,
       runnerContext = {},
       customApiKey,
+      coachModel,
     } = body;
+
 
     if (!message || typeof message !== 'string') {
       return res.status(400).json({ error: 'Message is required' });
@@ -721,40 +723,76 @@ JSON_PLAN STRUCTURE:
 
     chatMessages.push({ role: 'user', content: message });
 
-    const model = 'google/gemini-2.5-flash';
-    const openRouterResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
-        'HTTP-Referer': 'https://runno.app',
-        'X-Title': 'Runno AI Running Coach',
-      },
-      body: JSON.stringify({
-        model,
-        messages: chatMessages,
-        max_tokens: 2500,
-        temperature: 0.6,
-      }),
-    });
+    const MODEL_MAP: Record<string, string> = {
+      deepseek: 'deepseek/deepseek-v4-flash-0731',
+      qwen: 'qwen/qwen3.7-flash',
+      gemini: 'google/gemini-2.5-flash',
+    };
 
-    if (!openRouterResponse.ok) {
-      const errText = await openRouterResponse.text();
-      console.error('[Runno AI Coach] OpenRouter returned error:', openRouterResponse.status, errText);
+    let targetModel = 'deepseek/deepseek-v4-flash-0731'; // Default: DeepSeek V4 Flash
+    if (coachModel) {
+      if (MODEL_MAP[coachModel]) {
+        targetModel = MODEL_MAP[coachModel];
+      } else if (typeof coachModel === 'string' && coachModel.includes('/')) {
+        targetModel = coachModel;
+      }
+    }
+
+    let openRouterResponse: any = null;
+    let modelUsed = targetModel;
+    let lastErrorText = '';
+
+    const candidateModels = [
+      targetModel,
+      targetModel.includes('deepseek') ? 'deepseek/deepseek-chat' : null,
+      targetModel.includes('qwen') ? 'qwen/qwen-2.5-72b-instruct' : null,
+      'google/gemini-2.5-flash',
+    ].filter(Boolean) as string[];
+
+    for (const m of candidateModels) {
+      modelUsed = m;
+      try {
+        openRouterResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${apiKey}`,
+            'HTTP-Referer': 'https://runno.app',
+            'X-Title': 'Runno AI Running Coach',
+          },
+          body: JSON.stringify({
+            model: m,
+            messages: chatMessages,
+            max_tokens: 2500,
+            temperature: 0.6,
+          }),
+        });
+
+        if (openRouterResponse.ok) break;
+        lastErrorText = await openRouterResponse.text();
+        console.warn(`[Runno AI Coach] Model ${m} returned ${openRouterResponse.status}: ${lastErrorText}`);
+      } catch (err: any) {
+        lastErrorText = err.message;
+        console.warn(`[Runno AI Coach] Network error calling ${m}:`, err.message);
+      }
+    }
+
+    if (!openRouterResponse || !openRouterResponse.ok) {
       const fallbackPlan = generateAlgorithmicPlan(message, runnerContext);
       return res.json({
         success: true,
-        reply: `⚠️ **OpenRouter Status (${openRouterResponse.status})**\n\nPanggilan ke model AI mengembalikan error ${openRouterResponse.status}. Saya telah menyiapkan jadwal latihan alternatif di bawah menggunakan offline coaching engine.`,
+        reply: `⚠️ **OpenRouter Status (${openRouterResponse?.status || 500})**\n\nPanggilan ke model AI mengembalikan error. Saya telah menyiapkan jadwal latihan alternatif di bawah menggunakan offline coaching engine.`,
         suggestedPlan: fallbackPlan,
         debugInfo: {
           endpoint: 'https://openrouter.ai/api/v1/chat/completions',
-          status: openRouterResponse.status,
+          status: openRouterResponse?.status || 500,
           environment: process.env.VERCEL ? 'vercel_serverless' : 'local_node',
           hasServerEnvKey: Boolean(process.env.OPENROUTER_API_KEY),
           hasCustomClientKey: Boolean(customApiKey),
           hasApiKey: true,
-          errorName: `OpenRouter_HTTP_${openRouterResponse.status}`,
-          rawError: errText,
+          modelUsed,
+          errorName: `OpenRouter_HTTP_${openRouterResponse?.status || 500}`,
+          rawError: lastErrorText,
           clientTimestamp: new Date().toISOString(),
         },
       });
@@ -788,10 +826,11 @@ JSON_PLAN STRUCTURE:
         hasServerEnvKey: Boolean(process.env.OPENROUTER_API_KEY),
         hasCustomClientKey: Boolean(customApiKey),
         hasApiKey: true,
-        modelUsed: model,
+        modelUsed,
         clientTimestamp: new Date().toISOString(),
       },
     });
+
 
   } catch (err: any) {
     console.error('[Runno AI Coach] Exception:', err);
