@@ -269,6 +269,12 @@ export const storageService = {
     try {
       if (!plan) {
         localStorage.removeItem(ACTIVE_PLAN_KEY);
+        // Clear on server in background
+        fetch('/api/plans', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'archived' }),
+        }).catch(() => {});
         return;
       }
       const updatedPlan: TrainingPlan = {
@@ -297,10 +303,32 @@ export const storageService = {
         if (data.plan) {
           const serverTime = new Date(data.plan.updatedAt || data.plan.createdAt || 0).getTime();
           const localTime = new Date(localPlan?.updatedAt || localPlan?.createdAt || 0).getTime();
-          if (serverTime >= localTime) {
-            this.saveActivePlan(data.plan);
-            return data.plan;
+
+          // Only overwrite local if server is genuinely newer by > 2 seconds
+          if (serverTime > localTime + 2000) {
+            const mergedPlan: TrainingPlan = {
+              ...data.plan,
+              weeklySchedules: data.plan.weeklySchedules || localPlan?.weeklySchedules || undefined,
+            };
+            this.saveActivePlan(mergedPlan);
+            return mergedPlan;
+          } else if (localPlan) {
+            // Local is newer or equal: push local to server to guarantee DB is up to date
+            fetch('/api/plans', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(localPlan),
+            }).catch(() => {});
+            return localPlan;
           }
+        } else if (localPlan) {
+          // Server returned no plan, push local plan to server
+          fetch('/api/plans', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(localPlan),
+          }).catch(() => {});
+          return localPlan;
         }
       }
     } catch (e) {
@@ -308,6 +336,7 @@ export const storageService = {
     }
     return localPlan;
   },
+
 
   toggleWorkoutCompletion(workoutId: string, completed?: boolean): TrainingPlan | null {
     const plan = this.getActivePlan();

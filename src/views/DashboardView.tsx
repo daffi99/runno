@@ -8,7 +8,7 @@ import { formatDuration, formatPace, formatDate, formatDistance, formatWorkoutDa
 import { RefreshCw, ChevronDown, TrendingUp, TrendingDown, Minus, Sparkles, ArrowRight, ChevronRight, Moon } from 'lucide-react';
 import { clsx } from 'clsx';
 
-export const APP_VERSION = 'v2.0.3';
+export const APP_VERSION = 'v2.0.4';
 
 interface DashboardViewProps {
   runs: Run[];

@@ -61,10 +61,12 @@ export const trainingPlans = pgTable('training_plans', {
   fitness_level: text('fitness_level').notNull().default('intermediate'),
   status: text('status').notNull().default('active'),
   workouts: jsonb('workouts').notNull(),
+  weekly_schedules: jsonb('weekly_schedules'),
   ai_advice: text('ai_advice'),
   created_at: timestamp('created_at').defaultNow().notNull(),
   updated_at: timestamp('updated_at').defaultNow().notNull(),
 });
+
 
 export const coachMessagesTable = pgTable('coach_messages', {
   id: text('id').primaryKey(),
@@ -132,16 +134,19 @@ export async function initDbSchema(pool: any) {
         fitness_level TEXT NOT NULL DEFAULT 'intermediate',
         status TEXT NOT NULL DEFAULT 'active',
         workouts JSONB NOT NULL,
+        weekly_schedules JSONB,
         ai_advice TEXT,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL,
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL
       );
+      ALTER TABLE training_plans ADD COLUMN IF NOT EXISTS weekly_schedules JSONB;
 
       CREATE TABLE IF NOT EXISTS coach_messages (
         id TEXT PRIMARY KEY,
         messages JSONB NOT NULL,
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL
       );
+
     `;
     await pool.query(createTableQuery);
     console.log('[Runno DB] PostgreSQL tables verified successfully.');
@@ -1247,6 +1252,7 @@ router.get('/plans/active', async (_req, res) => {
         fitnessLevel: rec.fitness_level,
         status: rec.status,
         workouts: rec.workouts,
+        weeklySchedules: rec.weekly_schedules || null,
         aiAdvice: rec.ai_advice,
         createdAt: rec.created_at?.toISOString?.() || new Date().toISOString(),
         updatedAt: rec.updated_at?.toISOString?.() || new Date().toISOString(),
@@ -1288,6 +1294,7 @@ router.post('/plans', async (req, res) => {
       fitness_level: planPayload.fitnessLevel || 'intermediate',
       status: planPayload.status || 'active',
       workouts: planPayload.workouts || [],
+      weekly_schedules: planPayload.weeklySchedules || null,
       ai_advice: planPayload.aiAdvice || null,
       updated_at: new Date(),
     };
@@ -1298,6 +1305,7 @@ router.post('/plans', async (req, res) => {
     });
 
     res.json({ success: true, plan: planPayload });
+
   } catch (err: any) {
     console.error('[Runno DB] Failed to save training plan:', err);
     res.status(500).json({ error: 'Failed to save training plan to database' });
