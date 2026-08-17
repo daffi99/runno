@@ -4,11 +4,10 @@ import { storageService } from '../services/storage';
 import { Card } from '../components/ui/Card';
 import { RouteThumbnail } from '../components/ui/RouteThumbnail';
 import { formatDuration, formatPace, formatDate, formatDistance, formatWorkoutDate } from '../utils/formatters';
-import { Bell, ChevronDown, TrendingUp, TrendingDown, Minus, Sparkles, ArrowRight, ChevronRight } from 'lucide-react';
+import { RefreshCw, ChevronDown, TrendingUp, TrendingDown, Minus, Sparkles, ArrowRight, ChevronRight } from 'lucide-react';
+import { clsx } from 'clsx';
 
-
-
-
+export const APP_VERSION = 'v1.1.1';
 
 interface DashboardViewProps {
   runs: Run[];
@@ -16,6 +15,7 @@ interface DashboardViewProps {
   onSelectRun: (runId: string) => void;
   onNavigateTab: (tab: any) => void;
   onOpenAddRun?: () => void;
+  onRefresh?: () => Promise<void> | void;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -23,7 +23,22 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   unitSystem,
   onSelectRun,
   onNavigateTab,
+  onRefresh,
 }) => {
+  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
+
+  const handleRefreshClick = async () => {
+    if (isRefreshing) return;
+    setIsRefreshing(true);
+    try {
+      if (onRefresh) {
+        await onRefresh();
+      } else {
+        await storageService.syncWithServer();
+      }
+    } catch (_) {}
+    setTimeout(() => setIsRefreshing(false), 600);
+  };
   const months = useMemo(() => {
     const monthSet = new Set<string>();
     for (const r of runs) {
@@ -140,17 +155,23 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             alt="Runno"
             className="w-8 h-8 rounded-xl object-contain shadow-soft-xs border border-neutral-200/60"
           />
-          <h1 className="text-2xl font-black text-neutral-900 tracking-tight">
-            Dashboard
-          </h1>
+          <div className="flex items-baseline space-x-2">
+            <h1 className="text-2xl font-black text-neutral-900 tracking-tight">
+              Dashboard
+            </h1>
+            <span className="text-[10px] font-mono font-black px-1.5 py-0.5 rounded-md bg-orange-100/80 text-[#FF5500] border border-orange-200/90 shadow-2xs">
+              {APP_VERSION}
+            </span>
+          </div>
         </div>
         <button
-          onClick={() => onNavigateTab('more')}
-          className="relative p-2.5 rounded-full bg-white border border-neutral-200/80 text-neutral-700 shadow-soft-sm hover:bg-neutral-50 active:scale-95 transition-all"
-          aria-label="Settings and Notifications"
+          onClick={handleRefreshClick}
+          disabled={isRefreshing}
+          className="relative p-2.5 rounded-full bg-white border border-neutral-200/80 text-neutral-700 shadow-soft-sm hover:bg-neutral-50 active:scale-95 transition-all disabled:opacity-75"
+          aria-label="Refresh and sync data"
+          title="Refresh Data"
         >
-          <Bell className="w-5 h-5" />
-          <span className="absolute top-2 right-2 w-2 h-2 bg-[#FF5500] rounded-full ring-2 ring-white" />
+          <RefreshCw className={clsx("w-5 h-5 text-neutral-600 transition-transform", isRefreshing && "animate-spin text-[#FF5500]")} />
         </button>
       </div>
 

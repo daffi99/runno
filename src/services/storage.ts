@@ -377,9 +377,22 @@ export const storageService = {
             completedAt: matchingRun.date || matchingRun.created_at,
           };
         }
+      } else {
+        // If there is NO matching run for this date, ensure completed is false
+        if (w.completed || w.completedRunId || w.date !== workoutDateStr) {
+          hasChanges = true;
+          return {
+            ...w,
+            date: workoutDateStr,
+            completed: false,
+            completedRunId: null,
+            completedAt: null,
+          };
+        }
       }
 
       return w;
+
     });
 
     if (hasChanges) {

@@ -450,7 +450,11 @@ export const CoachView: React.FC<CoachViewProps> = ({
     const targetKm = activePlan.weeklyTargetKm || runningWorkouts.reduce((acc, w) => acc + w.distanceKm, 0);
 
     if (isViewingCurrentWeek) {
-      const completedWorkouts = runningWorkouts.filter((w) => w.completed);
+      const evaluatedWorkouts = runningWorkouts.map((w) => {
+        const targetDate = getDateForDayOfWeek(w.dayOfWeek, new Date());
+        return getWorkoutForDate(w, targetDate, true);
+      });
+      const completedWorkouts = evaluatedWorkouts.filter((w) => w.completed);
       const completedKm = completedWorkouts.reduce((acc, w) => acc + w.distanceKm, 0);
       const percent = targetKm > 0 ? Math.min(100, Math.round((completedKm / targetKm) * 100)) : 0;
       return {
@@ -476,6 +480,7 @@ export const CoachView: React.FC<CoachViewProps> = ({
         totalWorkouts: runningWorkouts.length,
       };
     }
+
   }, [activePlan, isViewingCurrentWeek, selectedWeekBaseDate, runs]);
 
   const handleToggleWorkout = (workoutId: string) => {
@@ -719,42 +724,45 @@ export const CoachView: React.FC<CoachViewProps> = ({
         </button>
       </div>
 
-      {/* Top Segmented Sub-Tab Switcher */}
-      <div className="grid grid-cols-2 p-1 bg-neutral-200/60 rounded-2xl">
-        <button
-          type="button"
-          onClick={() => setActiveTab('schedule')}
-          className={clsx(
-            'py-2 px-3 rounded-xl text-xs font-bold transition-all duration-200 flex items-center justify-center space-x-2',
-            activeTab === 'schedule'
-              ? 'bg-white text-neutral-900 shadow-sm'
-              : 'text-neutral-500 hover:text-neutral-800'
-          )}
-        >
-          <Calendar className="w-3.5 h-3.5" />
-          <span>Active Plan</span>
-          {activePlan && (
-            <span className="w-2 h-2 rounded-full bg-emerald-500" />
-          )}
-        </button>
+      {/* Sticky Top Segmented Sub-Tab Switcher */}
+      <div className="sticky top-0 z-30 pt-1 pb-1.5 -mx-4 px-4 bg-[#F8F9FA]/90 backdrop-blur-md">
+        <div className="grid grid-cols-2 p-1 bg-neutral-200/70 rounded-2xl border border-neutral-200/60 shadow-soft-xs">
+          <button
+            type="button"
+            onClick={() => setActiveTab('schedule')}
+            className={clsx(
+              'py-2 px-3 rounded-xl text-xs font-bold transition-all duration-200 flex items-center justify-center space-x-2',
+              activeTab === 'schedule'
+                ? 'bg-white text-neutral-900 shadow-sm'
+                : 'text-neutral-500 hover:text-neutral-800'
+            )}
+          >
+            <Calendar className="w-3.5 h-3.5" />
+            <span>Active Plan</span>
+            {activePlan && (
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            )}
+          </button>
 
-        <button
-          type="button"
-          onClick={() => setActiveTab('chat')}
-          className={clsx(
-            'py-2 px-3 rounded-xl text-xs font-bold transition-all duration-200 flex items-center justify-center space-x-2',
-            activeTab === 'chat'
-              ? 'bg-white text-neutral-900 shadow-sm'
-              : 'text-neutral-500 hover:text-neutral-800'
-          )}
-        >
-          <MessageSquare className="w-3.5 h-3.5" />
-          <span>Coach Chat</span>
-          <span className="px-1.5 py-0.2 rounded-full bg-orange-100 text-[#FF5500] text-[10px] font-black">
-            AI
-          </span>
-        </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('chat')}
+            className={clsx(
+              'py-2 px-3 rounded-xl text-xs font-bold transition-all duration-200 flex items-center justify-center space-x-2',
+              activeTab === 'chat'
+                ? 'bg-white text-neutral-900 shadow-sm'
+                : 'text-neutral-500 hover:text-neutral-800'
+            )}
+          >
+            <MessageSquare className="w-3.5 h-3.5" />
+            <span>Coach Chat</span>
+            <span className="px-1.5 py-0.2 rounded-full bg-orange-100 text-[#FF5500] text-[10px] font-black">
+              AI
+            </span>
+          </button>
+        </div>
       </div>
+
 
       {/* =================================================================== */}
       {/* SUB-VIEW 1: ACTIVE SCHEDULE & WORKOUT CALENDAR */}

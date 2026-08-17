@@ -201,8 +201,10 @@ export const App: React.FC = () => {
             unitSystem={settings.unitSystem}
             onSelectRun={handleSelectRun}
             onNavigateTab={handleSelectTab}
+            onRefresh={loadData}
           />
         )}
+
 
         {screen.type === 'tab' && screen.tab === 'history' && (
           <HistoryView
