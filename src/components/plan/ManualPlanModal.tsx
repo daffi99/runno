@@ -79,6 +79,9 @@ export const ManualPlanModal: React.FC<ManualPlanModalProps> = ({
 }) => {
   const [title, setTitle] = useState<string>(existingPlan?.title || 'Custom Running Plan');
   const [goal, setGoal] = useState<string>(existingPlan?.goal || 'Build 5K Endurance');
+  const [startDate, setStartDate] = useState<string>(
+    existingPlan?.startDate || new Date().toISOString().split('T')[0]
+  );
   const [totalWeeks, setTotalWeeks] = useState<number>(existingPlan?.totalWeeks || 8);
   const [currentWeek, setCurrentWeek] = useState<number>(existingPlan?.currentWeek || 1);
   const [fitnessLevel, setFitnessLevel] = useState<'beginner' | 'intermediate' | 'advanced'>(
@@ -154,7 +157,7 @@ export const ManualPlanModal: React.FC<ManualPlanModalProps> = ({
       goal: goal.trim() || 'Building Running Endurance',
       scheduleSummary: scheduleSummaryText || 'Flexible Schedule',
       selectedDays: activeRunningDays.map((w) => w.dayName),
-      startDate: existingPlan?.startDate || new Date().toISOString().split('T')[0],
+      startDate: startDate || existingPlan?.startDate || new Date().toISOString().split('T')[0],
       weeklyTargetKm: Number(totalWeeklyKm.toFixed(1)),
       totalWeeks: Number(totalWeeks) || 8,
       currentWeek: planCurrentWeek,
@@ -186,22 +189,19 @@ export const ManualPlanModal: React.FC<ManualPlanModalProps> = ({
               <X className="w-5 h-5" />
             </button>
             <div className="min-w-0">
-              <h3 className="text-base font-black text-white tracking-tight truncate">
-                {existingPlan ? 'Edit Training Plan' : 'Create Manual Plan'}
+              <h3 className="text-base font-black text-white truncate">
+                {existingPlan ? 'Edit Training Plan' : 'Buat Training Plan'}
               </h3>
-              <p className="text-[11px] text-neutral-400 font-medium truncate">
-                Atur jadwal mingguan per hari (Senin s/d Minggu)
-              </p>
+              <p className="text-[11px] text-neutral-400">Atur jadwal, tanggal mulai & jarak tiap sesi</p>
             </div>
           </div>
 
-          {/* Top Right Primary Submit Button */}
           <button
             type="button"
             onClick={handleSave}
-            className="flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-[#FF5500] hover:bg-[#E64D00] text-white text-xs font-black shadow-glow-orange active:scale-95 transition-all shrink-0 ml-2"
+            className="flex items-center space-x-1 px-4 py-2 rounded-2xl bg-[#FF5500] hover:bg-[#E64D00] text-white text-xs font-black transition-all active:scale-95 shadow-glow-orange shrink-0"
           >
-            <Check className="w-4 h-4 text-white stroke-[3]" />
+            <Check className="w-4 h-4" />
             <span>Simpan</span>
           </button>
         </div>
@@ -223,7 +223,7 @@ export const ManualPlanModal: React.FC<ManualPlanModalProps> = ({
               />
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
               <div>
                 <label className="block text-[11px] font-bold uppercase tracking-wider text-neutral-400 mb-1">
                   Target / Goal
@@ -237,10 +237,22 @@ export const ManualPlanModal: React.FC<ManualPlanModalProps> = ({
                 />
               </div>
 
+              <div>
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-neutral-400 mb-1">
+                  Tanggal Mulai (Start)
+                </label>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="w-full bg-[#1E1E1E] border border-white/10 rounded-xl px-3 py-2 text-xs font-bold text-white focus:outline-none focus:ring-2 focus:ring-[#FF5500]/30 focus:border-[#FF5500]"
+                />
+              </div>
+
               <div className="grid grid-cols-2 gap-2">
                 <div>
                   <label className="block text-[11px] font-bold uppercase tracking-wider text-neutral-400 mb-1">
-                    Durasi Minggu
+                    Durasi
                   </label>
                   <input
                     type="number"

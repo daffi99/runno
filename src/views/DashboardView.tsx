@@ -497,12 +497,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     <RouteThumbnail routeData={run.route_data} width={52} height={44} />
 
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-bold text-white truncate">
+                      <div className="flex items-center justify-between items-start">
+                        <span className="text-sm font-black text-white truncate">
                           {formatDistance(run.distance_km, unitSystem, true)}
                         </span>
                         {isToday ? (
-                          <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-emerald-500 text-white">
+                          <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-[#FF5500]/20 text-[#FF5500] border border-[#FF5500]/30 shrink-0">
                             Now
                           </span>
                         ) : (

@@ -371,12 +371,18 @@ export const CoachView: React.FC<CoachViewProps> = ({
   const isViewingCurrentWeek = viewedWeek === currentPlanWeek;
   const isViewingNextWeek = viewedWeek === currentPlanWeek + 1;
 
-  // Selected week base date (shifted by (viewedWeek - currentPlanWeek) * 7 days)
+  // Selected week base date (calculated based on plan.startDate + (viewedWeek - 1) * 7 days)
   const selectedWeekBaseDate = useMemo(() => {
+    if (activePlan?.startDate) {
+      const [y, m, d] = activePlan.startDate.split('-').map(Number);
+      const start = new Date(y, m - 1, d);
+      start.setDate(start.getDate() + (viewedWeek - 1) * 7);
+      return start;
+    }
     const d = new Date();
     d.setDate(d.getDate() + (viewedWeek - currentPlanWeek) * 7);
     return d;
-  }, [viewedWeek, currentPlanWeek]);
+  }, [activePlan?.startDate, viewedWeek, currentPlanWeek]);
 
   // Helper to compute accurate workout completion for any target calendar date
   // Prevents past runs from falsely showing as completed on future/next week schedules
