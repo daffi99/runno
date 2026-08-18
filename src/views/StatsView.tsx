@@ -11,7 +11,7 @@ import {
   Tooltip,
   CartesianGrid,
 } from 'recharts';
-import { Trophy, Flame, Zap, Award, TrendingUp } from 'lucide-react';
+import { Trophy, Flame, Zap, Award, TrendingUp, Activity } from 'lucide-react';
 
 interface StatsViewProps {
   runs: Run[];
@@ -91,7 +91,49 @@ export const StatsView: React.FC<StatsViewProps> = ({ runs, unitSystem }) => {
     return result;
   }, [runs, unitSystem]);
 
-  // 3. Lifetime Records
+  // 3. All-Time Stats Summary
+  const allTimeStats = useMemo(() => {
+    if (runs.length === 0) return null;
+
+    let totalDistKm = 0;
+    let totalSec = 0;
+    let totalElevM = 0;
+    let totalCalories = 0;
+    let validPaceCount = 0;
+    let totalPaceSec = 0;
+
+    for (const r of runs) {
+      totalDistKm += r.distance_km || 0;
+      totalSec += r.duration_seconds || 0;
+      totalElevM += r.elevation_gain_m || 0;
+      totalCalories += r.calories || 0;
+      if (r.pace_seconds_per_km && r.pace_seconds_per_km > 0) {
+        totalPaceSec += r.pace_seconds_per_km;
+        validPaceCount++;
+      }
+    }
+
+    const avgPaceSec = validPaceCount > 0 ? Math.round(totalPaceSec / validPaceCount) : 0;
+
+    const distDisplay = unitSystem === 'metric'
+      ? `${totalDistKm.toFixed(1)} km`
+      : `${(totalDistKm * 0.621371).toFixed(1)} mi`;
+
+    const elevDisplay = unitSystem === 'metric'
+      ? `${Math.round(totalElevM).toLocaleString()} m`
+      : `${Math.round(totalElevM * 3.28084).toLocaleString()} ft`;
+
+    return {
+      totalDistance: distDisplay,
+      totalRuns: runs.length,
+      totalTime: formatDuration(totalSec),
+      totalElev: elevDisplay,
+      totalCalories: totalCalories.toLocaleString(),
+      avgPace: avgPaceSec ? formatPace(avgPaceSec, unitSystem, false) : '--:--',
+    };
+  }, [runs, unitSystem]);
+
+  // 4. Lifetime Records
   const records = useMemo(() => {
     if (runs.length === 0) return null;
 
@@ -277,6 +319,68 @@ export const StatsView: React.FC<StatsViewProps> = ({ runs, unitSystem }) => {
           </div>
         </div>
       </Card>
+
+      {/* ═══ ALL-TIME STATS CARD ═══ */}
+      {allTimeStats && (
+        <Card className="p-5 bg-[#1E1E1E] border-white/5 space-y-3.5">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold uppercase tracking-wider text-neutral-400 flex items-center gap-1.5">
+              <Activity className="w-3.5 h-3.5 text-[#FF5500]" />
+              All-Time Stats
+            </span>
+            <span className="text-xs font-bold text-[#FF5500] font-mono">
+              {allTimeStats.totalRuns} Activities
+            </span>
+          </div>
+
+          <div className="grid grid-cols-3 gap-2.5 pt-1">
+            <div className="bg-[#252525] p-3 rounded-2xl border border-white/5">
+              <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block">Total Distance</span>
+              <span className="text-base font-black text-white font-mono mt-0.5 block truncate">
+                {allTimeStats.totalDistance}
+              </span>
+            </div>
+
+            <div className="bg-[#252525] p-3 rounded-2xl border border-white/5">
+              <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block">Total Time</span>
+              <span className="text-base font-black text-white font-mono mt-0.5 block truncate">
+                {allTimeStats.totalTime}
+              </span>
+            </div>
+
+            <div className="bg-[#252525] p-3 rounded-2xl border border-white/5">
+              <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block">Total Elev</span>
+              <span className="text-base font-black text-white font-mono mt-0.5 block truncate">
+                {allTimeStats.totalElev}
+              </span>
+            </div>
+
+            <div className="bg-[#252525] p-3 rounded-2xl border border-white/5">
+              <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block">Avg Pace</span>
+              <span className="text-base font-black text-white font-mono mt-0.5 block truncate">
+                {allTimeStats.avgPace}
+                <span className="text-[9px] text-neutral-400 font-normal ml-0.5">/{unitSystem === 'metric' ? 'km' : 'mi'}</span>
+              </span>
+            </div>
+
+            <div className="bg-[#252525] p-3 rounded-2xl border border-white/5">
+              <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block">Calories</span>
+              <span className="text-base font-black text-white font-mono mt-0.5 block truncate">
+                {allTimeStats.totalCalories}
+                <span className="text-[9px] text-neutral-400 font-normal ml-0.5">kcal</span>
+              </span>
+            </div>
+
+            <div className="bg-[#252525] p-3 rounded-2xl border border-white/5">
+              <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block">Workouts</span>
+              <span className="text-base font-black text-white font-mono mt-0.5 block truncate">
+                {allTimeStats.totalRuns}
+                <span className="text-[9px] text-neutral-400 font-normal ml-0.5">runs</span>
+              </span>
+            </div>
+          </div>
+        </Card>
+      )}
 
       {/* ═══ PERSONAL RECORDS ═══ */}
       <div className="space-y-3">
