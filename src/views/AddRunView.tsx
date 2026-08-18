@@ -5,7 +5,7 @@ import { parseGpx } from '../utils/gpx';
 import { compressImage } from '../utils/image';
 import type { RouteData, ExtractedRunData, Run } from '../types/run';
 import { storageService } from '../services/storage';
-import { normalizeSourceName } from '../utils/formatters';
+import { normalizeSourceName, parseDurationToSeconds, parsePaceToSeconds } from '../utils/formatters';
 import {
   ChevronLeft,
   Image as ImageIcon,
@@ -160,43 +160,213 @@ export const AddRunView: React.FC<AddRunViewProps> = ({
   const gpxInputRef = useRef<HTMLInputElement>(null);
   const jsonInputRef = useRef<HTMLInputElement>(null);
 
+  const normalizeRawRunPayload = (rawInput: any): Run => {
+    // 1. Unwrap if nested inside { run: { ... } }, { activity: { ... } }, { workout: { ... } }, or { data: { ... } }
+    let obj = rawInput || {};
+    if (obj.run && typeof obj.run === 'object') obj = obj.run;
+    else if (obj.activity && typeof obj.activity === 'object') obj = obj.activity;
+    else if (obj.workout && typeof obj.workout === 'object') obj = obj.workout;
+    else if (obj.data && typeof obj.data === 'object' && !Array.isArray(obj.data)) obj = obj.data;
+
+    // 2. Source & Device resolution
+    let sourceRaw = obj.source || obj.device || obj.app || obj.tracker || 'Huawei Health';
+    if (typeof sourceRaw === 'string') {
+      const sLower = sourceRaw.toLowerCase();
+      if (sLower.includes('amazfit') || sLower.includes('bip') || sLower.includes('gtr') || sLower.includes('gts') || sLower.includes('t-rex') || sLower.includes('cheetah') || sLower.includes('balance') || sLower.includes('active')) sourceRaw = 'Amazfit';
+      else if (sLower.includes('zepp')) sourceRaw = 'Zepp';
+      else if (sLower.includes('apple') || sLower.includes('watch') || sLower.includes('fitness')) sourceRaw = 'Apple Fitness';
+      else if (sLower.includes('garmin')) sourceRaw = 'Garmin';
+      else if (sLower.includes('huawei')) sourceRaw = 'Huawei Health';
+      else if (sLower.includes('strava')) sourceRaw = 'Strava';
+      else if (sLower.includes('nike') || sLower.includes('nrc')) sourceRaw = 'Nike Run Club';
+      else if (sLower.includes('coros')) sourceRaw = 'Coros';
+    }
+    const source = normalizeSourceName(sourceRaw);
+
+    // 3. Date & Time Resolution
+    let date = obj.date || new Date().toISOString();
+    if (obj.date && obj.time && typeof obj.date === 'string' && typeof obj.time === 'string') {
+      const cleanDate = obj.date.split('T')[0];
+      const cleanTime = obj.time.trim();
+      date = `${cleanDate}T${cleanTime.length === 5 ? `${cleanTime}:00` : cleanTime}`;
+    }
+
+    // 4. Distance & Duration
+    const distance_km = Number(obj.distance_km ?? obj.distance ?? obj.total_distance_km ?? 0) || 0;
+    let duration_seconds = Number(obj.duration_seconds ?? obj.total_duration_seconds ?? 0) || 0;
+    if (!duration_seconds && obj.duration) {
+      duration_seconds = parseDurationToSeconds(String(obj.duration)) || 0;
+    }
+
+    // 5. Pace
+    let pace_seconds_per_km = obj.pace_seconds_per_km ?? obj.avg_pace_seconds_per_km ?? obj.pace_seconds ?? null;
+    if (pace_seconds_per_km != null) {
+      pace_seconds_per_km = Number(pace_seconds_per_km);
+    } else if (obj.avg_pace || obj.pace) {
+      pace_seconds_per_km = parsePaceToSeconds(String(obj.avg_pace || obj.pace));
+    } else if (distance_km > 0 && duration_seconds > 0) {
+      pace_seconds_per_km = Math.round(duration_seconds / distance_km);
+    }
+
+    let best_pace_seconds_per_km = obj.best_pace_seconds_per_km ?? obj.max_pace_seconds_per_km ?? obj.best_pace_seconds ?? null;
+    if (best_pace_seconds_per_km != null) {
+      best_pace_seconds_per_km = Number(best_pace_seconds_per_km);
+    } else if (obj.best_pace) {
+      best_pace_seconds_per_km = parsePaceToSeconds(String(obj.best_pace));
+    }
+
+    // 6. Speed
+    let avg_speed_kmh = obj.avg_speed_kmh != null ? Number(obj.avg_speed_kmh) : null;
+    if (!avg_speed_kmh && distance_km > 0 && duration_seconds > 0) {
+      avg_speed_kmh = Number((distance_km / (duration_seconds / 3600)).toFixed(2));
+    }
+
+    // 7. Heart Rate
+    const avg_heart_rate = Number(obj.avg_heart_rate ?? obj.avg_heart_rate_bpm ?? obj.heart_rate ?? obj.avg_hr) || null;
+    const max_heart_rate = Number(obj.max_heart_rate ?? obj.max_heart_rate_bpm ?? obj.max_hr) || null;
+
+    // 8. Cadence & Steps
+    const cadence = Number(obj.cadence ?? obj.avg_cadence_spm ?? obj.cadence_spm ?? obj.avg_cadence) || null;
+    const max_cadence = Number(obj.max_cadence ?? obj.max_cadence_spm) || null;
+    const total_steps = Number(obj.total_steps ?? obj.steps) || null;
+
+    // 9. Elevation
+    const elevation_gain_m = Number(obj.elevation_gain_m ?? obj.altitude?.elevation_gain_m ?? obj.elevation_gain) || null;
+    const elevation_loss_m = Number(obj.elevation_loss_m ?? obj.altitude?.elevation_loss_m ?? obj.elevation_loss) || null;
+
+    // 10. Calories
+    const calories = Number(obj.calories ?? obj.total_calories) || null;
+    const active_calories = Number(obj.active_calories) || null;
+
+    // 11. Heart Rate Zones
+    let heart_rate_zones = obj.heart_rate_zones || null;
+    if (heart_rate_zones && typeof heart_rate_zones === 'object' && !Array.isArray(heart_rate_zones)) {
+      const hrMap = heart_rate_zones;
+      const zoneNames: Array<{ key: string; zone: number; name: string }> = [
+        { key: 'light', zone: 1, name: 'Light / Warm Up' },
+        { key: 'intensive', zone: 2, name: 'Intensive / Fat Burn' },
+        { key: 'aerobic', zone: 3, name: 'Aerobic' },
+        { key: 'anaerobic', zone: 4, name: 'Anaerobic' },
+        { key: 'vo2_max', zone: 5, name: 'VO2 Max' },
+      ];
+      heart_rate_zones = zoneNames
+        .map(({ key, zone, name }) => {
+          const item = hrMap[key];
+          if (!item) return null;
+          return {
+            zone,
+            name,
+            percentage: Number(item.percentage) || 0,
+            duration_seconds: Number(item.duration_seconds ?? (item.duration ? parseDurationToSeconds(item.duration) : 0)),
+            bpm_range: item.range_bpm || item.bpm_range || null,
+          };
+        })
+        .filter(Boolean);
+    }
+
+    // 12. Splits
+    let splits = obj.splits || obj.route?.splits || null;
+    if (Array.isArray(splits)) {
+      splits = splits.map((s: any, idx: number) => {
+        let kmNum = idx + 1;
+        if (typeof s.km === 'number') {
+          kmNum = s.km;
+        } else if (typeof s.km === 'string') {
+          const digits = s.km.replace(/[^\d]/g, '');
+          kmNum = digits ? parseInt(digits, 10) : idx + 1;
+        }
+        const paceSec = Number(s.pace_seconds ?? s.pace_seconds_per_km ?? (s.pace ? parsePaceToSeconds(s.pace) : 0)) || 0;
+        const hr = Number(s.avg_heart_rate ?? s.heart_rate_bpm ?? s.heart_rate ?? s.avg_hr) || null;
+        const durSec = Number(s.duration_seconds ?? (s.duration ? parseDurationToSeconds(s.duration) : (s.cumulative_time ? parseDurationToSeconds(s.cumulative_time) : null))) || null;
+
+        return {
+          km: kmNum,
+          type: s.type || 'Run',
+          pace_seconds: paceSec,
+          pace_seconds_per_km: paceSec,
+          avg_heart_rate: hr,
+          duration_seconds: durSec,
+          distance_km: Number(s.distance_km) || 1.0,
+          elevation_diff_m: Number(s.elevation_diff_m ?? s.elevation_gain_m) || null,
+        };
+      });
+    }
+
+    return {
+      id: obj.id || `run_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+      date,
+      source,
+      distance_km,
+      duration_seconds,
+      pace_seconds_per_km,
+      best_pace_seconds_per_km,
+      avg_speed_kmh,
+      avg_heart_rate,
+      max_heart_rate,
+      cadence,
+      max_cadence,
+      elevation_gain_m,
+      elevation_loss_m,
+      calories,
+      active_calories,
+      total_steps,
+      stride_length_cm: obj.stride_length_cm != null ? Number(obj.stride_length_cm) : null,
+      ground_contact_time_ms: obj.ground_contact_time_ms != null ? Number(obj.ground_contact_time_ms) : null,
+      vertical_oscillation_cm: obj.vertical_oscillation_cm != null ? Number(obj.vertical_oscillation_cm) : null,
+      ground_contact_balance: obj.ground_contact_balance || null,
+      aerobic_te: obj.aerobic_te != null ? Number(obj.aerobic_te) : null,
+      anaerobic_te: obj.anaerobic_te != null ? Number(obj.anaerobic_te) : null,
+      vo2max: obj.vo2max != null ? Number(obj.vo2max) : null,
+      training_load: obj.training_load != null ? Number(obj.training_load) : null,
+      recovery_hours: obj.recovery_hours != null ? Number(obj.recovery_hours) : null,
+      route_data: obj.route_data || obj.route || null,
+      splits,
+      elevationPoints: obj.elevationPoints || null,
+      heart_rate_zones,
+      extra_metrics: obj.extra_metrics || (obj.raw_notes ? { raw_notes: obj.raw_notes } : (obj.workout_balance ? { workout_balance: obj.workout_balance } : null)),
+      created_at: obj.created_at || new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+  };
+
   const handleSingleRunImport = (single: any) => {
+    const full = normalizeRawRunPayload(single);
     const extracted: ExtractedRunData = {
-      date: single.date || new Date().toISOString(),
-      source: normalizeSourceName(single.source || 'Huawei Health'),
-      distance_km: single.distance_km != null ? Number(single.distance_km) : null,
-      duration_seconds: single.duration_seconds != null ? Number(single.duration_seconds) : null,
-      pace_seconds_per_km: single.pace_seconds_per_km != null ? Number(single.pace_seconds_per_km) : null,
-      best_pace_seconds_per_km: single.best_pace_seconds_per_km != null ? Number(single.best_pace_seconds_per_km) : null,
-      avg_speed_kmh: single.avg_speed_kmh != null ? Number(single.avg_speed_kmh) : null,
-      avg_heart_rate: single.avg_heart_rate != null ? Number(single.avg_heart_rate) : null,
-      max_heart_rate: single.max_heart_rate != null ? Number(single.max_heart_rate) : null,
-      cadence: single.cadence != null ? Number(single.cadence) : null,
-      max_cadence: single.max_cadence != null ? Number(single.max_cadence) : null,
-      elevation_gain_m: single.elevation_gain_m != null ? Number(single.elevation_gain_m) : null,
-      elevation_loss_m: single.elevation_loss_m != null ? Number(single.elevation_loss_m) : null,
-      calories: single.calories != null ? Number(single.calories) : null,
-      active_calories: single.active_calories != null ? Number(single.active_calories) : null,
-      total_steps: single.total_steps != null ? Number(single.total_steps) : null,
-      stride_length_cm: single.stride_length_cm != null ? Number(single.stride_length_cm) : null,
-      ground_contact_time_ms: single.ground_contact_time_ms != null ? Number(single.ground_contact_time_ms) : null,
-      vertical_oscillation_cm: single.vertical_oscillation_cm != null ? Number(single.vertical_oscillation_cm) : null,
-      ground_contact_balance: single.ground_contact_balance || null,
-      aerobic_te: single.aerobic_te != null ? Number(single.aerobic_te) : null,
-      anaerobic_te: single.anaerobic_te != null ? Number(single.anaerobic_te) : null,
-      vo2max: single.vo2max != null ? Number(single.vo2max) : null,
-      training_load: single.training_load != null ? Number(single.training_load) : null,
-      recovery_hours: single.recovery_hours != null ? Number(single.recovery_hours) : null,
-      splits: single.splits || single.route?.splits || null,
-      elevationPoints: single.elevationPoints || null,
-      heart_rate_zones: single.heart_rate_zones || null,
-      raw_notes: single.raw_notes || null,
+      date: full.date,
+      source: full.source,
+      distance_km: full.distance_km,
+      duration_seconds: full.duration_seconds,
+      pace_seconds_per_km: full.pace_seconds_per_km,
+      best_pace_seconds_per_km: full.best_pace_seconds_per_km,
+      avg_speed_kmh: full.avg_speed_kmh,
+      avg_heart_rate: full.avg_heart_rate,
+      max_heart_rate: full.max_heart_rate,
+      cadence: full.cadence,
+      max_cadence: full.max_cadence,
+      elevation_gain_m: full.elevation_gain_m,
+      elevation_loss_m: full.elevation_loss_m,
+      calories: full.calories,
+      active_calories: full.active_calories,
+      total_steps: full.total_steps,
+      stride_length_cm: full.stride_length_cm,
+      ground_contact_time_ms: full.ground_contact_time_ms,
+      vertical_oscillation_cm: full.vertical_oscillation_cm,
+      ground_contact_balance: full.ground_contact_balance,
+      aerobic_te: full.aerobic_te,
+      anaerobic_te: full.anaerobic_te,
+      vo2max: full.vo2max,
+      training_load: full.training_load,
+      recovery_hours: full.recovery_hours,
+      splits: full.splits,
+      elevationPoints: full.elevationPoints,
+      heart_rate_zones: full.heart_rate_zones,
+      raw_notes: null,
     };
 
-    const routeData: RouteData | null = single.route_data || single.route || null;
+    const routeData: RouteData | null = full.route_data || null;
 
     onAnalysisComplete({
-      screenshotBase64: single.screenshot || null,
+      screenshotBase64: null,
       routeData,
       extractedData: extracted,
     });
@@ -220,43 +390,11 @@ export const AddRunView: React.FC<AddRunViewProps> = ({
         }
         const formattedList: Run[] = [];
         for (const r of rawRuns) {
-          if (r && (r.distance_km || r.duration_seconds)) {
-            const formatted: Run = {
-              id: r.id || `run_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
-              date: r.date || new Date().toISOString(),
-              source: normalizeSourceName(r.source || 'Huawei Health'),
-              distance_km: Number(r.distance_km) || 0,
-              duration_seconds: Number(r.duration_seconds) || 0,
-              pace_seconds_per_km: r.pace_seconds_per_km || (r.distance_km && r.duration_seconds ? Math.round(r.duration_seconds / r.distance_km) : null),
-              best_pace_seconds_per_km: r.best_pace_seconds_per_km || null,
-              avg_speed_kmh: r.avg_speed_kmh || (r.distance_km && r.duration_seconds ? Number(((r.distance_km / (r.duration_seconds / 3600))).toFixed(2)) : null),
-              avg_heart_rate: r.avg_heart_rate || null,
-              max_heart_rate: r.max_heart_rate || null,
-              cadence: r.cadence || null,
-              max_cadence: r.max_cadence || null,
-              elevation_gain_m: r.elevation_gain_m || null,
-              elevation_loss_m: r.elevation_loss_m || null,
-              calories: r.calories || null,
-              active_calories: r.active_calories || null,
-              total_steps: r.total_steps || null,
-              stride_length_cm: r.stride_length_cm || null,
-              ground_contact_time_ms: r.ground_contact_time_ms || null,
-              vertical_oscillation_cm: r.vertical_oscillation_cm || null,
-              ground_contact_balance: r.ground_contact_balance || null,
-              aerobic_te: r.aerobic_te || null,
-              anaerobic_te: r.anaerobic_te || null,
-              vo2max: r.vo2max || null,
-              training_load: r.training_load || null,
-              recovery_hours: r.recovery_hours || null,
-              route_data: r.route || r.route_data || null,
-              splits: r.splits || r.route?.splits || null,
-              elevationPoints: r.elevationPoints || null,
-              heart_rate_zones: r.heart_rate_zones || null,
-              extra_metrics: r.extra_metrics || (r.raw_notes ? { raw_notes: r.raw_notes } : null),
-              created_at: r.created_at || new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-            };
-            formattedList.push(formatted);
+          if (r) {
+            const formatted = normalizeRawRunPayload(r);
+            if (formatted.distance_km > 0 || formatted.duration_seconds > 0) {
+              formattedList.push(formatted);
+            }
           }
         }
         if (formattedList.length > 0) {
@@ -285,43 +423,11 @@ export const AddRunView: React.FC<AddRunViewProps> = ({
         }
         const formattedList: Run[] = [];
         for (const r of parsed) {
-          if (r && (r.distance_km || r.duration_seconds)) {
-            const formatted: Run = {
-              id: r.id || `run_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
-              date: r.date || new Date().toISOString(),
-              source: normalizeSourceName(r.source || 'Huawei Health'),
-              distance_km: Number(r.distance_km) || 0,
-              duration_seconds: Number(r.duration_seconds) || 0,
-              pace_seconds_per_km: r.pace_seconds_per_km || (r.distance_km && r.duration_seconds ? Math.round(r.duration_seconds / r.distance_km) : null),
-              best_pace_seconds_per_km: r.best_pace_seconds_per_km || null,
-              avg_speed_kmh: r.avg_speed_kmh || (r.distance_km && r.duration_seconds ? Number(((r.distance_km / (r.duration_seconds / 3600))).toFixed(2)) : null),
-              avg_heart_rate: r.avg_heart_rate || null,
-              max_heart_rate: r.max_heart_rate || null,
-              cadence: r.cadence || null,
-              max_cadence: r.max_cadence || null,
-              elevation_gain_m: r.elevation_gain_m || null,
-              elevation_loss_m: r.elevation_loss_m || null,
-              calories: r.calories || null,
-              active_calories: r.active_calories || null,
-              total_steps: r.total_steps || null,
-              stride_length_cm: r.stride_length_cm || null,
-              ground_contact_time_ms: r.ground_contact_time_ms || null,
-              vertical_oscillation_cm: r.vertical_oscillation_cm || null,
-              ground_contact_balance: r.ground_contact_balance || null,
-              aerobic_te: r.aerobic_te || null,
-              anaerobic_te: r.anaerobic_te || null,
-              vo2max: r.vo2max || null,
-              training_load: r.training_load || null,
-              recovery_hours: r.recovery_hours || null,
-              route_data: r.route || r.route_data || null,
-              splits: r.splits || r.route?.splits || null,
-              elevationPoints: r.elevationPoints || null,
-              heart_rate_zones: r.heart_rate_zones || null,
-              extra_metrics: r.extra_metrics || (r.raw_notes ? { raw_notes: r.raw_notes } : null),
-              created_at: r.created_at || new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-            };
-            formattedList.push(formatted);
+          if (r) {
+            const formatted = normalizeRawRunPayload(r);
+            if (formatted.distance_km > 0 || formatted.duration_seconds > 0) {
+              formattedList.push(formatted);
+            }
           }
         }
         if (formattedList.length > 0) {
@@ -335,7 +441,7 @@ export const AddRunView: React.FC<AddRunViewProps> = ({
         return;
       }
 
-      // Case 3: Single Run object
+      // Case 3: Single Run object (e.g. { run: { ... } } or direct { distance_km: ... })
       if (parsed && typeof parsed === 'object') {
         setIsJsonPasteModalOpen(false);
         handleSingleRunImport(parsed);
