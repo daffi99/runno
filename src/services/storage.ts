@@ -115,33 +115,31 @@ export const storageService = {
             }
           }
 
-          // Merge local runs (preserve local runs if not yet in DB)
+          // Identify local runs missing on server DB and push in batch
+          const missingOnServer: Run[] = [];
           for (const r of allLocalRuns) {
             if (r && r.id) {
               const existing = runMap.get(r.id);
               if (!existing) {
                 runMap.set(r.id, r);
-                // Automatically upload desktop-local runs that are missing on the PostgreSQL server
-                fetch('/api/runs', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify(r),
-                }).catch(() => {});
+                missingOnServer.push(r);
               } else {
-                // Keep the version with the newer updated_at timestamp
                 const localTime = new Date(r.updated_at || r.created_at || 0).getTime();
                 const serverTime = new Date(existing.updated_at || existing.created_at || 0).getTime();
                 if (localTime > serverTime) {
                   runMap.set(r.id, r);
-                  // Push updated local version to server
-                  fetch('/api/runs', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(r),
-                  }).catch(() => {});
+                  missingOnServer.push(r);
                 }
               }
             }
+          }
+
+          if (missingOnServer.length > 0) {
+            fetch('/api/runs/batch', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ runs: missingOnServer }),
+            }).catch(() => {});
           }
 
           const merged = Array.from(runMap.values()).sort(
@@ -157,6 +155,36 @@ export const storageService = {
       console.warn('Could not sync with server DB, using local data', e);
     }
     return allLocalRuns.length > 0 ? allLocalRuns : localRuns;
+  },
+
+  async saveRunsBatch(importedRuns: Run[]): Promise<Run[]> {
+    const currentRuns = this.getRuns();
+    const runMap = new Map<string, Run>();
+    for (const r of currentRuns) {
+      if (r && r.id) runMap.set(r.id, r);
+    }
+    for (const r of importedRuns) {
+      if (r && r.id) runMap.set(r.id, r);
+    }
+    const merged = Array.from(runMap.values()).sort(
+      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+    );
+    this.saveRuns(merged);
+    this.syncPlanWithRuns(merged);
+
+    // Save batch to PostgreSQL database via API with await
+    try {
+      await fetch('/api/runs/batch', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ runs: importedRuns }),
+      });
+      console.log(`[Runno Client] Batch saved ${importedRuns.length} runs to Neon database.`);
+    } catch (err) {
+      console.warn('[Runno Client] Batch DB save notice:', err);
+    }
+
+    return merged;
   },
 
   saveRuns(runs: Run[]) {

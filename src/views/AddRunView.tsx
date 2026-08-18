@@ -218,6 +218,7 @@ export const AddRunView: React.FC<AddRunViewProps> = ({
           handleSingleRunImport(rawRuns[0]);
           return;
         }
+        const formattedList: Run[] = [];
         for (const r of rawRuns) {
           if (r && (r.distance_km || r.duration_seconds)) {
             const formatted: Run = {
@@ -255,14 +256,17 @@ export const AddRunView: React.FC<AddRunViewProps> = ({
               created_at: r.created_at || new Date().toISOString(),
               updated_at: new Date().toISOString(),
             };
-            await storageService.saveRun(formatted);
+            formattedList.push(formatted);
           }
+        }
+        if (formattedList.length > 0) {
+          await storageService.saveRunsBatch(formattedList);
         }
         if (parsed.active_plan) {
           storageService.saveActivePlan(parsed.active_plan);
         }
         setIsJsonPasteModalOpen(false);
-        setJsonSuccessMessage(`Berhasil mengimpor ${rawRuns.length} aktivitas lari!`);
+        setJsonSuccessMessage(`Berhasil mengimpor ${formattedList.length} aktivitas lari!`);
         setTimeout(() => {
           onBack();
         }, 1200);
@@ -279,6 +283,7 @@ export const AddRunView: React.FC<AddRunViewProps> = ({
           handleSingleRunImport(parsed[0]);
           return;
         }
+        const formattedList: Run[] = [];
         for (const r of parsed) {
           if (r && (r.distance_km || r.duration_seconds)) {
             const formatted: Run = {
@@ -316,11 +321,14 @@ export const AddRunView: React.FC<AddRunViewProps> = ({
               created_at: r.created_at || new Date().toISOString(),
               updated_at: new Date().toISOString(),
             };
-            await storageService.saveRun(formatted);
+            formattedList.push(formatted);
           }
         }
+        if (formattedList.length > 0) {
+          await storageService.saveRunsBatch(formattedList);
+        }
         setIsJsonPasteModalOpen(false);
-        setJsonSuccessMessage(`Berhasil mengimpor ${parsed.length} aktivitas lari!`);
+        setJsonSuccessMessage(`Berhasil mengimpor ${formattedList.length} aktivitas lari!`);
         setTimeout(() => {
           onBack();
         }, 1200);

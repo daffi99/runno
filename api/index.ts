@@ -666,6 +666,74 @@ router.post('/runs', async (req, res) => {
   }
 });
 
+router.post('/runs/batch', async (req, res) => {
+  let body = req.body;
+  if (typeof body === 'string') {
+    try {
+      body = JSON.parse(body);
+    } catch (_) {}
+  }
+  const runsArray: any[] = Array.isArray(body) ? body : (Array.isArray(body?.runs) ? body.runs : []);
+  const db = getDatabase();
+
+  if (!db) {
+    return res.json({ success: true, savedLocally: true, count: runsArray.length });
+  }
+
+  try {
+    let insertedCount = 0;
+    for (const r of runsArray) {
+      if (!r || (!r.distance_km && !r.duration_seconds && !r.id)) continue;
+      const rec = {
+        id: r.id || `run_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+        date: r.date || new Date().toISOString(),
+        source: r.source || 'Huawei Health',
+        distance_km: Number(r.distance_km) || 0,
+        duration_seconds: Number(r.duration_seconds) || 0,
+        pace_seconds_per_km: r.pace_seconds_per_km ? Number(r.pace_seconds_per_km) : null,
+        avg_speed_kmh: r.avg_speed_kmh ? Number(r.avg_speed_kmh) : null,
+        avg_heart_rate: r.avg_heart_rate ? Number(r.avg_heart_rate) : null,
+        max_heart_rate: r.max_heart_rate ? Number(r.max_heart_rate) : null,
+        cadence: r.cadence ? Number(r.cadence) : null,
+        elevation_gain_m: r.elevation_gain_m ? Number(r.elevation_gain_m) : null,
+        elevation_loss_m: r.elevation_loss_m ? Number(r.elevation_loss_m) : null,
+        calories: r.calories ? Number(r.calories) : null,
+        total_steps: r.total_steps ? Number(r.total_steps) : null,
+        stride_length_cm: r.stride_length_cm ? Number(r.stride_length_cm) : null,
+        ground_contact_time_ms: r.ground_contact_time_ms ? Number(r.ground_contact_time_ms) : null,
+        vertical_oscillation_cm: r.vertical_oscillation_cm ? Number(r.vertical_oscillation_cm) : null,
+        ground_contact_balance: r.ground_contact_balance || null,
+        aerobic_te: r.aerobic_te ? Number(r.aerobic_te) : null,
+        anaerobic_te: r.anaerobic_te ? Number(r.anaerobic_te) : null,
+        vo2max: r.vo2max ? Number(r.vo2max) : null,
+        training_load: r.training_load ? Number(r.training_load) : null,
+        recovery_hours: r.recovery_hours ? Number(r.recovery_hours) : null,
+        active_calories: r.active_calories ? Number(r.active_calories) : null,
+        best_pace_seconds_per_km: r.best_pace_seconds_per_km ? Number(r.best_pace_seconds_per_km) : null,
+        max_cadence: r.max_cadence ? Number(r.max_cadence) : null,
+        splits: r.splits || null,
+        elevation_points: r.elevation_points || r.elevationPoints || null,
+        heart_rate_zones: r.heart_rate_zones || null,
+        screenshot_url: r.screenshot_url || null,
+        route_data: r.route_data || r.route || null,
+        extra_metrics: r.extra_metrics || null,
+        updated_at: new Date(),
+      };
+
+      await db.insert(runs).values(rec).onConflictDoUpdate({
+        target: runs.id,
+        set: rec,
+      });
+      insertedCount++;
+    }
+
+    res.json({ success: true, count: insertedCount });
+  } catch (err: any) {
+    console.error('DB batch insert error:', err);
+    res.status(500).json({ error: 'Failed to batch save runs to database' });
+  }
+});
+
 router.delete('/runs/:id', async (req, res) => {
   const { id } = req.params;
   const db = getDatabase();
