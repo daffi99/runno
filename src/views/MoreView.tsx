@@ -144,7 +144,7 @@ export const MoreView: React.FC<MoreViewProps> = ({
       {/* AI Extraction Settings */}
       <div className="space-y-3">
         <span className="text-xs font-bold uppercase tracking-wider text-neutral-400">
-          AI Screenshot Extraction
+          AI Vision & Coach Provider
         </span>
 
         <Card className="p-4 space-y-3 bg-[#1E1E1E] border-white/5">
@@ -153,9 +153,9 @@ export const MoreView: React.FC<MoreViewProps> = ({
               <Sparkles className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-white">Custom OpenRouter API Key</h3>
+              <h3 className="text-sm font-bold text-white">Google Gemini / OpenRouter Key</h3>
               <p className="text-xs text-neutral-400 mt-0.5">
-                Override server API key with your own personal OpenRouter key.
+                Paste your free Google AI Studio key (<span className="text-neutral-300 font-mono">AIza...</span>) or OpenRouter key.
               </p>
             </div>
           </div>
@@ -163,12 +163,20 @@ export const MoreView: React.FC<MoreViewProps> = ({
           <div className="space-y-2 pt-1">
             <input
               type="password"
-              placeholder="sk-or-v1-..."
+              placeholder="AIzaSy... or sk-or-v1-..."
               value={apiKeyInput}
               onChange={(e) => setApiKeyInput(e.target.value)}
               className="w-full bg-[#252525] border border-white/10 rounded-2xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-[#FF5500]/30 font-mono"
             />
-            <div className="flex justify-end">
+            <div className="flex items-center justify-between pt-1">
+              <a
+                href="https://aistudio.google.com/apikey"
+                target="_blank"
+                rel="noreferrer"
+                className="text-[11px] text-[#FF5500] hover:underline font-medium"
+              >
+                Get Free Gemini Key ↗
+              </a>
               <Button
                 variant={savedKeySuccess ? 'outline' : 'secondary'}
                 size="sm"

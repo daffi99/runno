@@ -233,16 +233,139 @@ app.use((req, _res, next) => {
 });
 
 // ---------------------------------------------------------------------------
+// AI Provider Resolution (Google AI Studio vs OpenRouter)
+// ---------------------------------------------------------------------------
+function getAiCredentials(customApiKey?: string) {
+  dotenv.config();
+  const rawKey = (customApiKey || '').trim();
+  const isCustomGemini = rawKey.startsWith('AIza') || rawKey.length === 39;
+
+  const geminiKey = (
+    (isCustomGemini ? rawKey : '') ||
+    process.env.GEMINI_API_KEY ||
+    process.env.GOOGLE_AI_KEY ||
+    process.env.GOOGLE_API_KEY ||
+    ''
+  ).trim();
+
+  const openRouterKey = (
+    (!isCustomGemini ? rawKey : '') ||
+    process.env.OPENROUTER_API_KEY ||
+    ''
+  ).trim();
+
+  return {
+    geminiKey,
+    openRouterKey,
+    hasGemini: geminiKey.length > 0,
+    hasOpenRouter: openRouterKey.length > 0,
+    provider: geminiKey.length > 0 ? 'gemini' : (openRouterKey.length > 0 ? 'openrouter' : 'none'),
+  };
+}
+
+async function callGeminiDirect({
+  apiKey,
+  systemPrompt,
+  imagesBase64 = [],
+  promptText = '',
+  model = 'gemini-2.5-flash',
+  responseMimeType = 'application/json',
+}: {
+  apiKey: string;
+  systemPrompt?: string;
+  imagesBase64?: string[];
+  promptText?: string;
+  model?: string;
+  responseMimeType?: string;
+}): Promise<string> {
+  const cleanKey = apiKey.trim();
+  const targetModel = model || 'gemini-2.5-flash';
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${cleanKey}`;
+
+  const parts: any[] = [];
+  const combinedText = [systemPrompt, promptText].filter(Boolean).join('\n\n');
+  if (combinedText) {
+    parts.push({ text: combinedText });
+  }
+
+  for (const img of imagesBase64) {
+    let mimeType = 'image/jpeg';
+    let dataStr = img.trim();
+    if (dataStr.startsWith('data:')) {
+      const match = dataStr.match(/^data:([^;]+);base64,(.+)$/);
+      if (match) {
+        mimeType = match[1];
+        dataStr = match[2];
+      }
+    }
+    parts.push({
+      inline_data: {
+        mime_type: mimeType,
+        data: dataStr,
+      },
+    });
+  }
+
+  const payload: any = {
+    contents: [
+      {
+        role: 'user',
+        parts,
+      },
+    ],
+    generationConfig: {
+      temperature: 0.1,
+    },
+  };
+
+  if (responseMimeType) {
+    payload.generationConfig.responseMimeType = responseMimeType;
+  }
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    const errText = await res.text();
+    // Fallback to gemini-1.5-flash if 2.5-flash has temporary model quota or deprecation
+    if (targetModel !== 'gemini-1.5-flash') {
+      console.warn(`[Google AI Studio] ${targetModel} returned ${res.status}, retrying with gemini-1.5-flash...`);
+      return callGeminiDirect({
+        apiKey,
+        systemPrompt,
+        imagesBase64,
+        promptText,
+        model: 'gemini-1.5-flash',
+        responseMimeType,
+      });
+    }
+    throw new Error(`Google AI Studio Error (${res.status}): ${errText}`);
+  }
+
+  const json = await res.json();
+  const textOutput = json?.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!textOutput) {
+    throw new Error('Google AI Studio returned empty content.');
+  }
+  return textOutput;
+}
+
+// ---------------------------------------------------------------------------
 // Health check endpoint
 // ---------------------------------------------------------------------------
 router.get('/health', (_req, res) => {
   dotenv.config();
   const db = getDatabase();
-  const rawKey = (process.env.OPENROUTER_API_KEY || '').trim();
+  const aiCreds = getAiCredentials();
   res.json({
     status: 'ok',
     environment: process.env.VERCEL ? 'vercel_serverless' : 'local_node',
-    hasOpenRouterKey: rawKey.length > 0,
+    hasGeminiKey: aiCreds.hasGemini,
+    hasOpenRouterKey: aiCreds.hasOpenRouter,
+    activeProvider: aiCreds.hasGemini ? 'Google AI Studio (Gemini)' : (aiCreds.hasOpenRouter ? 'OpenRouter' : 'none'),
     hasDatabase: !!db,
     timestamp: new Date().toISOString(),
   });
@@ -286,10 +409,10 @@ router.post('/analyze-screenshot', async (req, res) => {
       return res.status(400).json({ error: 'Missing valid imageBase64 or screenshots in request body' });
     }
 
-    const apiKey = (customApiKey || process.env.OPENROUTER_API_KEY || '').trim();
-    if (!apiKey) {
+    const aiCreds = getAiCredentials(customApiKey);
+    if (!aiCreds.hasGemini && !aiCreds.hasOpenRouter) {
       return res.status(400).json({
-        error: 'OpenRouter API key is missing. Please set OPENROUTER_API_KEY in Vercel Environment Variables or in More > Preferences in the app.',
+        error: 'AI API key is missing. Please set GEMINI_API_KEY (from Google AI Studio) or OPENROUTER_API_KEY in Vercel Environment Variables.',
         code: 'MISSING_API_KEY',
       });
     }
@@ -401,80 +524,100 @@ Return ONLY a valid JSON object matching this schema (no markdown, no backticks)
 }`;
 
 
-    const VISION_MODEL_MAP: Record<string, string> = {
-      nvidia: 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free',
-      dots: 'dots-studio/dots-3-note-preview:free',
-      gemini: 'google/gemini-2.5-flash-lite',
-    };
-
-    const requestedModel = (body.model || 'nvidia').toString().toLowerCase();
-    let targetModel = VISION_MODEL_MAP[requestedModel] || requestedModel;
-    if (!targetModel.includes('/')) {
-      targetModel = 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free';
-    }
-
-    const candidateModels = [
-      targetModel,
-      targetModel !== 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free' ? 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free' : null,
-      targetModel !== 'dots-studio/dots-3-note-preview:free' ? 'dots-studio/dots-3-note-preview:free' : null,
-      'google/gemini-2.5-flash-lite',
-      'google/gemini-2.0-flash-lite-preview:free',
-    ].filter(Boolean) as string[];
-
     const startTime = performance.now();
-    let openRouterResponse: any = null;
-    let modelUsed = targetModel;
+    let rawContent = '';
+    let modelUsed = '';
     let lastErrorText = '';
 
-    for (const m of candidateModels) {
-      modelUsed = m;
+    // Provider 1: Direct Google AI Studio (Gemini 2.5 Flash)
+    if (aiCreds.hasGemini) {
       try {
-        openRouterResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${apiKey}`,
-            'HTTP-Referer': 'https://runno.app',
-            'X-Title': 'Runno Running Tracker',
-          },
-          body: JSON.stringify({
-            model: m,
-            messages: [
-              {
-                role: 'user',
-                content: [
-                  { type: 'text', text: systemPrompt },
-                  ...imageContentItems,
-                ],
-              },
-            ],
-            max_tokens: 2500,
-            temperature: 0.1,
-          }),
+        rawContent = await callGeminiDirect({
+          apiKey: aiCreds.geminiKey,
+          systemPrompt,
+          imagesBase64: validImages,
+          model: 'gemini-2.5-flash',
+          responseMimeType: 'application/json',
         });
+        modelUsed = 'Google Gemini 2.5 Flash (AI Studio)';
+      } catch (geminiErr: any) {
+        lastErrorText = geminiErr.message;
+        console.warn('[Runno OCR] Direct Gemini error, checking OpenRouter fallback:', geminiErr.message);
+      }
+    }
 
-        if (openRouterResponse.ok) break;
-        lastErrorText = await openRouterResponse.text();
-        console.warn(`[Runno OCR] Model ${m} returned ${openRouterResponse.status}: ${lastErrorText}`);
-      } catch (err: any) {
-        lastErrorText = err.message;
-        console.warn(`[Runno OCR] Error with model ${m}:`, err.message);
+    // Provider 2: Fallback to OpenRouter if Gemini not available or failed
+    if (!rawContent && aiCreds.hasOpenRouter) {
+      const VISION_MODEL_MAP: Record<string, string> = {
+        nvidia: 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free',
+        dots: 'dots-studio/dots-3-note-preview:free',
+        gemini: 'google/gemini-2.5-flash-lite',
+      };
+
+      const requestedModel = (body.model || 'nvidia').toString().toLowerCase();
+      let targetModel = VISION_MODEL_MAP[requestedModel] || requestedModel;
+      if (!targetModel.includes('/')) {
+        targetModel = 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free';
+      }
+
+      const candidateModels = [
+        targetModel,
+        targetModel !== 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free' ? 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free' : null,
+        targetModel !== 'dots-studio/dots-3-note-preview:free' ? 'dots-studio/dots-3-note-preview:free' : null,
+        'google/gemini-2.5-flash-lite',
+        'google/gemini-2.0-flash-lite-preview:free',
+      ].filter(Boolean) as string[];
+
+      for (const m of candidateModels) {
+        modelUsed = m;
+        try {
+          const openRouterResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${aiCreds.openRouterKey}`,
+              'HTTP-Referer': 'https://runno.app',
+              'X-Title': 'Runno Running Tracker',
+            },
+            body: JSON.stringify({
+              model: m,
+              messages: [
+                {
+                  role: 'user',
+                  content: [
+                    { type: 'text', text: systemPrompt },
+                    ...imageContentItems,
+                  ],
+                },
+              ],
+              max_tokens: 2500,
+              temperature: 0.1,
+            }),
+          });
+
+          if (openRouterResponse.ok) {
+            const data = await openRouterResponse.json();
+            rawContent = data.choices?.[0]?.message?.content || '';
+            break;
+          }
+          lastErrorText = await openRouterResponse.text();
+        } catch (err: any) {
+          lastErrorText = err.message;
+        }
       }
     }
 
     const durationMs = Math.round(performance.now() - startTime);
     const durationSeconds = Number((durationMs / 1000).toFixed(2));
 
-    if (!openRouterResponse || !openRouterResponse.ok) {
-      return res.status(openRouterResponse?.status || 500).json({
-        error: `OpenRouter API error: ${openRouterResponse?.status || 500} ${lastErrorText}`,
+    if (!rawContent) {
+      return res.status(500).json({
+        error: `AI analysis error: ${lastErrorText || 'Failed to extract running data.'}`,
         durationMs,
         durationSeconds,
       });
     }
 
-    const data = await openRouterResponse.json();
-    const rawContent = data.choices?.[0]?.message?.content || '';
     const cleanedJson = rawContent.replace(/```json/g, '').replace(/```/g, '').trim();
 
     try {
@@ -482,7 +625,7 @@ Return ONLY a valid JSON object matching this schema (no markdown, no backticks)
       res.json({
         success: true,
         data: parsedData,
-        modelUsed,
+        modelUsed: modelUsed || 'AI Model',
         durationMs,
         durationSeconds,
       });
@@ -490,14 +633,13 @@ Return ONLY a valid JSON object matching this schema (no markdown, no backticks)
       res.json({
         success: true,
         data: { raw_notes: rawContent },
-        modelUsed,
+        modelUsed: modelUsed || 'AI Model',
         durationMs,
         durationSeconds,
       });
     }
   } catch (error: any) {
     console.error('[Runno] Screenshot Analysis Error:', error);
-
     res.status(500).json({ error: error.message || 'Internal Server Error' });
   }
 });
@@ -516,12 +658,42 @@ router.post('/test-vision', async (req, res) => {
     }
     body = body || {};
 
-    const apiKey = (body.customApiKey || process.env.OPENROUTER_API_KEY || '').trim();
-    if (!apiKey) {
+    const aiCreds = getAiCredentials(body.customApiKey);
+    if (!aiCreds.hasGemini && !aiCreds.hasOpenRouter) {
       return res.status(400).json({
         success: false,
-        error: 'API Key missing. Please configure OPENROUTER_API_KEY in environment or app settings.',
+        error: 'API Key missing. Please configure GEMINI_API_KEY (Google AI Studio) or OPENROUTER_API_KEY.',
       });
+    }
+
+    const start = performance.now();
+
+    if (aiCreds.hasGemini) {
+      try {
+        await callGeminiDirect({
+          apiKey: aiCreds.geminiKey,
+          promptText: 'Ping: reply with OK.',
+          responseMimeType: undefined,
+          model: 'gemini-2.5-flash',
+        });
+        const durationMs = Math.round(performance.now() - start);
+        return res.json({
+          success: true,
+          status: 200,
+          modelUsed: 'Google Gemini 2.5 Flash (Direct AI Studio)',
+          durationMs,
+          message: 'Google AI Studio is responsive and ready for image extraction.',
+        });
+      } catch (geminiErr: any) {
+        if (!aiCreds.hasOpenRouter) {
+          return res.status(200).json({
+            success: false,
+            modelUsed: 'Google Gemini 2.5 Flash',
+            durationMs: Math.round(performance.now() - start),
+            error: geminiErr.message,
+          });
+        }
+      }
     }
 
     const VISION_MODEL_MAP: Record<string, string> = {
@@ -536,12 +708,11 @@ router.post('/test-vision', async (req, res) => {
       targetModel = 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free';
     }
 
-    const start = performance.now();
     const openRouterResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
+        Authorization: `Bearer ${aiCreds.openRouterKey}`,
         'HTTP-Referer': 'https://runno.app',
         'X-Title': 'Runno Vision Preflight Diagnostic',
       },
@@ -779,24 +950,22 @@ router.post('/ai-coach', async (req, res) => {
       return res.status(400).json({ error: 'Message is required' });
     }
 
-    const serverEnvKey = (process.env.OPENROUTER_API_KEY || '').trim();
-    const apiKey = (customApiKey || serverEnvKey).trim();
-    if (!apiKey) {
+    const aiCreds = getAiCredentials(customApiKey);
+    if (!aiCreds.hasGemini && !aiCreds.hasOpenRouter) {
       return res.status(200).json({
         success: false,
-        reply: `⚠️ **OpenRouter API Key Belum Terdeteksi**\n\nAI Coach memerlukan API key OpenRouter untuk berkomunikasi. Silakan tempelkan OpenRouter API Key Anda di tab **More > Preferences > Custom OpenRouter API Key**, atau tambahkan \`OPENROUTER_API_KEY\` di Vercel Settings lalu Redeploy.`,
+        reply: `⚠️ **API Key AI Belum Terdeteksi**\n\nAI Coach memerlukan API key untuk berkomunikasi. Silakan tempelkan **Google Gemini API Key** (dari Google AI Studio) atau OpenRouter API Key di tab **More > Preferences**, atau tambahkan \`GEMINI_API_KEY\` di Vercel Environment Variables.`,
         debugInfo: {
           endpoint: '/api/ai-coach',
           status: 'MISSING_API_KEY',
           environment: process.env.VERCEL ? 'vercel_serverless' : 'local_node',
-          hasServerEnvKey: false,
-          hasCustomClientKey: false,
+          hasGeminiKey: false,
+          hasOpenRouterKey: false,
           hasApiKey: false,
           errorName: 'MissingApiKeyError',
-          rawError: 'No OPENROUTER_API_KEY found in process.env or customApiKey in request payload.',
+          rawError: 'No GEMINI_API_KEY or OPENROUTER_API_KEY found in process.env or customApiKey.',
           clientTimestamp: new Date().toISOString(),
         },
-
       });
     }
 
@@ -916,107 +1085,133 @@ JSON_PLAN STRUCTURE:
       modeDirective = '\n\nIMPORTANT: The user wants a training plan or schedule update. You MUST provide the full ```json_plan ... ``` code block containing all 7 days alongside your coaching notes.';
     }
 
-    const chatMessages: any[] = [
-      { role: 'system', content: systemPrompt + modeDirective },
-    ];
+    let rawReply = '';
+    let modelUsed = '';
 
-    for (const h of history.slice(-30)) {
-      if ((h.role === 'user' || h.role === 'assistant') && h.content) {
-        if (
-          h.content.includes('Sorry, I encountered an issue') ||
-          h.content.includes('⚠️ **Gagal Terhubung') ||
-          h.content.includes('⚠️ **OpenRouter Status') ||
-          h.content.includes('⚠️ **Serverless Exception') ||
-          h.content.includes('API error (500)')
-        ) {
-          continue;
-        }
-        chatMessages.push({ role: h.role, content: h.content });
-      }
-    }
-
-
-    chatMessages.push({ role: 'user', content: message });
-
-    const MODEL_MAP: Record<string, string> = {
-      nvidia: 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free',
-      dots: 'dots-studio/dots-3-note-preview:free',
-      gemini: 'google/gemini-2.5-flash',
-    };
-
-    let targetModel = 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free'; // Default: NVIDIA Nemotron Free
-    if (coachModel) {
-      if (MODEL_MAP[coachModel]) {
-        targetModel = MODEL_MAP[coachModel];
-      } else if (typeof coachModel === 'string' && coachModel.includes('/')) {
-        targetModel = coachModel;
-      }
-    }
-
-    let openRouterResponse: any = null;
-    let modelUsed = targetModel;
-    let lastErrorText = '';
-
-    const candidateModels = [
-      targetModel,
-      targetModel !== 'dots-studio/dots-3-note-preview:free' ? 'dots-studio/dots-3-note-preview:free' : null,
-      targetModel !== 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free' ? 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free' : null,
-      'google/gemini-2.5-flash',
-      'google/gemini-2.0-flash-lite-preview:free',
-    ].filter(Boolean) as string[];
-
-
-    for (const m of candidateModels) {
-      modelUsed = m;
+    // Direct Google AI Studio Execution
+    if (aiCreds.hasGemini) {
       try {
-        openRouterResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${apiKey}`,
-            'HTTP-Referer': 'https://runno.app',
-            'X-Title': 'Runno AI Running Coach',
-          },
-          body: JSON.stringify({
-            model: m,
-            messages: chatMessages,
-            max_tokens: 4000,
-            temperature: 0.6,
-          }),
-        });
+        const historyText = history
+          .slice(-10)
+          .filter((h: any) => h.content && !h.content.includes('⚠️'))
+          .map((h: any) => `${h.role === 'user' ? 'Runner' : 'Coach Runno'}: ${h.content}`)
+          .join('\n\n');
+        
+        const conversationPrompt = `${historyText ? `${historyText}\n\n` : ''}Runner: ${message}\nCoach Runno:`;
 
-        if (openRouterResponse.ok) break;
-        lastErrorText = await openRouterResponse.text();
-        console.warn(`[Runno AI Coach] Model ${m} returned ${openRouterResponse.status}: ${lastErrorText}`);
-      } catch (err: any) {
-        lastErrorText = err.message;
-        console.warn(`[Runno AI Coach] Network error calling ${m}:`, err.message);
+        rawReply = await callGeminiDirect({
+          apiKey: aiCreds.geminiKey,
+          systemPrompt: systemPrompt + modeDirective,
+          promptText: conversationPrompt,
+          model: 'gemini-2.5-flash',
+          responseMimeType: undefined,
+        });
+        modelUsed = 'Google Gemini 2.5 Flash (AI Studio)';
+      } catch (geminiErr: any) {
+        console.warn('[Runno AI Coach] Direct Gemini error, checking OpenRouter fallback:', geminiErr.message);
       }
     }
 
-    if (!openRouterResponse || !openRouterResponse.ok) {
-      const fallbackPlan = generateAlgorithmicPlan(message, runnerContext);
-      return res.json({
-        success: true,
-        reply: `⚠️ **OpenRouter Status (${openRouterResponse?.status || 500})**\n\nPanggilan ke model AI mengembalikan error. Saya telah menyiapkan jadwal latihan alternatif di bawah menggunakan offline coaching engine.`,
-        suggestedPlan: fallbackPlan,
-        debugInfo: {
-          endpoint: 'https://openrouter.ai/api/v1/chat/completions',
-          status: openRouterResponse?.status || 500,
-          environment: process.env.VERCEL ? 'vercel_serverless' : 'local_node',
-          hasServerEnvKey: Boolean(process.env.OPENROUTER_API_KEY),
-          hasCustomClientKey: Boolean(customApiKey),
-          hasApiKey: true,
-          modelUsed,
-          errorName: `OpenRouter_HTTP_${openRouterResponse?.status || 500}`,
-          rawError: lastErrorText,
-          clientTimestamp: new Date().toISOString(),
-        },
-      });
-    }
+    // Fallback to OpenRouter if Gemini failed or not available
+    if (!rawReply && aiCreds.hasOpenRouter) {
+      const chatMessages: any[] = [
+        { role: 'system', content: systemPrompt + modeDirective },
+      ];
 
-    const data = await openRouterResponse.json();
-    const rawReply = data.choices?.[0]?.message?.content || '';
+      for (const h of history.slice(-30)) {
+        if ((h.role === 'user' || h.role === 'assistant') && h.content) {
+          if (
+            h.content.includes('Sorry, I encountered an issue') ||
+            h.content.includes('⚠️ **Gagal Terhubung') ||
+            h.content.includes('⚠️ **OpenRouter Status') ||
+            h.content.includes('⚠️ **Serverless Exception') ||
+            h.content.includes('API error (500)')
+          ) {
+            continue;
+          }
+          chatMessages.push({ role: h.role, content: h.content });
+        }
+      }
+
+      chatMessages.push({ role: 'user', content: message });
+
+      const MODEL_MAP: Record<string, string> = {
+        nvidia: 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free',
+        dots: 'dots-studio/dots-3-note-preview:free',
+        gemini: 'google/gemini-2.5-flash',
+      };
+
+      let targetModel = 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free';
+      if (coachModel) {
+        if (MODEL_MAP[coachModel]) {
+          targetModel = MODEL_MAP[coachModel];
+        } else if (typeof coachModel === 'string' && coachModel.includes('/')) {
+          targetModel = coachModel;
+        }
+      }
+
+      let openRouterResponse: any = null;
+      let lastErrorText = '';
+
+      const candidateModels = [
+        targetModel,
+        targetModel !== 'dots-studio/dots-3-note-preview:free' ? 'dots-studio/dots-3-note-preview:free' : null,
+        targetModel !== 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free' ? 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free' : null,
+        'google/gemini-2.5-flash',
+        'google/gemini-2.0-flash-lite-preview:free',
+      ].filter(Boolean) as string[];
+
+      for (const m of candidateModels) {
+        modelUsed = m;
+        try {
+          openRouterResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${aiCreds.openRouterKey}`,
+              'HTTP-Referer': 'https://runno.app',
+              'X-Title': 'Runno AI Running Coach',
+            },
+            body: JSON.stringify({
+              model: m,
+              messages: chatMessages,
+              max_tokens: 4000,
+              temperature: 0.6,
+            }),
+          });
+
+          if (openRouterResponse.ok) {
+            const data = await openRouterResponse.json();
+            rawReply = data.choices?.[0]?.message?.content || '';
+            break;
+          }
+          lastErrorText = await openRouterResponse.text();
+        } catch (err: any) {
+          lastErrorText = err.message;
+        }
+      }
+
+      if (!rawReply) {
+        const fallbackPlan = generateAlgorithmicPlan(message, runnerContext);
+        return res.json({
+          success: true,
+          reply: `⚠️ **AI Service Status**\n\nPanggilan ke model AI mengembalikan error. Saya telah menyiapkan jadwal latihan alternatif di bawah menggunakan offline coaching engine.`,
+          suggestedPlan: fallbackPlan,
+          debugInfo: {
+            endpoint: '/api/ai-coach',
+            status: openRouterResponse?.status || 500,
+            environment: process.env.VERCEL ? 'vercel_serverless' : 'local_node',
+            hasGeminiKey: aiCreds.hasGemini,
+            hasOpenRouterKey: aiCreds.hasOpenRouter,
+            hasApiKey: true,
+            modelUsed,
+            errorName: `AI_HTTP_ERROR`,
+            rawError: lastErrorText,
+            clientTimestamp: new Date().toISOString(),
+          },
+        });
+      }
+    }
 
     // Robust plan extraction with auto-repair
     function repairAndParseJson(text: string) {
