@@ -359,17 +359,31 @@ export const CoachView: React.FC<CoachViewProps> = ({
   // Today's day of week (0 = Sunday, 1 = Monday, ..., 6 = Saturday)
   const currentDayOfWeek = new Date().getDay();
 
-  const [viewedWeek, setViewedWeek] = useState<number>(() => activePlan?.currentWeek || 1);
-
-  // Sync viewedWeek whenever activePlan is loaded
-  useEffect(() => {
-    if (activePlan?.currentWeek) {
-      setViewedWeek(activePlan.currentWeek);
-    }
-  }, [activePlan?.id]);
-
   const totalPlanWeeks = Math.max(activePlan?.totalWeeks || 4, 4);
-  const currentPlanWeek = activePlan?.currentWeek || 1;
+
+  // Dynamic current week based on startDate (e.g. today compared to Monday of startDate)
+  const currentPlanWeek = useMemo(() => {
+    if (activePlan?.startDate) {
+      const start = parseDateSafe(activePlan.startDate);
+      const startMonday = getDateForDayOfWeek(1, start);
+      const today = new Date();
+      const todayMonday = getDateForDayOfWeek(1, today);
+      const diffDays = Math.round((todayMonday.getTime() - startMonday.getTime()) / (24 * 3600 * 1000));
+      const diffWeeks = Math.floor(diffDays / 7);
+      return Math.max(1, Math.min(totalPlanWeeks, 1 + diffWeeks));
+    }
+    return activePlan?.currentWeek || 1;
+  }, [activePlan?.startDate, activePlan?.currentWeek, totalPlanWeeks]);
+
+  const [viewedWeek, setViewedWeek] = useState<number>(() => currentPlanWeek);
+
+  // Sync viewedWeek whenever activePlan is loaded or updated
+  useEffect(() => {
+    if (activePlan) {
+      setViewedWeek(currentPlanWeek);
+    }
+  }, [activePlan?.id, activePlan?.startDate, currentPlanWeek]);
+
   const isViewingCurrentWeek = viewedWeek === currentPlanWeek;
   const isViewingNextWeek = viewedWeek === currentPlanWeek + 1;
 

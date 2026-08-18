@@ -9,11 +9,12 @@ import {
   formatDistance,
   getDateForDayOfWeek,
   formatLocalDateKey,
+  parseDateSafe,
 } from '../utils/formatters';
 import { RefreshCw, Sparkles, ArrowRight, ChevronRight, Activity, BarChart2 } from 'lucide-react';
 import { clsx } from 'clsx';
 
-export const APP_VERSION = 'v2.5.1';
+export const APP_VERSION = 'v2.5.2';
 
 /* ── Circular Progress Ring ── */
 const CircularProgress = ({ percent, size = 56 }: { percent: number; size?: number }) => {
@@ -235,7 +236,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             {(() => {
               const activePlan = storageService.getActivePlan();
               if (activePlan && activePlan.workouts) {
-                const currentPlanWeek = activePlan.currentWeek || 1;
+                const totalPlanWeeks = activePlan.totalWeeks || 8;
+                let currentPlanWeek = activePlan.currentWeek || 1;
+                if (activePlan.startDate) {
+                  const start = parseDateSafe(activePlan.startDate);
+                  const startMonday = getDateForDayOfWeek(1, start);
+                  const todayMonday = getDateForDayOfWeek(1, new Date());
+                  const diffDays = Math.round((todayMonday.getTime() - startMonday.getTime()) / (24 * 3600 * 1000));
+                  const diffWeeks = Math.floor(diffDays / 7);
+                  currentPlanWeek = Math.max(1, Math.min(totalPlanWeeks, 1 + diffWeeks));
+                }
                 const currentWeekWorkouts = (activePlan.weeklySchedules && activePlan.weeklySchedules[currentPlanWeek]) || activePlan.workouts;
                 
                 // Strictly filter running sessions only (exclude rest and 0km)
@@ -379,8 +389,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
         const activePlan = storageService.getActivePlan();
         if (activePlan && activePlan.workouts) {
-          const currentPlanWeek = activePlan.currentWeek || 1;
           const totalWeeks = activePlan.totalWeeks || 8;
+          let currentPlanWeek = activePlan.currentWeek || 1;
+          if (activePlan.startDate) {
+            const start = parseDateSafe(activePlan.startDate);
+            const startMonday = getDateForDayOfWeek(1, start);
+            const todayMonday = getDateForDayOfWeek(1, new Date());
+            const diffDays = Math.round((todayMonday.getTime() - startMonday.getTime()) / (24 * 3600 * 1000));
+            const diffWeeks = Math.floor(diffDays / 7);
+            currentPlanWeek = Math.max(1, Math.min(totalWeeks, 1 + diffWeeks));
+          }
           const currentWeekWorkouts = (activePlan.weeklySchedules && activePlan.weeklySchedules[currentPlanWeek]) || activePlan.workouts;
 
           const isRestWorkout = (w: PlanWorkout) => {

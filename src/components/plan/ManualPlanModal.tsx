@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import type { TrainingPlan, PlanWorkout, WorkoutType, UnitSystem } from '../../types/run';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
@@ -17,6 +17,12 @@ import {
   Info,
 } from 'lucide-react';
 import { clsx } from 'clsx';
+import {
+  formatLocalDateKey,
+  formatWeekRange,
+  getDateForDayOfWeek,
+  parseDateSafe,
+} from '../../utils/formatters';
 
 interface ManualPlanModalProps {
   isOpen: boolean;
@@ -77,17 +83,6 @@ export const ManualPlanModal: React.FC<ManualPlanModalProps> = ({
   onSave,
   existingPlan,
 }) => {
-  const [title, setTitle] = useState<string>(existingPlan?.title || 'Custom Running Plan');
-  const [goal, setGoal] = useState<string>(existingPlan?.goal || 'Build 5K Endurance');
-  const [startDate, setStartDate] = useState<string>(
-    existingPlan?.startDate || new Date().toISOString().split('T')[0]
-  );
-  const [totalWeeks, setTotalWeeks] = useState<number>(existingPlan?.totalWeeks || 8);
-  const [currentWeek, setCurrentWeek] = useState<number>(existingPlan?.currentWeek || 1);
-  const [fitnessLevel, setFitnessLevel] = useState<'beginner' | 'intermediate' | 'advanced'>(
-    existingPlan?.fitnessLevel || 'beginner'
-  );
-
   const generateDefault7DayWorkouts = (): PlanWorkout[] => {
     const defaultDayOrder = [1, 2, 3, 4, 5, 6, 0]; // Mon, Tue, Wed, Thu, Fri, Sat, Sun
     return defaultDayOrder.map((dayNum) => {
@@ -111,13 +106,46 @@ export const ManualPlanModal: React.FC<ManualPlanModalProps> = ({
     });
   };
 
-  const [workouts, setWorkouts] = useState<PlanWorkout[]>(
-    existingPlan?.workouts && existingPlan.workouts.length >= 7
-      ? existingPlan.workouts
-      : generateDefault7DayWorkouts()
-  );
-
+  const [title, setTitle] = useState<string>('Custom Running Plan');
+  const [goal, setGoal] = useState<string>('Build 5K Endurance');
+  const [startDate, setStartDate] = useState<string>(() => formatLocalDateKey(new Date()));
+  const [totalWeeks, setTotalWeeks] = useState<number>(8);
+  const [currentWeek, setCurrentWeek] = useState<number>(1);
+  const [fitnessLevel, setFitnessLevel] = useState<'beginner' | 'intermediate' | 'advanced'>('beginner');
+  const [workouts, setWorkouts] = useState<PlanWorkout[]>(generateDefault7DayWorkouts());
   const [activeDayTab, setActiveDayTab] = useState<number>(1); // Default to Monday (1)
+
+  // Re-sync all state whenever modal opens or existingPlan changes
+  useEffect(() => {
+    if (isOpen) {
+      setTitle(existingPlan?.title || 'Custom Running Plan');
+      setGoal(existingPlan?.goal || 'Build 5K Endurance');
+      setStartDate(
+        existingPlan?.startDate
+          ? formatLocalDateKey(new Date(existingPlan.startDate))
+          : formatLocalDateKey(new Date())
+      );
+      setTotalWeeks(existingPlan?.totalWeeks || 8);
+      setCurrentWeek(existingPlan?.currentWeek || 1);
+      setFitnessLevel(existingPlan?.fitnessLevel || 'beginner');
+      setWorkouts(
+        existingPlan?.workouts && existingPlan.workouts.length >= 7
+          ? existingPlan.workouts
+          : generateDefault7DayWorkouts()
+      );
+      setActiveDayTab(1);
+    }
+  }, [isOpen, existingPlan]);
+
+  const week1RangePreview = useMemo(() => {
+    try {
+      const start = parseDateSafe(startDate);
+      const startMonday = getDateForDayOfWeek(1, start);
+      return formatWeekRange(startMonday);
+    } catch {
+      return '';
+    }
+  }, [startDate]);
 
   if (!isOpen) return null;
 
@@ -157,7 +185,7 @@ export const ManualPlanModal: React.FC<ManualPlanModalProps> = ({
       goal: goal.trim() || 'Building Running Endurance',
       scheduleSummary: scheduleSummaryText || 'Flexible Schedule',
       selectedDays: activeRunningDays.map((w) => w.dayName),
-      startDate: startDate || existingPlan?.startDate || new Date().toISOString().split('T')[0],
+      startDate: formatLocalDateKey(startDate || existingPlan?.startDate || new Date()),
       weeklyTargetKm: Number(totalWeeklyKm.toFixed(1)),
       totalWeeks: Number(totalWeeks) || 8,
       currentWeek: planCurrentWeek,
@@ -247,6 +275,11 @@ export const ManualPlanModal: React.FC<ManualPlanModalProps> = ({
                   onChange={(e) => setStartDate(e.target.value)}
                   className="w-full bg-[#1E1E1E] border border-white/10 rounded-xl px-3 py-2 text-xs font-bold text-white focus:outline-none focus:ring-2 focus:ring-[#FF5500]/30 focus:border-[#FF5500]"
                 />
+                {week1RangePreview && (
+                  <p className="text-[10px] text-[#FF5500] font-mono font-bold mt-1">
+                    Week 1: {week1RangePreview}
+                  </p>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-2">
