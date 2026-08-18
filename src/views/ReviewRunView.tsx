@@ -221,25 +221,19 @@ export const ReviewRunView: React.FC<ReviewRunViewProps> = ({
 
   return (
     <div className="max-w-md mx-auto px-4 pt-4 pb-32 space-y-5">
-      <div className="flex items-center justify-between pt-2">
-        <div className="flex items-center space-x-3">
-          <button
-            onClick={onBack}
-            className="p-2 -ml-2 rounded-full hover:bg-neutral-100 text-neutral-700 transition-colors"
-            aria-label="Back"
-          >
-            <ChevronLeft className="w-6 h-6" />
-          </button>
-          <h1 className="text-xl font-bold text-neutral-900">Review Run</h1>
-        </div>
-        <div className="flex items-center text-xs font-semibold text-[#FF5500] bg-orange-50 px-2.5 py-1 rounded-full">
-          <Sparkles className="w-3.5 h-3.5 mr-1" />
-          AI Extracted
-        </div>
+      <div className="flex items-center space-x-3 pt-2">
+        <button
+          onClick={onBack}
+          className="p-2 -ml-2 rounded-full text-neutral-400 hover:text-white hover:bg-white/10 transition-colors"
+          aria-label="Go back"
+        >
+          <ChevronLeft className="w-6 h-6" />
+        </button>
+        <h1 className="text-xl font-bold text-white">Review & Save Run</h1>
       </div>
 
       {/* Top Preview Card */}
-      <Card className="p-4 bg-neutral-900 text-white rounded-3xl overflow-hidden shadow-soft-lg relative">
+      <Card className="p-4 bg-[#1E1E1E] text-white rounded-3xl overflow-hidden shadow-soft-lg relative border border-white/5">
         <div className="flex items-start justify-between">
           <div>
             <div className="flex items-baseline space-x-1.5">
@@ -256,7 +250,7 @@ export const ReviewRunView: React.FC<ReviewRunViewProps> = ({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-2 mt-4 pt-3 border-t border-neutral-800 text-xs">
+        <div className="grid grid-cols-2 gap-2 mt-4 pt-3 border-t border-white/5 text-xs">
           <div className="flex items-center space-x-2 text-neutral-300">
             <Timer className="w-4 h-4 text-neutral-400" />
             <div>
@@ -295,7 +289,7 @@ export const ReviewRunView: React.FC<ReviewRunViewProps> = ({
 
         {/* Extra Huawei Health badges if available */}
         {(aerobicTe || totalSteps || vo2max) && (
-          <div className="grid grid-cols-3 gap-2 mt-3 pt-2.5 border-t border-neutral-800 text-[11px] text-neutral-300">
+          <div className="grid grid-cols-3 gap-2 mt-3 pt-2.5 border-t border-white/5 text-[11px] text-neutral-300">
             {totalSteps && (
               <div>
                 <span className="text-[9px] text-neutral-400 block">Steps</span>
@@ -318,7 +312,7 @@ export const ReviewRunView: React.FC<ReviewRunViewProps> = ({
         )}
 
         {routeData && (
-          <div className="mt-3 pt-2.5 border-t border-neutral-800 flex items-center justify-between text-xs text-emerald-400 font-medium">
+          <div className="mt-3 pt-2.5 border-t border-white/5 flex items-center justify-between text-xs text-emerald-400 font-medium">
             <span className="flex items-center space-x-1.5">
               <Compass className="w-3.5 h-3.5" />
               <span>Route attached ({routeData.coordinates.length} GPS points)</span>
@@ -330,19 +324,19 @@ export const ReviewRunView: React.FC<ReviewRunViewProps> = ({
 
       {/* Extracted Data Form */}
       <div className="flex items-center justify-between pt-1">
-        <h2 className="text-base font-bold text-neutral-900">Extracted Data</h2>
+        <h2 className="text-base font-bold text-white">Extracted Data</h2>
         <span className="text-xs font-semibold text-[#FF5500]">Edit all</span>
       </div>
 
       {formError && (
-        <div className="p-3 rounded-2xl bg-red-50 border border-red-200 text-red-700 text-xs">
+        <div className="p-3 rounded-2xl bg-rose-950/60 border border-rose-500/30 text-rose-300 text-xs">
           {formError}
         </div>
       )}
 
       {/* Primary Section */}
-      <Card className="p-4 sm:p-5 space-y-4 bg-white border border-neutral-200/80">
-        <span className="text-xs font-bold uppercase tracking-wider text-neutral-400 block pb-1 border-b border-neutral-100">
+      <Card className="p-4 sm:p-5 space-y-4 bg-[#1E1E1E] border border-white/5">
+        <span className="text-xs font-bold uppercase tracking-wider text-neutral-400 block pb-1 border-b border-white/5">
           Core Workout
         </span>
 
@@ -483,10 +477,10 @@ export const ReviewRunView: React.FC<ReviewRunViewProps> = ({
       </Card>
 
       {/* Advanced Huawei Health & Running Dynamics Section */}
-      <Card className="p-4 sm:p-5 space-y-4 bg-white border border-neutral-200/80">
-        <div className="flex items-center space-x-2 pb-1 border-b border-neutral-100">
+      <Card className="p-4 sm:p-5 space-y-4 bg-[#1E1E1E] border border-white/5">
+        <div className="flex items-center space-x-2 pb-1 border-b border-white/5">
           <Footprints className="w-4 h-4 text-[#FF5500]" />
-          <span className="text-xs font-bold uppercase tracking-wider text-neutral-700">
+          <span className="text-xs font-bold uppercase tracking-wider text-neutral-300">
             Running Dynamics & Form
           </span>
         </div>
@@ -543,10 +537,10 @@ export const ReviewRunView: React.FC<ReviewRunViewProps> = ({
       </Card>
 
       {/* Performance & Recovery Section */}
-      <Card className="p-4 sm:p-5 space-y-4 bg-white border border-neutral-200/80">
-        <div className="flex items-center space-x-2 pb-1 border-b border-neutral-100">
-          <Zap className="w-4 h-4 text-amber-500" />
-          <span className="text-xs font-bold uppercase tracking-wider text-neutral-700">
+      <Card className="p-4 sm:p-5 space-y-4 bg-[#1E1E1E] border border-white/5">
+        <div className="flex items-center space-x-2 pb-1 border-b border-white/5">
+          <Zap className="w-4 h-4 text-amber-400" />
+          <span className="text-xs font-bold uppercase tracking-wider text-neutral-300">
             Performance & Recovery
           </span>
         </div>
@@ -594,7 +588,7 @@ export const ReviewRunView: React.FC<ReviewRunViewProps> = ({
         </div>
       </Card>
 
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/95 backdrop-blur-md border-t border-neutral-200/80 safe-pb z-40">
+      <div className="fixed bottom-0 left-0 right-0 p-4 bg-[#111111]/95 backdrop-blur-md border-t border-white/5 safe-pb z-40">
         <div className="max-w-md mx-auto">
           <Button
             variant="primary"

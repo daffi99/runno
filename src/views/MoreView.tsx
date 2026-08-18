@@ -79,15 +79,15 @@ export const MoreView: React.FC<MoreViewProps> = ({
   return (
     <div className="max-w-md mx-auto px-4 pt-4 pb-28 space-y-5">
       <div className="pt-2">
-        <h1 className="text-2xl font-black text-neutral-900 tracking-tight">More & Settings</h1>
+        <h1 className="text-2xl font-black text-white tracking-tight">More & Settings</h1>
         <p className="text-xs text-neutral-400 font-medium mt-0.5">
           Preferences, API key & data management
         </p>
       </div>
 
       {importStatus && (
-        <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center space-x-2 text-emerald-800 text-xs animate-in fade-in">
-          <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
+        <div className="p-3.5 rounded-2xl bg-emerald-950/50 border border-emerald-500/30 flex items-center space-x-2 text-emerald-300 text-xs animate-in fade-in">
+          <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
           <span>{importStatus}</span>
         </div>
       )}
@@ -98,13 +98,13 @@ export const MoreView: React.FC<MoreViewProps> = ({
           Preferences
         </span>
 
-        <Card className="p-4 flex items-center justify-between">
+        <Card className="p-4 flex items-center justify-between bg-[#1E1E1E] border-white/5">
           <div className="flex items-center space-x-3.5">
-            <div className="w-10 h-10 rounded-2xl bg-orange-50 text-[#FF5500] flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded-2xl bg-[#FF5500]/15 text-[#FF5500] flex items-center justify-center shrink-0">
               <Scale className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-neutral-900">Unit System</h3>
+              <h3 className="text-sm font-bold text-white">Unit System</h3>
               <p className="text-xs text-neutral-400">
                 {settings.unitSystem === 'metric'
                   ? 'Metric (Kilometers, km/h, meters)'
@@ -115,7 +115,7 @@ export const MoreView: React.FC<MoreViewProps> = ({
 
           <button
             onClick={handleToggleUnit}
-            className="px-3 py-1.5 rounded-xl bg-neutral-100 hover:bg-neutral-200 text-xs font-bold text-neutral-800 transition-colors uppercase"
+            className="px-3 py-1.5 rounded-xl bg-[#252525] hover:bg-[#2F2F2F] text-xs font-bold text-white border border-white/5 transition-colors uppercase"
           >
             {settings.unitSystem}
           </button>
@@ -125,22 +125,21 @@ export const MoreView: React.FC<MoreViewProps> = ({
           <Card
             variant="interactive"
             onClick={onNavigateStats}
-            className="p-4 flex items-center justify-between"
+            className="p-4 flex items-center justify-between bg-[#1E1E1E] border-white/5"
           >
             <div className="flex items-center space-x-3.5">
-              <div className="w-10 h-10 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 rounded-2xl bg-amber-500/15 text-amber-400 flex items-center justify-center shrink-0">
                 <BarChart2 className="w-5 h-5" />
               </div>
               <div>
-                <h3 className="text-sm font-bold text-neutral-900">Stats & Records</h3>
+                <h3 className="text-sm font-bold text-white">Stats & Records</h3>
                 <p className="text-xs text-neutral-400">Monthly mileage volume and personal bests</p>
               </div>
             </div>
-            <ChevronRight className="w-4 h-4 text-neutral-400" />
+            <ChevronRight className="w-4 h-4 text-neutral-500" />
           </Card>
         )}
       </div>
-
 
       {/* AI Extraction Settings */}
       <div className="space-y-3">
@@ -148,13 +147,13 @@ export const MoreView: React.FC<MoreViewProps> = ({
           AI Screenshot Extraction
         </span>
 
-        <Card className="p-4 space-y-3 bg-white">
+        <Card className="p-4 space-y-3 bg-[#1E1E1E] border-white/5">
           <div className="flex items-start space-x-3.5">
-            <div className="w-10 h-10 rounded-2xl bg-orange-50 text-[#FF5500] flex items-center justify-center shrink-0 mt-0.5">
+            <div className="w-10 h-10 rounded-2xl bg-[#FF5500]/15 text-[#FF5500] flex items-center justify-center shrink-0 mt-0.5">
               <Sparkles className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-neutral-900">Custom OpenRouter API Key</h3>
+              <h3 className="text-sm font-bold text-white">Custom OpenRouter API Key</h3>
               <p className="text-xs text-neutral-400 mt-0.5">
                 Override server API key with your own personal OpenRouter key.
               </p>
@@ -167,14 +166,14 @@ export const MoreView: React.FC<MoreViewProps> = ({
               placeholder="sk-or-v1-..."
               value={apiKeyInput}
               onChange={(e) => setApiKeyInput(e.target.value)}
-              className="w-full bg-neutral-50 border border-neutral-200 rounded-2xl px-3.5 py-2.5 text-xs text-neutral-900 focus:outline-none focus:ring-2 focus:ring-[#FF5500]/20 font-mono"
+              className="w-full bg-[#252525] border border-white/10 rounded-2xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:ring-2 focus:ring-[#FF5500]/30 font-mono"
             />
             <div className="flex justify-end">
               <Button
                 variant={savedKeySuccess ? 'outline' : 'secondary'}
                 size="sm"
                 onClick={handleSaveApiKey}
-                leftIcon={savedKeySuccess ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : undefined}
+                leftIcon={savedKeySuccess ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : undefined}
                 className="text-xs font-bold"
               >
                 {savedKeySuccess ? 'Saved Key!' : 'Save Key'}
@@ -193,18 +192,18 @@ export const MoreView: React.FC<MoreViewProps> = ({
         <Card
           variant="interactive"
           onClick={onNavigateExport}
-          className="p-4 flex items-center justify-between"
+          className="p-4 flex items-center justify-between bg-[#1E1E1E] border-white/5"
         >
           <div className="flex items-center space-x-3.5">
-            <div className="w-10 h-10 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded-2xl bg-blue-500/15 text-blue-400 flex items-center justify-center shrink-0">
               <DownloadCloud className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-neutral-900">Export Runs (JSON)</h3>
+              <h3 className="text-sm font-bold text-white">Export Runs (JSON)</h3>
               <p className="text-xs text-neutral-400">Export single run or all runs formatted for Claude</p>
             </div>
           </div>
-          <ChevronRight className="w-4 h-4 text-neutral-400" />
+          <ChevronRight className="w-4 h-4 text-neutral-500" />
         </Card>
 
         <input
@@ -218,40 +217,40 @@ export const MoreView: React.FC<MoreViewProps> = ({
         <Card
           variant="interactive"
           onClick={() => fileInputRef.current?.click()}
-          className="p-4 flex items-center justify-between"
+          className="p-4 flex items-center justify-between bg-[#1E1E1E] border-white/5"
         >
           <div className="flex items-center space-x-3.5">
-            <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded-2xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center shrink-0">
               <UploadCloud className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-neutral-900">Import Runs (JSON)</h3>
+              <h3 className="text-sm font-bold text-white">Import Runs (JSON)</h3>
               <p className="text-xs text-neutral-400">Restore runs from a previously exported backup file</p>
             </div>
           </div>
-          <ChevronRight className="w-4 h-4 text-neutral-400" />
+          <ChevronRight className="w-4 h-4 text-neutral-500" />
         </Card>
       </div>
 
       {/* Danger Zone */}
       <div className="space-y-3">
-        <span className="text-xs font-bold uppercase tracking-wider text-red-500">
+        <span className="text-xs font-bold uppercase tracking-wider text-rose-400">
           Danger Zone
         </span>
 
-        <Card className="p-4 flex items-center justify-between border border-red-100 bg-red-50/30">
+        <Card className="p-4 flex items-center justify-between border border-rose-500/20 bg-rose-950/20">
           <div className="flex items-center space-x-3.5">
-            <div className="w-10 h-10 rounded-2xl bg-red-100 text-red-600 flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded-2xl bg-rose-500/20 text-rose-400 flex items-center justify-center shrink-0">
               <Trash2 className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-neutral-900">Clear All Runs</h3>
+              <h3 className="text-sm font-bold text-white">Clear All Runs</h3>
               <p className="text-xs text-neutral-400">Permanently delete all running activities</p>
             </div>
           </div>
           <button
             onClick={handleClearAll}
-            className="px-3 py-1.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition-colors"
+            className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-colors"
           >
             Clear All
           </button>
@@ -260,11 +259,11 @@ export const MoreView: React.FC<MoreViewProps> = ({
 
       {/* PWA & Version info */}
       <div className="pt-2 text-center text-xs text-neutral-400 space-y-1">
-        <div className="flex items-center justify-center space-x-1.5 font-semibold text-neutral-600">
+        <div className="flex items-center justify-center space-x-1.5 font-semibold text-neutral-400">
           <Smartphone className="w-3.5 h-3.5 text-[#FF5500]" />
-          <span>Runno PWA • v1.0.0</span>
+          <span>Runno PWA • v2.5</span>
         </div>
-        <p className="text-[11px] text-neutral-400">
+        <p className="text-[11px] text-neutral-500">
           Precision Personal Running Tracker • Mobile-First PWA
         </p>
       </div>

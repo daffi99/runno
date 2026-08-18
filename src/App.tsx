@@ -193,7 +193,7 @@ export const App: React.FC = () => {
   const showBottomNav = screen.type === 'tab' && screen.tab !== 'add';
 
   return (
-    <div className="min-h-screen bg-[#F9FAFB] text-neutral-900 font-sans antialiased selection:bg-orange-100 selection:text-[#FF5500]">
+    <div className="min-h-screen bg-[#111111] text-white font-sans antialiased selection:bg-orange-900 selection:text-[#FF5500]">
       <main className="max-w-md mx-auto min-h-screen relative">
         {screen.type === 'tab' && screen.tab === 'dashboard' && (
           <DashboardView

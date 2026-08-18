@@ -831,7 +831,7 @@ export const CoachView: React.FC<CoachViewProps> = ({
         <div className="flex items-center space-x-1.5">
           <button
             onClick={() => setIsManualPlanModalOpen(true)}
-            className="flex items-center space-x-1 px-2.5 py-1.5 rounded-2xl bg-neutral-100 hover:bg-neutral-200 text-neutral-800 text-xs font-bold transition-all active:scale-95 border border-neutral-200"
+            className="flex items-center space-x-1 px-2.5 py-1.5 rounded-2xl bg-[#1E1E1E] hover:bg-[#252525] text-white text-xs font-bold transition-all active:scale-95 border border-white/5 shadow-soft-sm"
             title="Create or edit training plan manually"
           >
             <Plus className="w-3.5 h-3.5" />
@@ -840,7 +840,7 @@ export const CoachView: React.FC<CoachViewProps> = ({
 
           <button
             onClick={() => setIsQuickModalOpen(true)}
-            className="flex items-center space-x-1 px-2.5 py-1.5 rounded-2xl bg-orange-50 hover:bg-orange-100 text-[#FF5500] text-xs font-bold transition-all active:scale-95 border border-orange-200/60"
+            className="flex items-center space-x-1 px-2.5 py-1.5 rounded-2xl bg-[#FF5500]/15 hover:bg-[#FF5500]/25 text-[#FF5500] text-xs font-bold transition-all active:scale-95 border border-[#FF5500]/30 shadow-soft-sm"
             title="AI Plan Assistant"
           >
             <Sliders className="w-3.5 h-3.5" />
@@ -851,16 +851,16 @@ export const CoachView: React.FC<CoachViewProps> = ({
 
 
       {/* Sticky Top Segmented Sub-Tab Switcher */}
-      <div className="sticky top-0 z-30 pt-1 pb-1.5 -mx-4 px-4 bg-[#F8F9FA]/90 backdrop-blur-md">
-        <div className="grid grid-cols-2 p-1 bg-neutral-200/70 rounded-2xl border border-neutral-200/60 shadow-soft-xs">
+      <div className="sticky top-0 z-30 pt-1 pb-1.5 -mx-4 px-4 bg-[#111111]/90 backdrop-blur-md">
+        <div className="grid grid-cols-2 p-1 bg-[#1E1E1E] rounded-2xl border border-white/5 shadow-soft-xs">
           <button
             type="button"
             onClick={() => setActiveTab('schedule')}
             className={clsx(
               'py-2 px-3 rounded-xl text-xs font-bold transition-all duration-200 flex items-center justify-center space-x-2',
               activeTab === 'schedule'
-                ? 'bg-white text-neutral-900 shadow-sm'
-                : 'text-neutral-500 hover:text-neutral-800'
+                ? 'bg-[#2A2A2A] text-white shadow-sm'
+                : 'text-neutral-400 hover:text-white'
             )}
           >
             <Calendar className="w-3.5 h-3.5" />
@@ -876,13 +876,13 @@ export const CoachView: React.FC<CoachViewProps> = ({
             className={clsx(
               'py-2 px-3 rounded-xl text-xs font-bold transition-all duration-200 flex items-center justify-center space-x-2',
               activeTab === 'chat'
-                ? 'bg-white text-neutral-900 shadow-sm'
-                : 'text-neutral-500 hover:text-neutral-800'
+                ? 'bg-[#2A2A2A] text-white shadow-sm'
+                : 'text-neutral-400 hover:text-white'
             )}
           >
             <MessageSquare className="w-3.5 h-3.5" />
             <span>Coach Chat</span>
-            <span className="px-1.5 py-0.2 rounded-full bg-orange-100 text-[#FF5500] text-[10px] font-black">
+            <span className="px-1.5 py-0.2 rounded-full bg-[#FF5500]/15 text-[#FF5500] text-[10px] font-black border border-[#FF5500]/30">
               AI
             </span>
           </button>
@@ -898,12 +898,12 @@ export const CoachView: React.FC<CoachViewProps> = ({
           {activePlan ? (
             <>
               {/* Clean Interactive Week Switcher Bar */}
-              <div className="flex items-center justify-between bg-white p-2.5 rounded-2xl border border-neutral-200/90 shadow-soft-xs">
+              <div className="flex items-center justify-between bg-[#1E1E1E] p-2.5 rounded-2xl border border-white/5 shadow-soft-xs">
                 <button
                   type="button"
                   onClick={() => setViewedWeek((prev) => Math.max(1, prev - 1))}
                   disabled={viewedWeek <= 1}
-                  className="py-1.5 px-2.5 rounded-xl text-neutral-600 hover:bg-neutral-100 disabled:opacity-30 disabled:hover:bg-transparent text-xs font-bold flex items-center gap-1 transition-all active:scale-95"
+                  className="py-1.5 px-2.5 rounded-xl text-neutral-300 hover:bg-[#252525] disabled:opacity-30 disabled:hover:bg-transparent text-xs font-bold flex items-center gap-1 transition-all active:scale-95"
                   aria-label="Previous week"
                 >
                   <ChevronLeft className="w-4 h-4" />
@@ -911,7 +911,7 @@ export const CoachView: React.FC<CoachViewProps> = ({
                 </button>
 
                 <div className="text-center">
-                  <span className="text-sm font-black text-neutral-900 tracking-tight">
+                  <span className="text-sm font-black text-white tracking-tight">
                     Week {viewedWeek} of {totalPlanWeeks}
                   </span>
                   <span className="text-[11px] font-semibold text-neutral-400 block">
@@ -923,7 +923,7 @@ export const CoachView: React.FC<CoachViewProps> = ({
                   type="button"
                   onClick={() => setViewedWeek((prev) => Math.min(totalPlanWeeks, prev + 1))}
                   disabled={viewedWeek >= totalPlanWeeks}
-                  className="py-1.5 px-2.5 rounded-xl text-neutral-600 hover:bg-neutral-100 disabled:opacity-30 disabled:hover:bg-transparent text-xs font-bold flex items-center gap-1 transition-all active:scale-95"
+                  className="py-1.5 px-2.5 rounded-xl text-neutral-300 hover:bg-[#252525] disabled:opacity-30 disabled:hover:bg-transparent text-xs font-bold flex items-center gap-1 transition-all active:scale-95"
                   aria-label="Next week"
                 >
                   <span className="text-xs">Next</span>
@@ -933,29 +933,29 @@ export const CoachView: React.FC<CoachViewProps> = ({
 
 
               {/* Plan Overview Card */}
-              <Card className="p-4 bg-white border border-neutral-200/80 shadow-soft-sm space-y-3">
+              <Card className="p-4 bg-[#1E1E1E] border border-white/5 shadow-soft-sm space-y-3">
                 <div className="flex items-start justify-between">
                   <div>
                     <div className="flex items-center space-x-2 flex-wrap gap-y-1">
                       <span className={clsx(
                         "text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full",
-                        isViewingCurrentWeek ? "bg-orange-50 text-[#FF5500]" : "bg-indigo-50 text-indigo-700"
+                        isViewingCurrentWeek ? "bg-[#FF5500]/15 text-[#FF5500] border border-[#FF5500]/20" : "bg-[#252525] text-neutral-300 border border-white/10"
                       )}>
                         Week {viewedWeek} of {totalPlanWeeks} {isViewingCurrentWeek ? '• Current' : '• Preview'}
                       </span>
-                      <span className="text-[11px] font-bold text-neutral-600">
+                      <span className="text-[11px] font-bold text-neutral-300">
                         {formatWeekRange(selectedWeekBaseDate)}
                       </span>
-                      <span className="text-neutral-300">·</span>
+                      <span className="text-neutral-600">·</span>
                       <span className="text-[11px] font-bold text-neutral-400">
                         {activePlan.scheduleSummary}
                       </span>
                     </div>
-                    <h2 className="text-lg font-black text-neutral-900 tracking-tight mt-1.5">
+                    <h2 className="text-lg font-black text-white tracking-tight mt-1.5">
                       {activePlan.title}
                     </h2>
-                    <p className="text-xs text-neutral-500 flex items-center gap-1 mt-0.5">
-                      <Target className="w-3.5 h-3.5 text-neutral-400" />
+                    <p className="text-xs text-neutral-400 flex items-center gap-1 mt-0.5">
+                      <Target className="w-3.5 h-3.5 text-neutral-500" />
                       {activePlan.goal}
                     </p>
                   </div>
@@ -963,7 +963,7 @@ export const CoachView: React.FC<CoachViewProps> = ({
                   <div className="flex items-center space-x-1">
                     <button
                       onClick={() => setIsManualPlanModalOpen(true)}
-                      className="p-1.5 rounded-xl text-neutral-400 hover:text-neutral-900 hover:bg-neutral-100 transition-colors"
+                      className="p-1.5 rounded-xl text-neutral-400 hover:text-white hover:bg-white/10 transition-colors"
                       title="Edit plan details & workouts"
                     >
                       <Pencil className="w-4 h-4" />
@@ -971,7 +971,7 @@ export const CoachView: React.FC<CoachViewProps> = ({
 
                     <button
                       onClick={handleClearPlan}
-                      className="p-1.5 rounded-xl text-neutral-300 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                      className="p-1.5 rounded-xl text-neutral-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
                       title="Remove plan"
                     >
                       <Trash2 className="w-4 h-4" />
@@ -983,8 +983,8 @@ export const CoachView: React.FC<CoachViewProps> = ({
                 {isViewingCurrentWeek ? (
                   <div className="space-y-1.5 pt-1">
                     <div className="flex items-center justify-between text-xs font-semibold">
-                      <span className="text-neutral-500 font-medium">Weekly Target Progress</span>
-                      <span className="font-mono text-neutral-900">
+                      <span className="text-neutral-400 font-medium">Weekly Target Progress</span>
+                      <span className="font-mono text-white">
                         <span className="font-bold text-[#FF5500]">
                           {formatDistance(weeklyProgress.completedKm, unitSystem, true)}
                         </span>
@@ -992,7 +992,7 @@ export const CoachView: React.FC<CoachViewProps> = ({
                       </span>
                     </div>
 
-                    <div className="w-full h-2.5 bg-neutral-100 rounded-full overflow-hidden">
+                    <div className="w-full h-2.5 bg-[#111111] rounded-full overflow-hidden border border-white/5">
                       <div
                         className="h-full bg-gradient-to-r from-[#FF5500] to-amber-500 rounded-full transition-all duration-500 ease-out"
                         style={{ width: `${weeklyProgress.percent}%` }}
@@ -1001,18 +1001,18 @@ export const CoachView: React.FC<CoachViewProps> = ({
 
                     <div className="flex items-center justify-between text-[11px] text-neutral-400 pt-0.5">
                       <span>{weeklyProgress.completedCount} of {weeklyProgress.totalWorkouts} runs completed</span>
-                      <span className="font-bold text-neutral-700">{weeklyProgress.percent}%</span>
+                      <span className="font-bold text-white">{weeklyProgress.percent}%</span>
                     </div>
                   </div>
                 ) : (
-                  <div className="flex items-center justify-between text-[11px] bg-indigo-50/60 px-2.5 py-1.5 rounded-xl border border-indigo-100/80">
-                    <span className="text-indigo-900 font-medium truncate">
+                  <div className="flex items-center justify-between text-[11px] bg-[#111111] px-3 py-2 rounded-2xl border border-white/10 shadow-xs">
+                    <span className="text-neutral-300 font-medium truncate">
                       Week {viewedWeek} ({formatWeekRange(selectedWeekBaseDate)})
                     </span>
                     <button
                       type="button"
                       onClick={() => setViewedWeek(currentPlanWeek)}
-                      className="text-[11px] font-bold text-indigo-700 hover:text-indigo-900 ml-2 shrink-0 underline"
+                      className="text-[11px] font-bold text-[#FF5500] hover:text-[#E64D00] ml-2 shrink-0 active:scale-95 transition-transform"
                     >
                       This Week
                     </button>
@@ -1025,7 +1025,7 @@ export const CoachView: React.FC<CoachViewProps> = ({
               <div className="space-y-2.5 pt-1">
                 <div className="flex items-center justify-between px-1">
                   <div className="flex items-center space-x-2">
-                    <span className="text-xs font-bold uppercase tracking-wider text-neutral-500">
+                    <span className="text-xs font-bold uppercase tracking-wider text-neutral-400">
                       Week {viewedWeek} Schedule
                     </span>
                     <span className="text-xs text-neutral-400 font-medium">
@@ -1035,19 +1035,19 @@ export const CoachView: React.FC<CoachViewProps> = ({
                   <div className="flex items-center space-x-2">
                     <button
                       onClick={() => setIsManualPlanModalOpen(true)}
-                      className="text-xs font-bold text-neutral-600 hover:text-neutral-900 flex items-center gap-1"
+                      className="text-xs font-bold text-neutral-400 hover:text-white flex items-center gap-1 transition-colors"
                     >
                       <Pencil className="w-3 h-3" />
                       Edit Plan
                     </button>
-                    <span className="text-neutral-300">·</span>
+                    <span className="text-neutral-600">·</span>
                     <button
                       onClick={() => {
                         setActiveTab('chat');
                         setInputPrompt(`Can you help me adjust my Week ${viewedWeek} training schedule?`);
                         setTimeout(() => chatInputRef.current?.focus(), 150);
                       }}
-                      className="text-xs font-bold text-[#FF5500] hover:text-[#E64D00] flex items-center gap-1"
+                      className="text-xs font-bold text-[#FF5500] hover:text-[#E64D00] flex items-center gap-1 transition-colors"
                     >
                       <Sparkles className="w-3 h-3" />
                       AI Adjust
@@ -1080,12 +1080,12 @@ export const CoachView: React.FC<CoachViewProps> = ({
 
               {/* AI Coaching Tips */}
               {activePlan.aiAdvice && (
-                <div className="p-3.5 rounded-2xl bg-orange-50/70 border border-orange-200/60 text-xs space-y-1.5">
+                <div className="p-3.5 rounded-2xl bg-[#FF5500]/10 border border-[#FF5500]/20 text-xs space-y-1.5">
                   <div className="flex items-center space-x-1.5 text-[#FF5500] font-bold">
                     <Sparkles className="w-4 h-4" />
                     <span>Coach Strategy for Week {viewedWeek}</span>
                   </div>
-                  <p className="text-neutral-700 leading-relaxed">
+                  <p className="text-neutral-300 leading-relaxed">
                     {activePlan.aiAdvice}
                   </p>
                 </div>
@@ -1093,16 +1093,16 @@ export const CoachView: React.FC<CoachViewProps> = ({
             </>
           ) : (
             /* Empty State: No Active Plan */
-            <Card className="p-7 text-center space-y-4 bg-white border border-neutral-200/90 shadow-soft-sm">
-              <div className="w-14 h-14 rounded-full bg-orange-50 text-[#FF5500] flex items-center justify-center mx-auto shadow-soft-xs">
+            <Card className="p-7 text-center space-y-4 bg-[#1E1E1E] border border-white/5 shadow-soft-sm">
+              <div className="w-14 h-14 rounded-2xl bg-[#FF5500]/15 text-[#FF5500] flex items-center justify-center mx-auto shadow-soft-xs">
                 <Calendar className="w-7 h-7" />
               </div>
 
               <div className="space-y-1">
-                <h3 className="text-lg font-black text-neutral-900">
+                <h3 className="text-lg font-black text-white">
                   No Active Training Plan
                 </h3>
-                <p className="text-xs text-neutral-500 max-w-xs mx-auto leading-relaxed">
+                <p className="text-xs text-neutral-400 max-w-xs mx-auto leading-relaxed">
                   Ready to get into a steady rhythm? Setup your weekly training manually or let the AI Coach design one for you.
                 </p>
               </div>
@@ -1154,8 +1154,8 @@ export const CoachView: React.FC<CoachViewProps> = ({
       {activeTab === 'chat' && (
         <div className="space-y-3 animate-in fade-in duration-150">
           {/* Runner Context Chip */}
-          <div className="p-2.5 rounded-2xl bg-neutral-100/80 border border-neutral-200/60 flex items-center justify-between text-xs">
-            <div className="flex items-center space-x-2 text-neutral-700 font-medium">
+          <div className="p-2.5 rounded-2xl bg-[#1E1E1E] border border-white/5 flex items-center justify-between text-xs">
+            <div className="flex items-center space-x-2 text-neutral-300 font-medium">
               <Footprints className="w-4 h-4 text-[#FF5500] shrink-0" />
               <span className="text-[11px] truncate">
                 {runs.length > 0
@@ -1166,7 +1166,7 @@ export const CoachView: React.FC<CoachViewProps> = ({
 
             <button
               onClick={handleClearChat}
-              className="text-[11px] font-bold text-neutral-400 hover:text-neutral-600 transition-colors"
+              className="text-[11px] font-bold text-neutral-500 hover:text-white transition-colors"
             >
               Clear
             </button>
@@ -1187,7 +1187,7 @@ export const CoachView: React.FC<CoachViewProps> = ({
                   setInputPrompt(pill.prompt);
                   chatInputRef.current?.focus();
                 }}
-                className="shrink-0 text-[11px] font-bold px-3 py-1.5 rounded-full bg-white border border-neutral-200 text-neutral-700 hover:border-[#FF5500] hover:text-[#FF5500] active:scale-95 transition-all shadow-xs"
+                className="shrink-0 text-[11px] font-bold px-3 py-1.5 rounded-full bg-[#1E1E1E] border border-white/5 text-neutral-300 hover:border-[#FF5500] hover:text-[#FF5500] active:scale-95 transition-all shadow-xs"
               >
                 {pill.label}
               </button>
@@ -1218,7 +1218,7 @@ export const CoachView: React.FC<CoachViewProps> = ({
                       'p-3.5 rounded-2xl text-xs max-w-[90%] sm:max-w-[85%] leading-relaxed shadow-soft-xs',
                       isUser
                         ? 'bg-[#FF5500] text-white rounded-tr-none font-medium'
-                        : 'bg-white text-neutral-800 border border-neutral-200/80 rounded-tl-none space-y-2'
+                        : 'bg-[#1E1E1E] text-neutral-100 border border-white/5 rounded-tl-none space-y-2'
                     )}
                   >
                     {renderFormattedMessage(msg.content, isUser, msg.id === typingMessageId)}
@@ -1265,15 +1265,15 @@ export const CoachView: React.FC<CoachViewProps> = ({
                         <button
                           type="button"
                           onClick={() => setSelectedDebugInfo(msg.debugInfo)}
-                          className="text-[10px] font-mono text-neutral-400 hover:text-neutral-600 bg-neutral-100/90 hover:bg-neutral-200/90 px-2 py-0.5 rounded-full border border-neutral-200/60 flex items-center gap-1 transition-all active:scale-95 cursor-pointer select-none"
+                          className="text-[10px] font-mono text-neutral-400 hover:text-white bg-[#252525] hover:bg-[#2F2F2F] px-2 py-0.5 rounded-full border border-white/5 flex items-center gap-1 transition-all active:scale-95 cursor-pointer select-none"
                           title="View Diagnostics"
                         >
                           <Search className="w-3 h-3 text-neutral-400" />
                           <span className={clsx(
                             "text-[9.5px] font-bold font-mono",
                             msg.debugInfo.status === 200 || msg.debugInfo.status === '200' || msg.debugInfo.status === 'OK'
-                              ? "text-emerald-600"
-                              : "text-rose-600"
+                              ? "text-emerald-400"
+                              : "text-rose-400"
                           )}>
                             {String(msg.debugInfo.status || '200')}
                           </span>
@@ -1289,7 +1289,7 @@ export const CoachView: React.FC<CoachViewProps> = ({
 
 
             {isLoading && (
-              <div className="flex items-center space-x-2 text-xs text-neutral-500 p-3 bg-white border border-neutral-200 rounded-2xl rounded-tl-none w-fit animate-pulse">
+              <div className="flex items-center space-x-2 text-xs text-neutral-400 p-3 bg-[#1E1E1E] border border-white/5 rounded-2xl rounded-tl-none w-fit animate-pulse">
                 <Sparkles className="w-4 h-4 text-[#FF5500] animate-spin" />
                 <span>Coach is thinking...</span>
               </div>
@@ -1300,20 +1300,20 @@ export const CoachView: React.FC<CoachViewProps> = ({
           </div>
 
           {/* Chat Input Bar */}
-          <div className="sticky bottom-20 pt-2 bg-gradient-to-t from-[#F9FAFB] via-[#F9FAFB] to-transparent">
+          <div className="sticky bottom-20 pt-2 bg-gradient-to-t from-[#111111] via-[#111111] to-transparent">
             <form
               onSubmit={(e) => {
                 e.preventDefault();
                 handleSendMessage(inputPrompt);
               }}
-              className="relative flex items-center space-x-1.5 bg-white p-1.5 rounded-2xl border border-neutral-300/80 shadow-lg focus-within:ring-2 focus-within:ring-[#FF5500]/30 focus-within:border-[#FF5500]"
+              className="relative flex items-center space-x-1.5 bg-[#1E1E1E] p-1.5 rounded-2xl border border-white/10 shadow-lg focus-within:ring-2 focus-within:ring-[#FF5500]/30 focus-within:border-[#FF5500]"
             >
               {/* Compact Model Selector Dropdown */}
               <div className="relative shrink-0">
                 <button
                   type="button"
                   onClick={() => setIsModelDropdownOpen(!isModelDropdownOpen)}
-                  className="flex items-center space-x-1 p-1.5 rounded-xl border border-neutral-200/90 bg-neutral-50/90 hover:bg-neutral-100/90 transition-all active:scale-95 shadow-2xs"
+                  className="flex items-center space-x-1 p-1.5 rounded-xl border border-white/10 bg-[#252525] hover:bg-[#2F2F2F] transition-all active:scale-95 shadow-2xs"
                   aria-label="Select AI Model"
                   title={`Active Model: ${activeModelOption.name}`}
                 >
@@ -1331,7 +1331,7 @@ export const CoachView: React.FC<CoachViewProps> = ({
                       className="fixed inset-0 z-40"
                       onClick={() => setIsModelDropdownOpen(false)}
                     />
-                    <div className="absolute bottom-full mb-2 left-0 z-50 w-64 bg-white rounded-2xl border border-neutral-200 shadow-xl p-1.5 space-y-1 animate-in fade-in slide-in-from-bottom-2 duration-150">
+                    <div className="absolute bottom-full mb-2 left-0 z-50 w-64 bg-[#1E1E1E] rounded-2xl border border-white/10 shadow-xl p-1.5 space-y-1 animate-in fade-in slide-in-from-bottom-2 duration-150">
                       <div className="px-2.5 py-1 text-[10px] font-bold text-neutral-400 uppercase tracking-wider">
                         Select Coach AI Model
                       </div>
@@ -1351,8 +1351,8 @@ export const CoachView: React.FC<CoachViewProps> = ({
                             className={clsx(
                               'w-full flex items-center justify-between px-2.5 py-2 rounded-xl text-xs transition-all text-left',
                               isSelected
-                                ? 'bg-neutral-900 text-white font-bold'
-                                : 'text-neutral-700 hover:bg-neutral-100'
+                                ? 'bg-white text-neutral-900 font-bold'
+                                : 'text-neutral-300 hover:bg-[#252525]'
                             )}
                           >
                             <div className="flex items-center space-x-2.5 min-w-0">
@@ -1369,7 +1369,7 @@ export const CoachView: React.FC<CoachViewProps> = ({
                                 <div
                                   className={clsx(
                                     'text-[10px] leading-tight mt-0.5 truncate',
-                                    isSelected ? 'text-neutral-300' : 'text-neutral-400'
+                                    isSelected ? 'text-neutral-600' : 'text-neutral-400'
                                   )}
                                 >
                                   {m.desc}
@@ -1398,13 +1398,13 @@ export const CoachView: React.FC<CoachViewProps> = ({
                     : 'Ask coach (e.g. Tue, Thu, Sat for 10K)...'
                 }
                 disabled={isLoading || !!typingMessageId}
-                className="flex-1 px-2 py-2 text-xs text-neutral-900 bg-transparent focus:outline-none placeholder:text-neutral-400 disabled:opacity-60"
+                className="flex-1 px-2 py-2 text-xs text-white bg-transparent focus:outline-none placeholder:text-neutral-500 disabled:opacity-60"
               />
 
               <button
                 type="submit"
                 disabled={!inputPrompt.trim() || isLoading || !!typingMessageId}
-                className="w-9 h-9 rounded-xl bg-[#FF5500] hover:bg-[#E64D00] disabled:bg-neutral-200 text-white flex items-center justify-center shrink-0 transition-all active:scale-95 disabled:active:scale-100 shadow-xs"
+                className="w-9 h-9 rounded-xl bg-[#FF5500] hover:bg-[#E64D00] disabled:bg-[#252525] disabled:text-neutral-600 text-white flex items-center justify-center shrink-0 transition-all active:scale-95 disabled:active:scale-100 shadow-xs"
                 aria-label="Send message"
               >
                 <Send className="w-4 h-4" />

@@ -306,14 +306,14 @@ export const RunDetailView: React.FC<RunDetailViewProps> = ({
       <div className="flex items-center justify-between pt-2">
         <button
           onClick={onBack}
-          className="p-2 -ml-2 rounded-full hover:bg-neutral-100 text-neutral-700 transition-colors"
+          className="p-2 -ml-2 rounded-full text-neutral-400 hover:text-white hover:bg-white/10 transition-colors"
           aria-label="Back"
         >
           <ChevronLeft className="w-6 h-6" />
         </button>
 
         <div className="text-center">
-          <h1 className="text-base font-bold text-neutral-900 leading-tight">
+          <h1 className="text-base font-bold text-white leading-tight">
             {formatDate(run.date, 'short')}
           </h1>
           <span className="text-xs text-neutral-400 font-medium">{run.source}</span>
@@ -322,7 +322,7 @@ export const RunDetailView: React.FC<RunDetailViewProps> = ({
         <div className="relative">
           <button
             onClick={() => setShowMenu(!showMenu)}
-            className="p-2 -mr-2 rounded-full hover:bg-neutral-100 text-neutral-700 transition-colors"
+            className="p-2 -mr-2 rounded-full text-neutral-400 hover:text-white hover:bg-white/10 transition-colors"
             aria-label="Options"
           >
             <MoreVertical className="w-5 h-5" />
@@ -334,26 +334,26 @@ export const RunDetailView: React.FC<RunDetailViewProps> = ({
                 className="fixed inset-0 z-40"
                 onClick={() => setShowMenu(false)}
               />
-              <div className="absolute right-0 mt-2 w-56 bg-white rounded-2xl shadow-soft-lg border border-neutral-200/80 py-1.5 z-50 animate-in fade-in zoom-in-95">
+              <div className="absolute right-0 mt-2 w-56 bg-[#1E1E1E] rounded-2xl shadow-soft-lg border border-white/10 py-1.5 z-50 animate-in fade-in zoom-in-95">
                 <button
                   onClick={() => {
                     setShowMenu(false);
                     setShowIntervalModal(true);
                   }}
-                  className="w-full px-4 py-2.5 text-left text-xs font-semibold text-neutral-700 hover:bg-neutral-50 flex items-center space-x-2"
+                  className="w-full px-4 py-2.5 text-left text-xs font-semibold text-neutral-300 hover:bg-[#252525] flex items-center space-x-2"
                 >
-                  <Layers className="w-4 h-4 text-indigo-600" />
+                  <Layers className="w-4 h-4 text-indigo-400" />
                   <span>{run.splits && run.splits.length > 0 ? 'Update Interval Splits' : 'Upload Interval Splits'}</span>
                 </button>
 
-                <div className="h-px bg-neutral-100 my-1" />
+                <div className="h-px bg-white/5 my-1" />
 
                 <button
                   onClick={() => {
                     setShowMenu(false);
                     gpxInputRef.current?.click();
                   }}
-                  className="w-full px-4 py-2.5 text-left text-xs font-semibold text-neutral-700 hover:bg-neutral-50 flex items-center space-x-2"
+                  className="w-full px-4 py-2.5 text-left text-xs font-semibold text-neutral-300 hover:bg-[#252525] flex items-center space-x-2"
                 >
                   <Compass className="w-4 h-4 text-[#FF5500]" />
                   <span>{run.route_data ? 'Update GPX Route' : 'Attach GPX Route'}</span>
@@ -365,27 +365,27 @@ export const RunDetailView: React.FC<RunDetailViewProps> = ({
                       setShowMenu(false);
                       handleRemoveGpx();
                     }}
-                    className="w-full px-4 py-2.5 text-left text-xs font-semibold text-neutral-700 hover:bg-neutral-50 flex items-center space-x-2"
+                    className="w-full px-4 py-2.5 text-left text-xs font-semibold text-neutral-300 hover:bg-[#252525] flex items-center space-x-2"
                   >
                     <X className="w-4 h-4 text-neutral-400" />
                     <span>Remove GPX Route</span>
                   </button>
                 )}
 
-                <div className="h-px bg-neutral-100 my-1" />
+                <div className="h-px bg-white/5 my-1" />
 
                 <button
                   onClick={() => {
                     setShowMenu(false);
                     setShowJsonModal(true);
                   }}
-                  className="w-full px-4 py-2.5 text-left text-xs font-semibold text-neutral-700 hover:bg-neutral-50 flex items-center space-x-2"
+                  className="w-full px-4 py-2.5 text-left text-xs font-semibold text-neutral-300 hover:bg-[#252525] flex items-center space-x-2"
                 >
-                  <Download className="w-4 h-4 text-neutral-500" />
+                  <Download className="w-4 h-4 text-neutral-400" />
                   <span>Export JSON</span>
                 </button>
 
-                <div className="h-px bg-neutral-100 my-1" />
+                <div className="h-px bg-white/5 my-1" />
 
                 <button
                   onClick={() => {
@@ -394,9 +394,9 @@ export const RunDetailView: React.FC<RunDetailViewProps> = ({
                       onDeleteRun(run.id);
                     }
                   }}
-                  className="w-full px-4 py-2.5 text-left text-xs font-semibold text-red-600 hover:bg-red-50 flex items-center space-x-2"
+                  className="w-full px-4 py-2.5 text-left text-xs font-semibold text-rose-400 hover:bg-rose-500/10 flex items-center space-x-2"
                 >
-                  <Trash2 className="w-4 h-4 text-red-500" />
+                  <Trash2 className="w-4 h-4 text-rose-400" />
                   <span>Delete Run</span>
                 </button>
               </div>
@@ -406,23 +406,23 @@ export const RunDetailView: React.FC<RunDetailViewProps> = ({
       </div>
 
       {intervalSuccess && (
-        <div className="p-3 rounded-2xl bg-indigo-50 border border-indigo-200 flex items-center space-x-2 text-indigo-900 text-xs animate-in fade-in">
-          <CheckCircle2 className="w-4 h-4 text-indigo-600 shrink-0" />
+        <div className="p-3 rounded-2xl bg-indigo-950/60 border border-indigo-500/30 flex items-center space-x-2 text-indigo-300 text-xs animate-in fade-in">
+          <CheckCircle2 className="w-4 h-4 text-indigo-400 shrink-0" />
           <span className="font-semibold">{intervalSuccess}</span>
         </div>
       )}
 
 
       {gpxSuccess && (
-        <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 flex items-center space-x-2 text-emerald-800 text-xs animate-in fade-in">
-          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+        <div className="p-3 rounded-2xl bg-emerald-950/60 border border-emerald-500/30 flex items-center space-x-2 text-emerald-300 text-xs animate-in fade-in">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
           <span>{gpxSuccess}</span>
         </div>
       )}
 
       {gpxError && (
-        <div className="p-3 rounded-2xl bg-red-50 border border-red-200 flex items-center space-x-2 text-red-800 text-xs animate-in fade-in">
-          <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
+        <div className="p-3 rounded-2xl bg-rose-950/60 border border-rose-500/30 flex items-center space-x-2 text-rose-300 text-xs animate-in fade-in">
+          <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />
           <span>{gpxError}</span>
         </div>
       )}
@@ -441,14 +441,14 @@ export const RunDetailView: React.FC<RunDetailViewProps> = ({
           ) : (
             <Card
               onClick={() => gpxInputRef.current?.click()}
-              className="p-4 border-2 border-dashed border-neutral-200 hover:border-[#FF5500]/50 bg-white hover:bg-orange-50/20 text-center cursor-pointer transition-all flex items-center justify-between"
+              className="p-4 border-2 border-dashed border-white/10 hover:border-[#FF5500]/50 bg-[#1E1E1E] hover:bg-[#252525] text-center cursor-pointer transition-all flex items-center justify-between"
             >
               <div className="flex items-center space-x-3 text-left">
-                <div className="w-10 h-10 rounded-2xl bg-orange-50 text-[#FF5500] flex items-center justify-center shrink-0">
+                <div className="w-10 h-10 rounded-2xl bg-[#FF5500]/15 text-[#FF5500] flex items-center justify-center shrink-0">
                   <Compass className="w-5 h-5" />
                 </div>
                 <div>
-                  <h4 className="text-xs font-bold text-neutral-900">Add GPS Map Route</h4>
+                  <h4 className="text-xs font-bold text-white">Add GPS Map Route</h4>
                   <p className="text-[11px] text-neutral-400">Upload GPX file to display your route</p>
                 </div>
               </div>
@@ -461,7 +461,7 @@ export const RunDetailView: React.FC<RunDetailViewProps> = ({
           {/* Big Distance */}
           <div className="pt-2 text-left">
             <div className="flex items-baseline space-x-1.5">
-              <span className="text-4xl font-black text-neutral-900 tracking-tight font-mono">
+              <span className="text-4xl font-black text-white tracking-tight font-mono">
                 {run.distance_km.toFixed(2)}
               </span>
               <span className="text-sm font-bold text-neutral-400">
@@ -475,8 +475,8 @@ export const RunDetailView: React.FC<RunDetailViewProps> = ({
 
           {/* 3x3 Key Statistics Grid */}
           <div className="grid grid-cols-3 gap-2.5 pt-1">
-            <Card className="p-3 bg-white">
-              <span className="text-sm font-black text-neutral-900 font-mono block">
+            <Card className="p-3 bg-[#1E1E1E] border border-white/5">
+              <span className="text-sm font-black text-white font-mono block">
                 {formatDuration(run.duration_seconds)}
               </span>
               <span className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider block mt-0.5">
@@ -484,8 +484,8 @@ export const RunDetailView: React.FC<RunDetailViewProps> = ({
               </span>
             </Card>
 
-            <Card className="p-3 bg-white">
-              <span className="text-sm font-black text-neutral-900 font-mono block">
+            <Card className="p-3 bg-[#1E1E1E] border border-white/5">
+              <span className="text-sm font-black text-white font-mono block">
                 {formatPace(run.pace_seconds_per_km, unitSystem, false)}
                 <span className="text-[10px] text-neutral-400 font-normal ml-0.5">/km</span>
               </span>
@@ -494,8 +494,8 @@ export const RunDetailView: React.FC<RunDetailViewProps> = ({
               </span>
             </Card>
 
-            <Card className="p-3 bg-white">
-              <span className="text-sm font-black text-neutral-900 font-mono block">
+            <Card className="p-3 bg-[#1E1E1E] border border-white/5">
+              <span className="text-sm font-black text-white font-mono block">
                 {run.avg_speed_kmh ? `${run.avg_speed_kmh.toFixed(2)}` : '--'}
                 <span className="text-[10px] text-neutral-400 font-normal ml-0.5">km/h</span>
               </span>
@@ -504,8 +504,8 @@ export const RunDetailView: React.FC<RunDetailViewProps> = ({
               </span>
             </Card>
 
-            <Card className="p-3 bg-white">
-              <span className="text-sm font-black text-neutral-900 font-mono block">
+            <Card className="p-3 bg-[#1E1E1E] border border-white/5">
+              <span className="text-sm font-black text-white font-mono block">
                 {run.avg_heart_rate ? `${run.avg_heart_rate}` : '--'}
                 <span className="text-[10px] text-neutral-400 font-normal ml-0.5">bpm</span>
               </span>
@@ -514,8 +514,8 @@ export const RunDetailView: React.FC<RunDetailViewProps> = ({
               </span>
             </Card>
 
-            <Card className="p-3 bg-white">
-              <span className="text-sm font-black text-neutral-900 font-mono block">
+            <Card className="p-3 bg-[#1E1E1E] border border-white/5">
+              <span className="text-sm font-black text-white font-mono block">
                 {run.max_heart_rate ? `${run.max_heart_rate}` : '--'}
                 <span className="text-[10px] text-neutral-400 font-normal ml-0.5">bpm</span>
               </span>
@@ -524,8 +524,8 @@ export const RunDetailView: React.FC<RunDetailViewProps> = ({
               </span>
             </Card>
 
-            <Card className="p-3 bg-white">
-              <span className="text-sm font-black text-neutral-900 font-mono block">
+            <Card className="p-3 bg-[#1E1E1E] border border-white/5">
+              <span className="text-sm font-black text-white font-mono block">
                 {run.cadence ? `${run.cadence}` : '--'}
                 <span className="text-[10px] text-neutral-400 font-normal ml-0.5">spm</span>
               </span>
@@ -534,8 +534,8 @@ export const RunDetailView: React.FC<RunDetailViewProps> = ({
               </span>
             </Card>
 
-            <Card className="p-3 bg-white">
-              <span className="text-sm font-black text-neutral-900 font-mono block">
+            <Card className="p-3 bg-[#1E1E1E] border border-white/5">
+              <span className="text-sm font-black text-white font-mono block">
                 {run.elevation_gain_m !== null ? `${run.elevation_gain_m}` : '--'}
                 <span className="text-[10px] text-neutral-400 font-normal ml-0.5">m</span>
               </span>
@@ -544,8 +544,8 @@ export const RunDetailView: React.FC<RunDetailViewProps> = ({
               </span>
             </Card>
 
-            <Card className="p-3 bg-white">
-              <span className="text-sm font-black text-neutral-900 font-mono block">
+            <Card className="p-3 bg-[#1E1E1E] border border-white/5">
+              <span className="text-sm font-black text-white font-mono block">
                 {run.elevation_loss_m !== null ? `${run.elevation_loss_m}` : '--'}
                 <span className="text-[10px] text-neutral-400 font-normal ml-0.5">m</span>
               </span>
@@ -554,8 +554,8 @@ export const RunDetailView: React.FC<RunDetailViewProps> = ({
               </span>
             </Card>
 
-            <Card className="p-3 bg-white">
-              <span className="text-sm font-black text-neutral-900 font-mono block">
+            <Card className="p-3 bg-[#1E1E1E] border border-white/5">
+              <span className="text-sm font-black text-white font-mono block">
                 {run.calories ? `${run.calories}` : '--'}
                 <span className="text-[10px] text-neutral-400 font-normal ml-0.5">kcal</span>
               </span>
@@ -567,10 +567,10 @@ export const RunDetailView: React.FC<RunDetailViewProps> = ({
 
           {/* Running Dynamics Card */}
           {hasRunningDynamics && (
-            <Card className="p-4 sm:p-5 space-y-3 bg-white border border-neutral-200/80">
-              <div className="flex items-center space-x-2 pb-2 border-b border-neutral-100">
+            <Card className="p-4 sm:p-5 space-y-3 bg-[#1E1E1E] border border-white/5">
+              <div className="flex items-center space-x-2 pb-2 border-b border-white/5">
                 <Footprints className="w-4 h-4 text-[#FF5500]" />
-                <span className="text-xs font-bold uppercase tracking-wider text-neutral-800">
+                <span className="text-xs font-bold uppercase tracking-wider text-neutral-300">
                   Running Dynamics & Form
                 </span>
               </div>
@@ -581,7 +581,7 @@ export const RunDetailView: React.FC<RunDetailViewProps> = ({
                     <span className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider block">
                       Total Steps
                     </span>
-                    <span className="text-sm font-black text-neutral-900 font-mono">
+                    <span className="text-sm font-black text-white font-mono">
                       {run.total_steps.toLocaleString()}
                     </span>
                   </div>
@@ -592,7 +592,7 @@ export const RunDetailView: React.FC<RunDetailViewProps> = ({
                     <span className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider block">
                       Stride Length
                     </span>
-                    <span className="text-sm font-black text-neutral-900 font-mono">
+                    <span className="text-sm font-black text-white font-mono">
                       {run.stride_length_cm} <span className="text-[10px] font-normal text-neutral-400">cm</span>
                     </span>
                   </div>
@@ -603,7 +603,7 @@ export const RunDetailView: React.FC<RunDetailViewProps> = ({
                     <span className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider block">
                       Ground Contact
                     </span>
-                    <span className="text-sm font-black text-neutral-900 font-mono">
+                    <span className="text-sm font-black text-white font-mono">
                       {run.ground_contact_time_ms} <span className="text-[10px] font-normal text-neutral-400">ms</span>
                     </span>
                   </div>
@@ -614,7 +614,7 @@ export const RunDetailView: React.FC<RunDetailViewProps> = ({
                     <span className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider block">
                       Vert. Oscillation
                     </span>
-                    <span className="text-sm font-black text-neutral-900 font-mono">
+                    <span className="text-sm font-black text-white font-mono">
                       {run.vertical_oscillation_cm} <span className="text-[10px] font-normal text-neutral-400">cm</span>
                     </span>
                   </div>
@@ -625,7 +625,7 @@ export const RunDetailView: React.FC<RunDetailViewProps> = ({
                     <span className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider block">
                       Max Cadence
                     </span>
-                    <span className="text-sm font-black text-neutral-900 font-mono">
+                    <span className="text-sm font-black text-white font-mono">
                       {run.max_cadence} <span className="text-[10px] font-normal text-neutral-400">spm</span>
                     </span>
                   </div>
@@ -636,7 +636,7 @@ export const RunDetailView: React.FC<RunDetailViewProps> = ({
                     <span className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider block">
                       Balance (L/R)
                     </span>
-                    <span className="text-xs font-bold text-neutral-800 font-mono">
+                    <span className="text-xs font-bold text-neutral-300 font-mono">
                       {run.ground_contact_balance}
                     </span>
                   </div>
@@ -647,10 +647,10 @@ export const RunDetailView: React.FC<RunDetailViewProps> = ({
 
           {/* Performance & Training Load Card */}
           {hasPerformance && (
-            <Card className="p-4 sm:p-5 space-y-3 bg-white border border-neutral-200/80">
-              <div className="flex items-center space-x-2 pb-2 border-b border-neutral-100">
-                <Zap className="w-4 h-4 text-amber-500" />
-                <span className="text-xs font-bold uppercase tracking-wider text-neutral-800">
+            <Card className="p-4 sm:p-5 space-y-3 bg-[#1E1E1E] border border-white/5">
+              <div className="flex items-center space-x-2 pb-2 border-b border-white/5">
+                <Zap className="w-4 h-4 text-amber-400" />
+                <span className="text-xs font-bold uppercase tracking-wider text-neutral-300">
                   Performance & Recovery
                 </span>
               </div>
@@ -661,7 +661,7 @@ export const RunDetailView: React.FC<RunDetailViewProps> = ({
                     <span className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider block">
                       Training Effect
                     </span>
-                    <span className="text-sm font-black text-emerald-600 font-mono">
+                    <span className="text-sm font-black text-emerald-400 font-mono">
                       {run.aerobic_te} <span className="text-[10px] font-normal text-neutral-400">TE</span>
                     </span>
                   </div>
@@ -672,7 +672,7 @@ export const RunDetailView: React.FC<RunDetailViewProps> = ({
                     <span className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider block">
                       VO2Max
                     </span>
-                    <span className="text-sm font-black text-cyan-600 font-mono">
+                    <span className="text-sm font-black text-cyan-400 font-mono">
                       {run.vo2max} <span className="text-[10px] font-normal text-neutral-400">ml/kg</span>
                     </span>
                   </div>
@@ -683,7 +683,7 @@ export const RunDetailView: React.FC<RunDetailViewProps> = ({
                     <span className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider block">
                       Training Load
                     </span>
-                    <span className="text-sm font-black text-neutral-900 font-mono">
+                    <span className="text-sm font-black text-white font-mono">
                       {run.training_load}
                     </span>
                   </div>
@@ -694,7 +694,7 @@ export const RunDetailView: React.FC<RunDetailViewProps> = ({
                     <span className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider block">
                       Recovery Time
                     </span>
-                    <span className="text-sm font-black text-neutral-900 font-mono">
+                    <span className="text-sm font-black text-white font-mono">
                       {run.recovery_hours} <span className="text-[10px] font-normal text-neutral-400">hrs</span>
                     </span>
                   </div>
@@ -705,7 +705,7 @@ export const RunDetailView: React.FC<RunDetailViewProps> = ({
                     <span className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider block">
                       Best Pace
                     </span>
-                    <span className="text-sm font-black text-neutral-900 font-mono">
+                    <span className="text-sm font-black text-white font-mono">
                       {formatPace(run.best_pace_seconds_per_km, unitSystem, false)}
                     </span>
                   </div>
@@ -716,7 +716,7 @@ export const RunDetailView: React.FC<RunDetailViewProps> = ({
                     <span className="text-[10px] font-semibold text-neutral-400 uppercase tracking-wider block">
                       Active Calories
                     </span>
-                    <span className="text-sm font-black text-orange-600 font-mono">
+                    <span className="text-sm font-black text-orange-400 font-mono">
                       {run.active_calories} <span className="text-[10px] font-normal text-neutral-400">kcal</span>
                     </span>
                   </div>
@@ -733,7 +733,7 @@ export const RunDetailView: React.FC<RunDetailViewProps> = ({
               </span>
               <Card
                 onClick={() => setShowScreenshotModal(true)}
-                className="p-3 bg-neutral-900 text-white flex items-center justify-between cursor-pointer hover:bg-neutral-800 transition-colors"
+                className="p-3 bg-[#1E1E1E] text-white flex items-center justify-between cursor-pointer hover:bg-[#252525] transition-colors border border-white/5"
               >
                 <div className="flex items-center space-x-3">
                   <div className="w-12 h-12 rounded-xl overflow-hidden bg-neutral-800 border border-neutral-700 shrink-0">
@@ -787,12 +787,12 @@ export const RunDetailView: React.FC<RunDetailViewProps> = ({
               </div>
             </>
           ) : (
-            <Card className="p-8 text-center space-y-4 bg-white border border-neutral-200/80">
-              <div className="w-14 h-14 rounded-3xl bg-orange-50 text-[#FF5500] flex items-center justify-center mx-auto">
+            <Card className="p-8 text-center space-y-4 bg-[#1E1E1E] border border-white/5">
+              <div className="w-14 h-14 rounded-3xl bg-[#FF5500]/15 text-[#FF5500] flex items-center justify-center mx-auto">
                 <Compass className="w-7 h-7" />
               </div>
               <div>
-                <h3 className="text-base font-bold text-neutral-900">No GPS Route Attached</h3>
+                <h3 className="text-base font-bold text-white">No GPS Route Attached</h3>
                 <p className="text-xs text-neutral-400 mt-1 max-w-xs mx-auto">
                   You can upload a GPX file anytime to display your route map and elevation profile for this run.
                 </p>
@@ -820,7 +820,7 @@ export const RunDetailView: React.FC<RunDetailViewProps> = ({
             </span>
             <button
               onClick={() => setShowIntervalModal(true)}
-              className="text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center gap-1.5 transition-colors"
+              className="text-xs font-bold text-indigo-400 hover:text-indigo-300 flex items-center gap-1.5 transition-colors"
             >
               <Layers className="w-3.5 h-3.5" />
               <span>{run.splits && run.splits.length > 0 ? 'Update Splits' : 'Upload Splits Screenshot'}</span>
@@ -854,7 +854,7 @@ export const RunDetailView: React.FC<RunDetailViewProps> = ({
       {/* Screenshot Full Modal */}
       {showScreenshotModal && run.screenshot_url && (
         <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="relative max-w-sm w-full bg-neutral-900 rounded-3xl p-4 overflow-hidden border border-neutral-800">
+          <div className="relative max-w-sm w-full bg-[#1E1E1E] rounded-3xl p-4 overflow-hidden border border-white/10">
             <button
               onClick={() => setShowScreenshotModal(false)}
               className="absolute top-4 right-4 p-2 bg-black/60 text-white rounded-full hover:bg-black transition-colors z-10"
@@ -872,28 +872,28 @@ export const RunDetailView: React.FC<RunDetailViewProps> = ({
 
       {/* Export JSON Modal */}
       {showJsonModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <Card className="max-w-sm w-full p-5 space-y-4 animate-in zoom-in-95">
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <Card className="max-w-sm w-full p-5 space-y-4 animate-in zoom-in-95 bg-[#1E1E1E] border border-white/10">
             <div className="flex items-center justify-between">
-              <h3 className="text-base font-bold text-neutral-900">Export Single Run</h3>
+              <h3 className="text-base font-bold text-white">Export Single Run</h3>
               <button
                 onClick={() => setShowJsonModal(false)}
-                className="p-1 rounded-full text-neutral-400 hover:text-neutral-700"
+                className="p-1 rounded-full text-neutral-400 hover:text-white"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="bg-neutral-900 text-neutral-200 rounded-2xl p-3 font-mono text-[11px] max-h-56 overflow-y-auto leading-relaxed">
+            <div className="bg-[#111111] text-neutral-200 rounded-2xl p-3 font-mono text-[11px] max-h-56 overflow-y-auto leading-relaxed border border-white/5">
               <pre>{JSON.stringify({ runs: [run] }, null, 2)}</pre>
             </div>
 
             <div className="grid grid-cols-2 gap-2 pt-1">
               <button
                 onClick={handleCopyJson}
-                className="py-2.5 px-3 rounded-2xl border border-neutral-200 text-neutral-800 text-xs font-bold hover:bg-neutral-50 flex items-center justify-center space-x-1.5"
+                className="py-2.5 px-3 rounded-2xl border border-white/10 text-neutral-300 text-xs font-bold hover:bg-[#252525] flex items-center justify-center space-x-1.5"
               >
-                {copied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
+                {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4" />}
                 <span>{copied ? 'Copied!' : 'Copy JSON'}</span>
               </button>
               <button
@@ -911,14 +911,14 @@ export const RunDetailView: React.FC<RunDetailViewProps> = ({
       {/* Upload Interval Splits Modal */}
       {showIntervalModal && (
         <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-xs flex items-center justify-center p-4">
-          <Card className="max-w-md w-full p-5 space-y-4 shadow-2xl animate-in zoom-in-95 bg-white">
+          <Card className="max-w-md w-full p-5 space-y-4 shadow-2xl animate-in zoom-in-95 bg-[#1E1E1E] border border-white/10">
             <div className="flex items-start justify-between">
               <div className="flex items-center space-x-2.5">
-                <div className="w-9 h-9 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                <div className="w-9 h-9 rounded-2xl bg-indigo-500/15 text-indigo-400 flex items-center justify-center">
                   <Layers className="w-4.5 h-4.5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-neutral-900">
+                  <h3 className="text-base font-bold text-white">
                     Upload Interval / Splits
                   </h3>
                   <p className="text-xs text-neutral-400">
@@ -933,22 +933,22 @@ export const RunDetailView: React.FC<RunDetailViewProps> = ({
                   setIntervalFile(null);
                   setIntervalError(null);
                 }}
-                className="p-1 rounded-full text-neutral-400 hover:text-neutral-700"
+                className="p-1 rounded-full text-neutral-400 hover:text-white"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
             {clipboardToast && (
-              <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 flex items-center space-x-2 text-emerald-800 text-xs animate-in fade-in shadow-soft-xs">
-                <Clipboard className="w-4 h-4 text-emerald-600 shrink-0" />
+              <div className="p-2.5 rounded-xl bg-emerald-950/60 border border-emerald-500/30 flex items-center space-x-2 text-emerald-300 text-xs animate-in fade-in shadow-soft-xs">
+                <Clipboard className="w-4 h-4 text-emerald-400 shrink-0" />
                 <span className="font-semibold">{clipboardToast}</span>
               </div>
             )}
 
             {intervalError && (
-              <div className="p-3 rounded-xl bg-red-50 border border-red-200 flex items-start space-x-2 text-red-700 text-xs animate-in fade-in">
-                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+              <div className="p-3 rounded-xl bg-rose-950/60 border border-rose-500/30 flex items-start space-x-2 text-rose-300 text-xs animate-in fade-in">
+                <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-rose-400" />
                 <span>{intervalError}</span>
               </div>
             )}
@@ -975,13 +975,13 @@ export const RunDetailView: React.FC<RunDetailViewProps> = ({
               }}
               className={`p-5 rounded-2xl border-2 border-dashed text-center cursor-pointer transition-all duration-200 group flex flex-col items-center justify-center min-h-[170px] ${
                 isDraggingInterval
-                  ? 'border-indigo-500 bg-indigo-50/60 scale-[1.01]'
-                  : 'border-neutral-200/90 hover:border-indigo-300 bg-neutral-50/50 hover:bg-indigo-50/20'
+                  ? 'border-indigo-500 bg-indigo-950/30 scale-[1.01]'
+                  : 'border-white/10 hover:border-indigo-400/50 bg-[#252525] hover:bg-[#2A2A2A]'
               }`}
             >
               {intervalPreview ? (
                 <div className="relative w-full flex flex-col items-center">
-                  <div className="relative max-h-48 overflow-hidden rounded-xl border border-neutral-200 shadow-sm bg-neutral-950 p-1">
+                  <div className="relative max-h-48 overflow-hidden rounded-xl border border-white/10 shadow-sm bg-neutral-950 p-1">
                     <img
                       src={intervalPreview}
                       alt="Interval Screenshot Preview"
@@ -999,21 +999,21 @@ export const RunDetailView: React.FC<RunDetailViewProps> = ({
                       <X className="w-3.5 h-3.5" />
                     </button>
                   </div>
-                  <span className="text-xs font-semibold text-indigo-700 flex items-center mt-2.5">
-                    <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
+                  <span className="text-xs font-semibold text-indigo-300 flex items-center mt-2.5">
+                    <CheckCircle2 className="w-3.5 h-3.5 mr-1 text-indigo-400" />
                     {intervalFile?.name || 'Screenshot ready to extract'}
                   </span>
                 </div>
               ) : (
                 <>
-                  <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mb-2.5 group-hover:scale-105 transition-transform">
+                  <div className="w-12 h-12 rounded-2xl bg-indigo-500/15 text-indigo-400 flex items-center justify-center mb-2.5 group-hover:scale-105 transition-transform">
                     <ImageIcon className="w-6 h-6" />
                   </div>
-                  <h4 className="text-xs font-bold text-neutral-900 mb-0.5">
+                  <h4 className="text-xs font-bold text-white mb-0.5">
                     {isDraggingInterval ? 'Drop Screenshot Here!' : 'Drop Interval Screenshot'}
                   </h4>
                   <p className="text-[11px] text-neutral-400">
-                    Click, Drag & drop, or press <kbd className="font-mono font-bold text-neutral-600 bg-white px-1.5 py-0.5 rounded border border-neutral-200">Ctrl+V</kbd> to paste
+                    Click, Drag & drop, or press <kbd className="font-mono font-bold text-neutral-300 bg-white/10 px-1.5 py-0.5 rounded border border-white/10">Ctrl+V</kbd> to paste
                   </p>
                 </>
               )}

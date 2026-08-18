@@ -166,22 +166,22 @@ export const ManualPlanModal: React.FC<ManualPlanModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs p-0 sm:p-4 animate-in fade-in">
-      <div className="bg-white w-full max-w-lg rounded-t-3xl sm:rounded-3xl max-h-[92dvh] h-[90dvh] sm:h-auto sm:max-h-[88vh] flex flex-col shadow-2xl border border-neutral-100 overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/70 backdrop-blur-xs p-0 sm:p-4 animate-in fade-in">
+      <div className="bg-[#1E1E1E] text-white w-full max-w-lg rounded-t-3xl sm:rounded-3xl max-h-[92dvh] h-[90dvh] sm:h-auto sm:max-h-[88vh] flex flex-col shadow-2xl border border-white/10 overflow-hidden">
         {/* Header - Fixed */}
-        <div className="flex items-center justify-between p-4 sm:p-5 pb-3 border-b border-neutral-100 shrink-0">
+        <div className="flex items-center justify-between p-4 sm:p-5 pb-3 border-b border-white/5 shrink-0">
           <div className="flex items-center space-x-2.5 min-w-0">
             <button
               type="button"
               onClick={onClose}
-              className="p-1.5 -ml-1 rounded-full hover:bg-neutral-100 text-neutral-400 hover:text-neutral-600 transition-colors shrink-0"
+              className="p-1.5 -ml-1 rounded-full hover:bg-white/10 text-neutral-400 hover:text-white transition-colors shrink-0"
               title="Batal"
               aria-label="Batal"
             >
               <X className="w-5 h-5" />
             </button>
             <div className="min-w-0">
-              <h3 className="text-base font-black text-neutral-900 tracking-tight truncate">
+              <h3 className="text-base font-black text-white tracking-tight truncate">
                 {existingPlan ? 'Edit Training Plan' : 'Create Manual Plan'}
               </h3>
               <p className="text-[11px] text-neutral-400 font-medium truncate">
@@ -204,9 +204,9 @@ export const ManualPlanModal: React.FC<ManualPlanModalProps> = ({
         {/* Scrollable Content Body */}
         <div className="flex-1 overflow-y-auto overscroll-contain p-4 sm:p-5 space-y-4">
           {/* 1. Plan Details (Title, Goal, Total Weeks, Level) */}
-          <div className="space-y-3 bg-neutral-50/80 p-3.5 rounded-2xl border border-neutral-200/70">
+          <div className="space-y-3 bg-[#252525] p-3.5 rounded-2xl border border-white/5">
             <div>
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-neutral-500 mb-1">
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-neutral-400 mb-1">
                 Nama Program Latihan
               </label>
               <input
@@ -214,13 +214,13 @@ export const ManualPlanModal: React.FC<ManualPlanModalProps> = ({
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Contoh: Sub-35 Min 5K Plan"
-                className="w-full bg-white border border-neutral-200 rounded-xl px-3 py-2 text-xs font-bold text-neutral-800 focus:outline-none focus:ring-2 focus:ring-[#FF5500]/20 focus:border-[#FF5500]"
+                className="w-full bg-[#1E1E1E] border border-white/10 rounded-xl px-3 py-2 text-xs font-bold text-white focus:outline-none focus:ring-2 focus:ring-[#FF5500]/30 focus:border-[#FF5500]"
               />
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               <div>
-                <label className="block text-[11px] font-bold uppercase tracking-wider text-neutral-500 mb-1">
+                <label className="block text-[11px] font-bold uppercase tracking-wider text-neutral-400 mb-1">
                   Target / Goal
                 </label>
                 <input
@@ -228,13 +228,13 @@ export const ManualPlanModal: React.FC<ManualPlanModalProps> = ({
                   value={goal}
                   onChange={(e) => setGoal(e.target.value)}
                   placeholder="Contoh: Sub-35 Menit 5K"
-                  className="w-full bg-white border border-neutral-200 rounded-xl px-3 py-2 text-xs font-bold text-neutral-800 focus:outline-none focus:ring-2 focus:ring-[#FF5500]/20 focus:border-[#FF5500]"
+                  className="w-full bg-[#1E1E1E] border border-white/10 rounded-xl px-3 py-2 text-xs font-bold text-white focus:outline-none focus:ring-2 focus:ring-[#FF5500]/30 focus:border-[#FF5500]"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-[11px] font-bold uppercase tracking-wider text-neutral-500 mb-1">
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-neutral-400 mb-1">
                     Durasi Minggu
                   </label>
                   <input
@@ -243,11 +243,11 @@ export const ManualPlanModal: React.FC<ManualPlanModalProps> = ({
                     max="24"
                     value={totalWeeks}
                     onChange={(e) => setTotalWeeks(Math.max(1, parseInt(e.target.value) || 1))}
-                    className="w-full bg-white border border-neutral-200 rounded-xl px-3 py-2 text-xs font-bold text-neutral-800 focus:outline-none focus:ring-2 focus:ring-[#FF5500]/20"
+                    className="w-full bg-[#1E1E1E] border border-white/10 rounded-xl px-3 py-2 text-xs font-bold text-white focus:outline-none focus:ring-2 focus:ring-[#FF5500]/30"
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-bold uppercase tracking-wider text-neutral-500 mb-1">
+                  <label className="block text-[11px] font-bold uppercase tracking-wider text-neutral-400 mb-1">
                     Minggu Ke-
                   </label>
                   <input
@@ -256,7 +256,7 @@ export const ManualPlanModal: React.FC<ManualPlanModalProps> = ({
                     max={totalWeeks}
                     value={currentWeek}
                     onChange={(e) => setCurrentWeek(Math.max(1, Math.min(totalWeeks, parseInt(e.target.value) || 1)))}
-                    className="w-full bg-white border border-neutral-200 rounded-xl px-3 py-2 text-xs font-bold text-neutral-800 focus:outline-none focus:ring-2 focus:ring-[#FF5500]/20"
+                    className="w-full bg-[#1E1E1E] border border-white/10 rounded-xl px-3 py-2 text-xs font-bold text-white focus:outline-none focus:ring-2 focus:ring-[#FF5500]/30"
                   />
                 </div>
               </div>
@@ -266,7 +266,7 @@ export const ManualPlanModal: React.FC<ManualPlanModalProps> = ({
           {/* 2. 7-Day Interactive Day Selector Tabs */}
           <div className="space-y-2">
             <div className="flex items-center justify-between px-1">
-              <span className="text-xs font-black uppercase tracking-wider text-neutral-500">
+              <span className="text-xs font-black uppercase tracking-wider text-neutral-400">
                 Pilih Hari Latihan (7 Hari)
               </span>
               <span className="text-[11px] font-mono font-bold text-[#FF5500]">
@@ -274,7 +274,7 @@ export const ManualPlanModal: React.FC<ManualPlanModalProps> = ({
               </span>
             </div>
 
-            <div className="grid grid-cols-7 gap-1 bg-neutral-100 p-1 rounded-2xl">
+            <div className="grid grid-cols-7 gap-1 bg-[#252525] p-1 rounded-2xl border border-white/5">
               {[1, 2, 3, 4, 5, 6, 0].map((dayNum) => {
                 const w = workouts.find((item) => item.dayOfWeek === dayNum);
                 const isSelected = activeDayTab === dayNum;
@@ -288,10 +288,10 @@ export const ManualPlanModal: React.FC<ManualPlanModalProps> = ({
                     className={clsx(
                       'py-2 px-1 rounded-xl text-center transition-all flex flex-col items-center justify-center space-y-0.5',
                       isSelected
-                        ? 'bg-neutral-900 text-white font-bold shadow-xs'
+                        ? 'bg-white text-neutral-900 font-bold shadow-xs'
                         : isRest
-                        ? 'bg-white/60 text-neutral-400 hover:bg-white'
-                        : 'bg-white text-neutral-800 font-semibold hover:bg-neutral-50 shadow-2xs'
+                        ? 'bg-transparent text-neutral-500 hover:bg-white/5'
+                        : 'bg-[#1E1E1E] text-white font-semibold hover:bg-[#2A2A2A] shadow-2xs border border-white/5'
                     )}
                   >
                     <span className="text-[10px] uppercase font-bold tracking-tight">
@@ -299,7 +299,7 @@ export const ManualPlanModal: React.FC<ManualPlanModalProps> = ({
                     </span>
                     <span className={clsx(
                       'text-[9px] font-mono leading-none',
-                      isSelected ? 'text-[#FF5500] font-bold' : isRest ? 'text-neutral-400' : 'text-emerald-600 font-bold'
+                      isSelected ? 'text-[#FF5500] font-bold' : isRest ? 'text-neutral-500' : 'text-emerald-400 font-bold'
                     )}>
                       {isRest ? 'Rest' : `${w?.distanceKm}k`}
                     </span>
@@ -311,9 +311,9 @@ export const ManualPlanModal: React.FC<ManualPlanModalProps> = ({
 
           {/* 3. Day Session Editor Card */}
           {currentWorkout && (
-            <Card className="p-4 bg-white border border-neutral-200/90 shadow-soft-sm space-y-3">
-              <div className="flex items-center justify-between pb-1 border-b border-neutral-100">
-                <span className="text-xs font-black uppercase text-neutral-800">
+            <Card className="p-4 bg-[#252525] border border-white/5 shadow-soft-sm space-y-3">
+              <div className="flex items-center justify-between pb-1 border-b border-white/5">
+                <span className="text-xs font-black uppercase text-white">
                   Sesi Hari {DAY_LABELS[currentWorkout.dayName] || currentWorkout.dayName}
                 </span>
                 <button
@@ -331,8 +331,8 @@ export const ManualPlanModal: React.FC<ManualPlanModalProps> = ({
                   className={clsx(
                     'text-[11px] font-bold px-2.5 py-1 rounded-xl border transition-all active:scale-95',
                     currentWorkout.type === 'rest'
-                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                      : 'bg-neutral-100 text-neutral-600 border-neutral-200'
+                      ? 'bg-emerald-950/50 text-emerald-300 border-emerald-500/30'
+                      : 'bg-[#1E1E1E] text-neutral-300 border-white/10 hover:bg-[#2A2A2A]'
                   )}
                 >
                   {currentWorkout.type === 'rest' ? '+ Jadikan Hari Lari' : 'Ubah Jadi Hari Rest'}
@@ -341,7 +341,7 @@ export const ManualPlanModal: React.FC<ManualPlanModalProps> = ({
 
               {/* Workout Type Selector */}
               <div>
-                <label className="block text-[11px] font-bold text-neutral-500 mb-1.5 uppercase tracking-wider">
+                <label className="block text-[11px] font-bold text-neutral-400 mb-1.5 uppercase tracking-wider">
                   Tipe Sesi Latihan
                 </label>
                 <div className="grid grid-cols-3 gap-1.5">
@@ -362,8 +362,8 @@ export const ManualPlanModal: React.FC<ManualPlanModalProps> = ({
                         className={clsx(
                           'flex items-center space-x-1.5 p-2 rounded-xl text-xs font-bold border transition-all text-left',
                           isChosen
-                            ? 'bg-neutral-900 text-white border-neutral-900 shadow-xs'
-                            : 'bg-neutral-50 text-neutral-700 border-neutral-200/70 hover:bg-neutral-100'
+                            ? 'bg-white text-neutral-900 border-white shadow-xs font-bold'
+                            : 'bg-[#1E1E1E] text-neutral-300 border-white/5 hover:bg-[#2A2A2A]'
                         )}
                       >
                         <span className={clsx(isChosen ? 'text-[#FF5500]' : 'text-neutral-400')}>
@@ -380,20 +380,20 @@ export const ManualPlanModal: React.FC<ManualPlanModalProps> = ({
               {currentWorkout.type !== 'rest' && (
                 <div className="space-y-3 pt-1">
                   {/* Distance Section with Stepper */}
-                  <div className="space-y-2 bg-orange-50/40 p-3 rounded-2xl border border-orange-200/60">
+                  <div className="space-y-2 bg-[#FF5500]/10 p-3 rounded-2xl border border-[#FF5500]/20">
                     <div className="flex items-center justify-between">
-                      <label className="block text-[11px] font-bold text-neutral-500 uppercase tracking-wider">
+                      <label className="block text-[11px] font-bold text-neutral-400 uppercase tracking-wider">
                         Target Jarak
                       </label>
                       <div className="flex items-center space-x-2">
                         <button
                           type="button"
                           onClick={() => handleDecrementDistance(currentWorkout.dayOfWeek)}
-                          className="w-7 h-7 rounded-lg bg-white border border-neutral-200 text-neutral-800 flex items-center justify-center active:scale-90 font-bold"
+                          className="w-7 h-7 rounded-lg bg-[#252525] border border-white/10 text-white flex items-center justify-center active:scale-90 font-bold"
                         >
                           <Minus className="w-3.5 h-3.5" />
                         </button>
-                        <span className="text-sm font-black font-mono text-neutral-900 px-1">
+                        <span className="text-sm font-black font-mono text-white px-1">
                           {(currentWorkout.distanceKm || 0).toFixed(1)} km
                         </span>
                         <button
@@ -415,8 +415,8 @@ export const ManualPlanModal: React.FC<ManualPlanModalProps> = ({
                           className={clsx(
                             'py-1 rounded-lg text-[11px] font-bold border transition-all text-center',
                             currentWorkout.distanceKm === d
-                              ? 'bg-neutral-900 text-white border-neutral-900'
-                              : 'bg-white text-neutral-700 border-neutral-200 hover:bg-neutral-50'
+                              ? 'bg-white text-neutral-900 border-white'
+                              : 'bg-[#1E1E1E] text-neutral-300 border-white/5 hover:bg-[#2A2A2A]'
                           )}
                         >
                           {d}k
@@ -428,7 +428,7 @@ export const ManualPlanModal: React.FC<ManualPlanModalProps> = ({
                   {/* Target Pace Section */}
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between">
-                      <label className="block text-[11px] font-bold text-neutral-500 uppercase tracking-wider">
+                      <label className="block text-[11px] font-bold text-neutral-400 uppercase tracking-wider">
                         Target Pace (5:00 - 10:00 /km)
                       </label>
                       <span className="text-xs font-black font-mono text-[#FF5500]">
@@ -447,8 +447,8 @@ export const ManualPlanModal: React.FC<ManualPlanModalProps> = ({
                           className={clsx(
                             'py-1.5 rounded-lg text-[11px] font-mono font-bold border transition-all text-center',
                             currentWorkout.targetPaceSecPerKm === p.sec
-                              ? 'bg-neutral-900 text-white border-neutral-900'
-                              : 'bg-neutral-50 text-neutral-700 border-neutral-200 hover:bg-neutral-100'
+                              ? 'bg-white text-neutral-900 border-white'
+                              : 'bg-[#1E1E1E] text-neutral-300 border-white/5 hover:bg-[#2A2A2A]'
                           )}
                         >
                           {p.label}/k
@@ -459,7 +459,7 @@ export const ManualPlanModal: React.FC<ManualPlanModalProps> = ({
 
                   {/* Target HR Zone */}
                   <div>
-                    <label className="block text-[11px] font-bold text-neutral-500 mb-1 uppercase tracking-wider">
+                    <label className="block text-[11px] font-bold text-neutral-400 mb-1 uppercase tracking-wider">
                       Target Heart Rate Zone
                     </label>
                     <select
@@ -467,10 +467,10 @@ export const ManualPlanModal: React.FC<ManualPlanModalProps> = ({
                       onChange={(e) =>
                         updateWorkout(currentWorkout.dayOfWeek, { targetHrZone: e.target.value })
                       }
-                      className="w-full bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2 text-xs font-bold text-neutral-800 focus:outline-none focus:ring-2 focus:ring-[#FF5500]/20"
+                      className="w-full bg-[#1E1E1E] border border-white/10 rounded-xl px-3 py-2 text-xs font-bold text-white focus:outline-none focus:ring-2 focus:ring-[#FF5500]/30"
                     >
                       {HR_ZONES.map((zone) => (
-                        <option key={zone} value={zone}>
+                        <option key={zone} value={zone} className="bg-[#1E1E1E] text-white">
                           {zone}
                         </option>
                       ))}
@@ -480,7 +480,7 @@ export const ManualPlanModal: React.FC<ManualPlanModalProps> = ({
                   {/* Workout Title & Description */}
                   <div className="grid grid-cols-1 gap-2 pt-1">
                     <div>
-                      <label className="block text-[11px] font-bold text-neutral-500 mb-1 uppercase tracking-wider">
+                      <label className="block text-[11px] font-bold text-neutral-400 mb-1 uppercase tracking-wider">
                         Judul Sesi
                       </label>
                       <input
@@ -490,12 +490,12 @@ export const ManualPlanModal: React.FC<ManualPlanModalProps> = ({
                           updateWorkout(currentWorkout.dayOfWeek, { title: e.target.value })
                         }
                         placeholder="Contoh: Easy Aerobic Run"
-                        className="w-full bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2 text-xs font-bold text-neutral-800 focus:outline-none focus:ring-2 focus:ring-[#FF5500]/20"
+                        className="w-full bg-[#1E1E1E] border border-white/10 rounded-xl px-3 py-2 text-xs font-bold text-white focus:outline-none focus:ring-2 focus:ring-[#FF5500]/30"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-[11px] font-bold text-neutral-500 mb-1 uppercase tracking-wider">
+                      <label className="block text-[11px] font-bold text-neutral-400 mb-1 uppercase tracking-wider">
                         Catatan Latihan
                       </label>
                       <textarea
@@ -505,7 +505,7 @@ export const ManualPlanModal: React.FC<ManualPlanModalProps> = ({
                           updateWorkout(currentWorkout.dayOfWeek, { description: e.target.value })
                         }
                         placeholder="Contoh: 1km pemanasan santai, 3km steady tempo"
-                        className="w-full bg-neutral-50 border border-neutral-200 rounded-xl px-3 py-2 text-xs text-neutral-700 focus:outline-none focus:ring-2 focus:ring-[#FF5500]/20"
+                        className="w-full bg-[#1E1E1E] border border-white/10 rounded-xl px-3 py-2 text-xs text-neutral-200 focus:outline-none focus:ring-2 focus:ring-[#FF5500]/30"
                       />
                     </div>
                   </div>
@@ -516,7 +516,7 @@ export const ManualPlanModal: React.FC<ManualPlanModalProps> = ({
         </div>
 
         {/* Fixed Footer */}
-        <div className="p-4 border-t border-neutral-100 bg-white flex items-center space-x-2.5 shrink-0 shadow-[0_-4px_16px_rgba(0,0,0,0.04)] pb-[max(1rem,env(safe-area-inset-bottom))]">
+        <div className="p-4 border-t border-white/5 bg-[#1E1E1E] flex items-center space-x-2.5 shrink-0 shadow-[0_-4px_16px_rgba(0,0,0,0.3)] pb-[max(1rem,env(safe-area-inset-bottom))]">
           <Button
             variant="secondary"
             size="md"

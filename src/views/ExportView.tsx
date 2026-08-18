@@ -108,12 +108,12 @@ export const ExportView: React.FC<ExportViewProps> = ({ runs, onBack }) => {
       <div className="flex items-center space-x-3 pt-2">
         <button
           onClick={onBack}
-          className="p-2 -ml-2 rounded-full hover:bg-neutral-100 text-neutral-700 transition-colors"
+          className="p-2 -ml-2 rounded-full text-neutral-400 hover:text-white hover:bg-white/10 transition-colors"
           aria-label="Back"
         >
           <ChevronLeft className="w-6 h-6" />
         </button>
-        <h1 className="text-xl font-bold text-neutral-900">Export</h1>
+        <h1 className="text-xl font-bold text-white">Export</h1>
       </div>
 
       <div className="space-y-3">
@@ -122,16 +122,16 @@ export const ExportView: React.FC<ExportViewProps> = ({ runs, onBack }) => {
           onClick={() => setExportMode('single')}
           className={`p-4 flex items-center justify-between border-2 transition-all ${
             exportMode === 'single'
-              ? 'border-[#FF5500] bg-orange-50/10'
-              : 'border-transparent bg-white'
+              ? 'border-[#FF5500] bg-[#FF5500]/10'
+              : 'border-white/5 bg-[#1E1E1E]'
           }`}
         >
           <div className="flex items-center space-x-3.5">
-            <div className="w-10 h-10 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded-2xl bg-emerald-950/50 text-emerald-400 border border-emerald-500/20 flex items-center justify-center shrink-0">
               <FileCode className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-neutral-900">Export Single Run</h3>
+              <h3 className="text-sm font-bold text-white">Export Single Run</h3>
               <p className="text-xs text-neutral-400">Export this run as JSON</p>
             </div>
           </div>
@@ -143,16 +143,16 @@ export const ExportView: React.FC<ExportViewProps> = ({ runs, onBack }) => {
           onClick={() => setExportMode('all')}
           className={`p-4 flex items-center justify-between border-2 transition-all ${
             exportMode === 'all'
-              ? 'border-[#FF5500] bg-orange-50/10'
-              : 'border-transparent bg-white'
+              ? 'border-[#FF5500] bg-[#FF5500]/10'
+              : 'border-white/5 bg-[#1E1E1E]'
           }`}
         >
           <div className="flex items-center space-x-3.5">
-            <div className="w-10 h-10 rounded-2xl bg-orange-50 text-[#FF5500] flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded-2xl bg-[#FF5500]/15 text-[#FF5500] flex items-center justify-center shrink-0">
               <FileCode className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-neutral-900">Export All Runs</h3>
+              <h3 className="text-sm font-bold text-white">Export All Runs</h3>
               <p className="text-xs text-neutral-400">Export all runs as JSON</p>
             </div>
           </div>
@@ -162,16 +162,16 @@ export const ExportView: React.FC<ExportViewProps> = ({ runs, onBack }) => {
 
       {exportMode === 'single' && (
         <div className="space-y-1.5 animate-in fade-in">
-          <label className="text-xs font-bold text-neutral-600 uppercase tracking-wider">
+          <label className="text-xs font-bold text-neutral-400 uppercase tracking-wider">
             Select Run to Export
           </label>
           <select
             value={selectedRunId}
             onChange={(e) => setSelectedRunId(e.target.value)}
-            className="w-full bg-white border border-neutral-200 rounded-2xl px-3.5 py-2.5 text-xs font-semibold text-neutral-800 focus:outline-none focus:ring-2 focus:ring-[#FF5500]/20"
+            className="w-full bg-[#252525] border border-white/10 rounded-2xl px-3.5 py-2.5 text-xs font-semibold text-white focus:outline-none focus:ring-2 focus:ring-[#FF5500]/30"
           >
             {runs.map((r) => (
-              <option key={r.id} value={r.id}>
+              <option key={r.id} value={r.id} className="bg-[#252525] text-white">
                 {formatDate(r.date)} — {r.distance_km} km ({r.source})
               </option>
             ))}
@@ -187,7 +187,7 @@ export const ExportView: React.FC<ExportViewProps> = ({ runs, onBack }) => {
           <span className="text-[11px] text-neutral-400 font-mono">Claude-ready schema</span>
         </div>
 
-        <div className="bg-neutral-900 text-emerald-400 rounded-3xl p-4 font-mono text-[11px] max-h-64 overflow-y-auto shadow-soft leading-relaxed border border-neutral-800">
+        <div className="bg-[#1E1E1E] text-emerald-400 rounded-3xl p-4 font-mono text-[11px] max-h-64 overflow-y-auto shadow-soft leading-relaxed border border-white/10">
           <pre>{jsonContent}</pre>
         </div>
       </div>
@@ -197,7 +197,7 @@ export const ExportView: React.FC<ExportViewProps> = ({ runs, onBack }) => {
           variant="secondary"
           size="lg"
           onClick={handleCopy}
-          leftIcon={copied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
+          leftIcon={copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4 text-neutral-300" />}
           className="font-bold text-xs"
         >
           {copied ? 'Copied to Clipboard!' : 'Copy JSON'}
