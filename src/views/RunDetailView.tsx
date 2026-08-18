@@ -73,6 +73,12 @@ export const RunDetailView: React.FC<RunDetailViewProps> = ({
   const gpxInputRef = useRef<HTMLInputElement>(null);
   const intervalInputRef = useRef<HTMLInputElement>(null);
 
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }, [run.id]);
+
 
   const tabs = [
     { id: 'overview', label: 'Overview' },

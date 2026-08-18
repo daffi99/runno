@@ -108,6 +108,11 @@ export const App: React.FC = () => {
     if (newHash && window.location.hash !== newHash) {
       window.history.replaceState(null, '', newHash);
     }
+
+    // Scroll window and document to top on screen change
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
   }, [screen]);
 
   // Listen to browser Back/Forward & hash changes
