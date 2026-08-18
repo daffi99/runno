@@ -210,11 +210,11 @@ export const App: React.FC = () => {
     setScreen({ type: 'runDetail', runId: newRun.id, previousTab: 'dashboard' });
   };
 
-  const handleDeleteRun = (id: string) => {
+  const handleDeleteRun = async (id: string) => {
     scrollToTop();
-    storageService.deleteRun(id);
     setRuns((prev) => prev.filter((r) => r.id !== id));
     setScreen({ type: 'tab', tab: 'history' });
+    await storageService.deleteRun(id);
   };
 
   const handleUpdateSettings = (newSettings: Partial<AppSettings>) => {

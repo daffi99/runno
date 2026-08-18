@@ -6,6 +6,7 @@ const STORAGE_KEY = 'runno_runs_v1';
 const SETTINGS_KEY = 'runno_settings_v1';
 const ACTIVE_PLAN_KEY = 'runno_active_plan_v1';
 const COACH_MESSAGES_KEY = 'runno_coach_messages_v1';
+const DELETED_RUNS_KEY = 'runno_deleted_run_ids_v1';
 
 // ---------------------------------------------------------------------------
 // IndexedDB Persistent Layer (Bypasses 5MB localStorage limit on Mobile PWA)
@@ -77,10 +78,39 @@ const DEFAULT_SETTINGS: AppSettings = {
 };
 
 export const storageService = {
+  getDeletedRunIds(): Set<string> {
+    try {
+      const data = localStorage.getItem(DELETED_RUNS_KEY);
+      return data ? new Set(JSON.parse(data)) : new Set();
+    } catch {
+      return new Set();
+    }
+  },
+
+  addDeletedRunId(id: string) {
+    try {
+      const current = this.getDeletedRunIds();
+      current.add(id);
+      localStorage.setItem(DELETED_RUNS_KEY, JSON.stringify(Array.from(current)));
+    } catch (_) {}
+  },
+
+  unmarkDeletedRunId(id: string) {
+    try {
+      const current = this.getDeletedRunIds();
+      if (current.has(id)) {
+        current.delete(id);
+        localStorage.setItem(DELETED_RUNS_KEY, JSON.stringify(Array.from(current)));
+      }
+    } catch (_) {}
+  },
+
   getRuns(): Run[] {
     try {
+      const deletedIds = this.getDeletedRunIds();
       const data = localStorage.getItem(STORAGE_KEY);
-      return data ? JSON.parse(data) : [];
+      const list: Run[] = data ? JSON.parse(data) : [];
+      return list.filter((r) => r && r.id && !deletedIds.has(r.id));
     } catch (e) {
       console.error('Error loading runs from localStorage', e);
       return [];
@@ -88,15 +118,18 @@ export const storageService = {
   },
 
   async getRunsFromIdb(): Promise<Run[]> {
-    return idbGetRuns();
+    const deletedIds = this.getDeletedRunIds();
+    const runs = await idbGetRuns();
+    return runs.filter((r) => r && r.id && !deletedIds.has(r.id));
   },
 
   async syncWithServer(): Promise<Run[]> {
+    const deletedIds = this.getDeletedRunIds();
     const localRuns = this.getRuns();
-    const idbRuns = await idbGetRuns();
+    const idbRuns = await this.getRunsFromIdb();
     const combinedLocalMap = new Map<string, Run>();
     for (const r of [...localRuns, ...idbRuns]) {
-      if (r && r.id) combinedLocalMap.set(r.id, r);
+      if (r && r.id && !deletedIds.has(r.id)) combinedLocalMap.set(r.id, r);
     }
     const allLocalRuns = Array.from(combinedLocalMap.values());
 
@@ -105,12 +138,19 @@ export const storageService = {
       if (res.ok) {
         const data = await res.json();
         if (data.runs && Array.isArray(data.runs)) {
-          // Smart merge local and server runs (never drop un-synced local runs)
+          // 1. Purge deleted runs on server if they still exist in PostgreSQL
+          for (const sr of data.runs) {
+            if (sr && sr.id && deletedIds.has(sr.id)) {
+              fetch(`/api/runs/${sr.id}`, { method: 'DELETE' }).catch(() => {});
+            }
+          }
+
+          // 2. Smart merge local and server runs (strictly excluding deleted runs)
           const runMap = new Map<string, Run>();
 
-          // Add server runs
+          // Add valid server runs
           for (const r of data.runs) {
-            if (r && r.id) {
+            if (r && r.id && !deletedIds.has(r.id)) {
               runMap.set(r.id, r);
             }
           }
@@ -118,7 +158,7 @@ export const storageService = {
           // Identify local runs missing on server DB and push in batch
           const missingOnServer: Run[] = [];
           for (const r of allLocalRuns) {
-            if (r && r.id) {
+            if (r && r.id && !deletedIds.has(r.id)) {
               const existing = runMap.get(r.id);
               if (!existing) {
                 runMap.set(r.id, r);
@@ -218,6 +258,7 @@ export const storageService = {
   },
 
   async saveRun(run: Run): Promise<Run> {
+    this.unmarkDeletedRunId(run.id);
     const runs = this.getRuns();
     const existingIndex = runs.findIndex((r) => r.id === run.id);
 
@@ -238,21 +279,14 @@ export const storageService = {
     // Automatically sync active plan completion with newly logged run
     this.syncPlanWithRuns(runs);
 
-
     // Save to PostgreSQL database via API
     try {
-      fetch('/api/runs', {
+      await fetch('/api/runs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updatedRun),
-      })
-        .then((r) => r.json())
-        .then((data) => {
-          console.log('[Runno Client] Synced run to PostgreSQL database:', data?.run?.id);
-        })
-        .catch((err) => {
-          console.warn('[Runno Client] Offline or DB sync pending:', err);
-        });
+      });
+      console.log('[Runno Client] Synced run to PostgreSQL database:', updatedRun.id);
     } catch (err) {
       console.warn('[Runno Client] DB async save error:', err);
     }
@@ -260,14 +294,20 @@ export const storageService = {
     return updatedRun;
   },
 
-  deleteRun(id: string): boolean {
-    const runs = this.getRuns();
-    const filtered = runs.filter((r) => r.id !== id);
-    this.saveRuns(filtered);
+  async deleteRun(id: string): Promise<boolean> {
+    this.addDeletedRunId(id);
+    const runs = this.getRuns().filter((r) => r.id !== id);
+    this.saveRuns(runs);
+    this.syncPlanWithRuns(runs);
 
-    fetch(`/api/runs/${id}`, {
-      method: 'DELETE',
-    }).catch(() => {});
+    try {
+      await fetch(`/api/runs/${id}`, {
+        method: 'DELETE',
+      });
+      console.log(`[Runno Client] Permanently deleted run ${id} from database.`);
+    } catch (err) {
+      console.warn('[Runno Client] Offline or DB delete notice:', err);
+    }
 
     return true;
   },
