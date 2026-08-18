@@ -39,6 +39,7 @@ import {
   ChevronDown,
   ArrowRight,
   Pencil,
+  FileText,
 } from 'lucide-react';
 
 
@@ -256,6 +257,26 @@ export const CoachView: React.FC<CoachViewProps> = ({
   const [isManualPlanModalOpen, setIsManualPlanModalOpen] = useState<boolean>(false);
   const [editingWorkout, setEditingWorkout] = useState<PlanWorkout | null>(null);
   const [appliedPlanToast, setAppliedPlanToast] = useState<string | null>(null);
+
+  const [isEditingNote, setIsEditingNote] = useState<boolean>(false);
+  const [editedNoteText, setEditedNoteText] = useState<string>('');
+
+  const handleStartEditNote = () => {
+    setEditedNoteText(activePlan?.aiAdvice || '');
+    setIsEditingNote(true);
+  };
+
+  const handleSaveNote = () => {
+    if (!activePlan) return;
+    const updatedPlan: TrainingPlan = {
+      ...activePlan,
+      aiAdvice: editedNoteText.trim(),
+      updatedAt: new Date().toISOString(),
+    };
+    storageService.saveActivePlan(updatedPlan);
+    setActivePlan(updatedPlan);
+    setIsEditingNote(false);
+  };
 
 
 
@@ -968,18 +989,66 @@ export const CoachView: React.FC<CoachViewProps> = ({
               </div>
 
 
-              {/* AI Coaching Tips */}
-              {activePlan.aiAdvice && (
-                <div className="p-3.5 rounded-2xl bg-[#FF5500]/10 border border-[#FF5500]/20 text-xs space-y-1.5">
-                  <div className="flex items-center space-x-1.5 text-[#FF5500] font-bold">
-                    <Sparkles className="w-4 h-4" />
-                    <span>Coach Strategy for Week {viewedWeek}</span>
+              {/* Training Note Card */}
+              <div className="p-4 rounded-3xl bg-[#1E1E1E] border border-white/5 shadow-soft-sm space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2 text-white font-bold text-xs">
+                    <FileText className="w-4 h-4 text-[#FF5500]" />
+                    <span>Note Training</span>
                   </div>
-                  <p className="text-neutral-300 leading-relaxed">
+                  {!isEditingNote ? (
+                    <button
+                      onClick={handleStartEditNote}
+                      className="text-[11px] font-bold text-neutral-400 hover:text-white flex items-center gap-1 transition-colors px-2 py-1 rounded-xl hover:bg-white/5 active:scale-95"
+                    >
+                      <Pencil className="w-3 h-3" />
+                      <span>{activePlan.aiAdvice ? 'Edit' : 'Tulis Note'}</span>
+                    </button>
+                  ) : (
+                    <div className="flex items-center space-x-1.5">
+                      <button
+                        onClick={() => setIsEditingNote(false)}
+                        className="text-[11px] font-bold text-neutral-400 hover:text-white px-2 py-1 rounded-xl hover:bg-white/5"
+                      >
+                        Batal
+                      </button>
+                      <button
+                        onClick={handleSaveNote}
+                        className="text-[11px] font-bold text-white bg-[#FF5500] hover:bg-[#E64D00] px-2.5 py-1 rounded-xl shadow-sm active:scale-95 transition-all flex items-center gap-1"
+                      >
+                        <Check className="w-3 h-3" />
+                        <span>Simpan</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {isEditingNote ? (
+                  <div className="space-y-2 pt-1">
+                    <textarea
+                      value={editedNoteText}
+                      onChange={(e) => setEditedNoteText(e.target.value)}
+                      placeholder="Tulis catatan latihan atau target Anda di sini..."
+                      rows={3}
+                      className="w-full bg-[#151515] border border-white/10 rounded-2xl p-3 text-xs text-white placeholder:text-neutral-500 focus:outline-none focus:border-[#FF5500] transition-colors resize-none leading-relaxed"
+                      autoFocus
+                    />
+                  </div>
+                ) : activePlan.aiAdvice ? (
+                  <p className="text-xs text-neutral-300 leading-relaxed whitespace-pre-line">
                     {activePlan.aiAdvice}
                   </p>
-                </div>
-              )}
+                ) : (
+                  <div
+                    onClick={handleStartEditNote}
+                    className="p-3.5 rounded-2xl bg-black/20 border border-dashed border-white/10 text-center cursor-pointer hover:border-white/20 transition-all group"
+                  >
+                    <p className="text-xs text-neutral-400 group-hover:text-neutral-300 transition-colors">
+                      + Tambah catatan latihan...
+                    </p>
+                  </div>
+                )}
+              </div>
             </>
           ) : (
             /* Empty State: No Active Plan */

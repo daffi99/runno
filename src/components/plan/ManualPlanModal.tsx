@@ -112,6 +112,7 @@ export const ManualPlanModal: React.FC<ManualPlanModalProps> = ({
   const [totalWeeks, setTotalWeeks] = useState<number>(8);
   const [currentWeek, setCurrentWeek] = useState<number>(1);
   const [fitnessLevel, setFitnessLevel] = useState<'beginner' | 'intermediate' | 'advanced'>('beginner');
+  const [trainingNote, setTrainingNote] = useState<string>('');
   const [workouts, setWorkouts] = useState<PlanWorkout[]>(generateDefault7DayWorkouts());
   const [activeDayTab, setActiveDayTab] = useState<number>(1); // Default to Monday (1)
 
@@ -128,6 +129,7 @@ export const ManualPlanModal: React.FC<ManualPlanModalProps> = ({
       setTotalWeeks(existingPlan?.totalWeeks || 8);
       setCurrentWeek(existingPlan?.currentWeek || 1);
       setFitnessLevel(existingPlan?.fitnessLevel || 'beginner');
+      setTrainingNote(existingPlan?.aiAdvice || '');
       setWorkouts(
         existingPlan?.workouts && existingPlan.workouts.length >= 7
           ? existingPlan.workouts
@@ -193,7 +195,7 @@ export const ManualPlanModal: React.FC<ManualPlanModalProps> = ({
       status: 'active',
       workouts,
       weeklySchedules: existingWeekly,
-      aiAdvice: existingPlan?.aiAdvice || 'Program latihan kustom Anda siap dijalankan!',
+      aiAdvice: trainingNote.trim(),
       createdAt: existingPlan?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -563,6 +565,20 @@ export const ManualPlanModal: React.FC<ManualPlanModalProps> = ({
               )}
             </Card>
           )}
+
+          {/* 4. Note Training / Strategy */}
+          <div className="space-y-1.5 pt-1">
+            <label className="block text-xs font-bold text-neutral-300 uppercase tracking-wider">
+              Note Training (Catatan Program)
+            </label>
+            <textarea
+              rows={2}
+              value={trainingNote}
+              onChange={(e) => setTrainingNote(e.target.value)}
+              placeholder="Catatan strategi, target khusus, atau fokus latihan untuk program ini (opsional)..."
+              className="w-full bg-[#252525] border border-white/10 rounded-2xl p-3 text-xs text-white placeholder:text-neutral-500 focus:outline-none focus:border-[#FF5500] transition-colors resize-none leading-relaxed"
+            />
+          </div>
         </div>
 
         {/* Fixed Footer */}
