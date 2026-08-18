@@ -1,7 +1,7 @@
-import React, { useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import type { Run, UnitSystem } from '../types/run';
 import { Card } from '../components/ui/Card';
-import { formatDistance, formatPace, formatDuration, normalizeSourceName } from '../utils/formatters';
+import { formatDistance, formatPace, formatDuration, normalizeSourceName, parseDateSafe } from '../utils/formatters';
 import {
   BarChart,
   Bar,
@@ -11,7 +11,8 @@ import {
   Tooltip,
   Cell,
 } from 'recharts';
-import { Trophy, Flame, Zap, Award, TrendingUp } from 'lucide-react';
+import { Trophy, Flame, Zap, Award, TrendingUp, Calendar } from 'lucide-react';
+import { clsx } from 'clsx';
 
 interface StatsViewProps {
   runs: Run[];
@@ -19,38 +20,82 @@ interface StatsViewProps {
 }
 
 export const StatsView: React.FC<StatsViewProps> = ({ runs, unitSystem }) => {
-  const monthlyData = useMemo(() => {
-    const monthsMap: { [key: string]: number } = {};
-
+  // Extract all distinct years available in data
+  const availableYears = useMemo(() => {
+    const yearsSet = new Set<string>();
     for (const r of runs) {
       if (r.date) {
-        const d = new Date(r.date);
+        const d = parseDateSafe(r.date);
+        if (!isNaN(d.getTime())) {
+          yearsSet.add(String(d.getFullYear()));
+        }
+      }
+    }
+    const sorted = Array.from(yearsSet).sort((a, b) => Number(b) - Number(a));
+    return sorted.length > 0 ? sorted : [String(new Date().getFullYear())];
+  }, [runs]);
+
+  const [selectedYear, setSelectedYear] = useState<string>(() => {
+    const currentYear = String(new Date().getFullYear());
+    return availableYears.includes(currentYear) ? currentYear : (availableYears[0] || currentYear);
+  });
+
+  // Filter runs based on selected year (or all)
+  const filteredRuns = useMemo(() => {
+    if (selectedYear === 'all') return runs;
+    return runs.filter((r) => {
+      if (!r.date) return false;
+      const d = parseDateSafe(r.date);
+      return !isNaN(d.getTime()) && String(d.getFullYear()) === selectedYear;
+    });
+  }, [runs, selectedYear]);
+
+  const monthlyData = useMemo(() => {
+    const monthsMap: { [key: string]: number } = {};
+    const ALL_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    for (const m of ALL_MONTHS) {
+      monthsMap[m] = 0;
+    }
+
+    for (const r of filteredRuns) {
+      if (r.date) {
+        const d = parseDateSafe(r.date);
         if (!isNaN(d.getTime())) {
           const key = d.toLocaleDateString('en-US', { month: 'short' });
-          monthsMap[key] = (monthsMap[key] || 0) + (r.distance_km || 0);
+          if (monthsMap[key] !== undefined) {
+            monthsMap[key] += (r.distance_km || 0);
+          }
         }
       }
     }
 
-    const order = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-    return order
-      .filter((m) => monthsMap[m] !== undefined)
-      .map((month) => ({
-        month,
-        distance: Number(monthsMap[month].toFixed(1)),
-      }));
-  }, [runs]);
+    // If viewing single year, show all 12 months with activity or relevant months
+    const activeMonths = ALL_MONTHS.filter((m) => monthsMap[m] > 0);
+    const monthsToShow = activeMonths.length > 0 ? ALL_MONTHS : ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+    return monthsToShow.map((month) => ({
+      month,
+      distance: Number((monthsMap[month] || 0).toFixed(1)),
+      hasRuns: (monthsMap[month] || 0) > 0,
+    }));
+  }, [filteredRuns]);
+
+  const yearlyVolumeKm = useMemo(() => {
+    const total = filteredRuns.reduce((acc, r) => acc + (r.distance_km || 0), 0);
+    return total.toFixed(1);
+  }, [filteredRuns]);
 
   const records = useMemo(() => {
-    if (runs.length === 0) return null;
+    const activeList = filteredRuns.length > 0 ? filteredRuns : runs;
+    if (activeList.length === 0) return null;
 
-    let longest = runs[0];
-    let fastestPace = runs[0];
-    let maxElevation = runs[0];
+    let longest = activeList[0];
+    let fastestPace = activeList[0];
+    let maxElevation = activeList[0];
     let totalCalories = 0;
     let totalKm = 0;
 
-    for (const r of runs) {
+    for (const r of activeList) {
       totalKm += r.distance_km || 0;
       totalCalories += r.calories || 0;
 
@@ -73,11 +118,12 @@ export const StatsView: React.FC<StatsViewProps> = ({ runs, unitSystem }) => {
       totalCalories,
       totalKm: totalKm.toFixed(1),
     };
-  }, [runs]);
+  }, [filteredRuns, runs]);
 
   const sourceBreakdown = useMemo(() => {
     const counts: { [key: string]: number } = {};
-    for (const r of runs) {
+    const activeList = filteredRuns.length > 0 ? filteredRuns : runs;
+    for (const r of activeList) {
       const srcName = normalizeSourceName(r.source);
       counts[srcName] = (counts[srcName] || 0) + 1;
     }
@@ -85,10 +131,10 @@ export const StatsView: React.FC<StatsViewProps> = ({ runs, unitSystem }) => {
       .map(([name, count]) => ({
         name,
         count,
-        percent: runs.length > 0 ? Math.round((count / runs.length) * 100) : 0,
+        percent: activeList.length > 0 ? Math.round((count / activeList.length) * 100) : 0,
       }))
       .sort((a, b) => b.count - a.count);
-  }, [runs]);
+  }, [filteredRuns, runs]);
 
   if (runs.length === 0) {
     return (
@@ -115,31 +161,67 @@ export const StatsView: React.FC<StatsViewProps> = ({ runs, unitSystem }) => {
 
   return (
     <div className="max-w-md mx-auto px-4 pt-4 pb-28 space-y-5">
-      <div className="pt-2">
-        <h1 className="text-2xl font-black text-white tracking-tight">Stats & Records</h1>
-        <p className="text-xs text-neutral-400 font-medium mt-0.5">
-          Your running milestones and volume analytics
-        </p>
+      <div className="pt-2 flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-black text-white tracking-tight">Stats & Records</h1>
+          <p className="text-xs text-neutral-400 font-medium mt-0.5">
+            Your running milestones and volume analytics
+          </p>
+        </div>
+      </div>
+
+      {/* Year Filter Bar */}
+      <div className="flex items-center space-x-1.5 overflow-x-auto no-scrollbar pb-1">
+        <div className="flex items-center space-x-1.5 bg-[#1E1E1E] p-1 rounded-2xl border border-white/5 w-full">
+          {availableYears.map((yr) => (
+            <button
+              key={yr}
+              onClick={() => setSelectedYear(yr)}
+              className={clsx(
+                'flex-1 py-1.5 text-xs font-bold rounded-xl transition-all text-center',
+                selectedYear === yr
+                  ? 'bg-[#FF5500] text-white shadow-md'
+                  : 'text-neutral-400 hover:text-white'
+              )}
+            >
+              {yr}
+            </button>
+          ))}
+          {availableYears.length > 1 && (
+            <button
+              onClick={() => setSelectedYear('all')}
+              className={clsx(
+                'flex-1 py-1.5 text-xs font-bold rounded-xl transition-all text-center',
+                selectedYear === 'all'
+                  ? 'bg-[#FF5500] text-white shadow-md'
+                  : 'text-neutral-400 hover:text-white'
+              )}
+            >
+              All Time
+            </button>
+          )}
+        </div>
       </div>
 
       <Card className="p-4 sm:p-5 bg-[#1E1E1E] border-white/5">
         <div className="flex items-center justify-between mb-3">
-          <span className="text-xs font-bold uppercase tracking-wider text-neutral-400">
-            Monthly Mileage
+          <span className="text-xs font-bold uppercase tracking-wider text-neutral-400 flex items-center gap-1.5">
+            <Calendar className="w-3.5 h-3.5 text-[#FF5500]" />
+            {selectedYear === 'all' ? 'Monthly Mileage (All Time)' : `Monthly Mileage (${selectedYear})`}
           </span>
-          <span className="text-xs font-bold text-[#FF5500]">
-            {records ? `${records.totalKm} ${unitSystem === 'metric' ? 'km' : 'mi'} Total` : ''}
+          <span className="text-xs font-bold text-[#FF5500] font-mono">
+            {yearlyVolumeKm} {unitSystem === 'metric' ? 'km' : 'mi'} Total
           </span>
         </div>
 
-        <div className="h-44 w-full">
+        <div className="h-48 w-full pt-2">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={monthlyData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
               <XAxis
                 dataKey="month"
                 tickLine={false}
                 axisLine={{ stroke: '#333333' }}
-                tick={{ fontSize: 11, fill: '#888888' }}
+                tick={{ fontSize: 10, fill: '#888888' }}
               />
               <YAxis
                 tickLine={false}
@@ -154,18 +236,18 @@ export const StatsView: React.FC<StatsViewProps> = ({ runs, unitSystem }) => {
                     return (
                       <div className="bg-[#2A2A2A] text-white text-xs px-2.5 py-1.5 rounded-xl shadow-lg border border-white/10">
                         <p className="font-bold">{data.distance} km</p>
-                        <p className="text-[10px] text-neutral-400">{data.month}</p>
+                        <p className="text-[10px] text-neutral-400">{data.month} {selectedYear !== 'all' ? selectedYear : ''}</p>
                       </div>
                     );
                   }
                   return null;
                 }}
               />
-              <Bar dataKey="distance" radius={[8, 8, 0, 0]}>
-                {monthlyData.map((_, index) => (
+              <Bar dataKey="distance" radius={[6, 6, 0, 0]}>
+                {monthlyData.map((entry, index) => (
                   <Cell
                     key={`cell-${index}`}
-                    fill={index === monthlyData.length - 1 ? '#FF5500' : '#442211'}
+                    fill={entry.distance > 0 ? (index === monthlyData.length - 1 || entry.month === 'Aug' ? '#FF5500' : '#883300') : '#2A2A2A'}
                   />
                 ))}
               </Bar>
@@ -175,9 +257,14 @@ export const StatsView: React.FC<StatsViewProps> = ({ runs, unitSystem }) => {
       </Card>
 
       <div className="space-y-3">
-        <h2 className="text-base font-bold text-white flex items-center">
-          <Trophy className="w-4 h-4 text-amber-400 mr-2" />
-          Personal Records
+        <h2 className="text-base font-bold text-white flex items-center justify-between">
+          <span className="flex items-center">
+            <Trophy className="w-4 h-4 text-amber-400 mr-2" />
+            Personal Records {selectedYear !== 'all' ? `(${selectedYear})` : ''}
+          </span>
+          <span className="text-[11px] text-neutral-400 font-normal">
+            {filteredRuns.length} workouts logged
+          </span>
         </h2>
 
         {records && (
@@ -253,7 +340,7 @@ export const StatsView: React.FC<StatsViewProps> = ({ runs, unitSystem }) => {
 
       <Card className="p-4 sm:p-5 bg-[#1E1E1E] border-white/5 space-y-3">
         <span className="text-xs font-bold uppercase tracking-wider text-neutral-400">
-          Source Breakdown
+          Source Breakdown {selectedYear !== 'all' ? `(${selectedYear})` : ''}
         </span>
         <div className="space-y-2">
           {sourceBreakdown.map((s) => (
