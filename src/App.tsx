@@ -133,7 +133,16 @@ export const App: React.FC = () => {
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
 
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+    const root = document.getElementById('root');
+    if (root) root.scrollTop = 0;
+  };
+
   const handleSelectTab = (tab: NavTab) => {
+    scrollToTop();
     if (tab === 'add') {
       setScreen({ type: 'tab', tab: 'add' });
     } else {
@@ -142,16 +151,17 @@ export const App: React.FC = () => {
   };
 
   const handleSelectRun = (runId: string) => {
+    scrollToTop();
     const currentTab = screen.type === 'tab' ? screen.tab : 'dashboard';
     setScreen({ type: 'runDetail', runId, previousTab: currentTab });
   };
-
 
   const handleAnalysisComplete = (payload: {
     screenshotBase64: string | null;
     routeData: RouteData | null;
     extractedData: ExtractedRunData;
   }) => {
+    scrollToTop();
     setScreen({
       type: 'reviewRun',
       screenshotBase64: payload.screenshotBase64,
@@ -176,10 +186,12 @@ export const App: React.FC = () => {
     await storageService.saveRun(newRun);
 
     // 3. Immediately show Run Detail
+    scrollToTop();
     setScreen({ type: 'runDetail', runId: newRun.id, previousTab: 'dashboard' });
   };
 
   const handleDeleteRun = (id: string) => {
+    scrollToTop();
     storageService.deleteRun(id);
     setRuns((prev) => prev.filter((r) => r.id !== id));
     setScreen({ type: 'tab', tab: 'history' });
@@ -191,6 +203,7 @@ export const App: React.FC = () => {
   };
 
   const handleExportJson = () => {
+    scrollToTop();
     setScreen({ type: 'export' });
   };
 

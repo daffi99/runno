@@ -29,7 +29,12 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onSelectTab })
             return (
               <button
                 key={item.id}
-                onClick={() => onSelectTab(item.id)}
+                onClick={() => {
+                  window.scrollTo(0, 0);
+                  document.documentElement.scrollTop = 0;
+                  document.body.scrollTop = 0;
+                  onSelectTab(item.id);
+                }}
                 className="relative -top-5 flex items-center justify-center w-13 h-13 rounded-full bg-[#FF5500] text-white shadow-glow-orange hover:bg-[#E64D00] active:scale-95 transition-all duration-200 focus:outline-none p-3 ring-4 ring-[#111111]/80"
                 aria-label="Add Run"
               >
@@ -41,7 +46,12 @@ export const BottomNav: React.FC<BottomNavProps> = ({ currentTab, onSelectTab })
           return (
             <button
               key={item.id}
-              onClick={() => onSelectTab(item.id)}
+              onClick={() => {
+                window.scrollTo(0, 0);
+                document.documentElement.scrollTop = 0;
+                document.body.scrollTop = 0;
+                onSelectTab(item.id);
+              }}
               className={clsx(
                 'flex flex-col items-center justify-center flex-1 py-1 transition-all duration-200 active:scale-95 focus:outline-none relative',
                 isActive ? 'text-[#FF5500]' : 'text-neutral-400 hover:text-neutral-200'
