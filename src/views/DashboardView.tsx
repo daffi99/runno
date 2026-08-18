@@ -195,12 +195,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             className="w-11 h-11 rounded-2xl object-contain ring-2 ring-white/10 shadow-md"
           />
           <div>
-            <div className="flex items-center space-x-2">
-              <p className="text-xs text-neutral-400 leading-none">Hello there! 👋</p>
-              <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-md bg-[#FF5500]/15 text-[#FF5500] border border-[#FF5500]/25">
-                {APP_VERSION}
-              </span>
-            </div>
+            <p className="text-xs text-neutral-400 leading-none">Hello there! 👋</p>
             <h1 className="text-xl font-black text-white tracking-tight leading-tight mt-0.5">
               Daffi
             </h1>
@@ -509,12 +504,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     onClick={() => onSelectRun(run.id)}
                     className="bg-[#1E1E1E] rounded-2xl p-3.5 flex items-center space-x-3.5 cursor-pointer active:scale-[0.99] transition-all border border-white/5 hover:border-white/10"
                   >
-                    {/* Timeline dot */}
-                    <div className="flex flex-col items-center shrink-0">
-                      <div className={clsx('w-3 h-3 rounded-full', isToday ? 'bg-[#FF5500]' : 'bg-neutral-600')} />
-                      <div className="w-px h-6 bg-neutral-700 mt-1" />
-                    </div>
-
                     <RouteThumbnail routeData={run.route_data} width={52} height={44} />
 
                     <div className="flex-1 min-w-0">
