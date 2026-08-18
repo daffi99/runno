@@ -11,7 +11,7 @@ import {
   Tooltip,
   CartesianGrid,
 } from 'recharts';
-import { Trophy, Flame, Zap, Award, TrendingUp, Activity } from 'lucide-react';
+import { Trophy, Flame, Zap, Award, TrendingUp, Activity, Route, Clock } from 'lucide-react';
 
 interface StatsViewProps {
   runs: Run[];
@@ -252,7 +252,7 @@ export const StatsView: React.FC<StatsViewProps> = ({ runs, unitSystem }) => {
           </span>
 
           {/* Area Chart */}
-          <div className="h-44 w-full">
+          <div className="h-44 w-full select-none outline-none focus:outline-none focus-visible:outline-none ring-0 [&_*]:outline-none [&_*]:focus:outline-none [&_*]:focus-visible:outline-none">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={past3MonthsData} margin={{ top: 12, right: 28, left: 10, bottom: 0 }}>
                 <defs>
@@ -320,62 +320,76 @@ export const StatsView: React.FC<StatsViewProps> = ({ runs, unitSystem }) => {
         </div>
       </Card>
 
-      {/* ═══ ALL-TIME STATS CARD ═══ */}
+      {/* ═══ ALL-TIME STATS CARD (Clean Row Layout: Icon + Title + Stats) ═══ */}
       {allTimeStats && (
-        <Card className="p-5 bg-[#1E1E1E] border-white/5 space-y-3.5">
-          <div className="flex items-center justify-between">
+        <Card className="p-5 bg-[#1E1E1E] border-white/5 space-y-3">
+          <div className="flex items-center justify-between pb-2 border-b border-white/5">
             <span className="text-xs font-bold uppercase tracking-wider text-neutral-400 flex items-center gap-1.5">
               <Activity className="w-3.5 h-3.5 text-[#FF5500]" />
               All-Time Stats
             </span>
             <span className="text-xs font-bold text-[#FF5500] font-mono">
-              {allTimeStats.totalRuns} Activities
+              {allTimeStats.totalRuns} Workouts
             </span>
           </div>
 
-          <div className="grid grid-cols-3 gap-2.5 pt-1">
-            <div className="bg-[#252525] p-3 rounded-2xl border border-white/5">
-              <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block">Total Distance</span>
-              <span className="text-base font-black text-white font-mono mt-0.5 block truncate">
-                {allTimeStats.totalDistance}
+          <div className="divide-y divide-white/5">
+            {/* Total Distance */}
+            <div className="py-2.5 flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="w-8 h-8 rounded-xl bg-[#FF5500]/15 text-[#FF5500] flex items-center justify-center shrink-0">
+                  <Route className="w-4 h-4" />
+                </div>
+                <span className="text-xs font-semibold text-neutral-200">Total Distance</span>
+              </div>
+              <span className="text-sm font-black text-white font-mono">{allTimeStats.totalDistance}</span>
+            </div>
+
+            {/* Total Time */}
+            <div className="py-2.5 flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="w-8 h-8 rounded-xl bg-amber-500/15 text-amber-400 flex items-center justify-center shrink-0">
+                  <Clock className="w-4 h-4" />
+                </div>
+                <span className="text-xs font-semibold text-neutral-200">Total Time</span>
+              </div>
+              <span className="text-sm font-black text-white font-mono">{allTimeStats.totalTime}</span>
+            </div>
+
+            {/* Total Elevation Gain */}
+            <div className="py-2.5 flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="w-8 h-8 rounded-xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center shrink-0">
+                  <TrendingUp className="w-4 h-4" />
+                </div>
+                <span className="text-xs font-semibold text-neutral-200">Elevation Gain</span>
+              </div>
+              <span className="text-sm font-black text-white font-mono">+{allTimeStats.totalElev}</span>
+            </div>
+
+            {/* Average Pace */}
+            <div className="py-2.5 flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="w-8 h-8 rounded-xl bg-cyan-500/15 text-cyan-400 flex items-center justify-center shrink-0">
+                  <Zap className="w-4 h-4" />
+                </div>
+                <span className="text-xs font-semibold text-neutral-200">Average Pace</span>
+              </div>
+              <span className="text-sm font-black text-white font-mono">
+                {allTimeStats.avgPace} <span className="text-[10px] text-neutral-400 font-normal">/{unitSystem === 'metric' ? 'km' : 'mi'}</span>
               </span>
             </div>
 
-            <div className="bg-[#252525] p-3 rounded-2xl border border-white/5">
-              <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block">Total Time</span>
-              <span className="text-base font-black text-white font-mono mt-0.5 block truncate">
-                {allTimeStats.totalTime}
-              </span>
-            </div>
-
-            <div className="bg-[#252525] p-3 rounded-2xl border border-white/5">
-              <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block">Total Elev</span>
-              <span className="text-base font-black text-white font-mono mt-0.5 block truncate">
-                {allTimeStats.totalElev}
-              </span>
-            </div>
-
-            <div className="bg-[#252525] p-3 rounded-2xl border border-white/5">
-              <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block">Avg Pace</span>
-              <span className="text-base font-black text-white font-mono mt-0.5 block truncate">
-                {allTimeStats.avgPace}
-                <span className="text-[9px] text-neutral-400 font-normal ml-0.5">/{unitSystem === 'metric' ? 'km' : 'mi'}</span>
-              </span>
-            </div>
-
-            <div className="bg-[#252525] p-3 rounded-2xl border border-white/5">
-              <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block">Calories</span>
-              <span className="text-base font-black text-white font-mono mt-0.5 block truncate">
-                {allTimeStats.totalCalories}
-                <span className="text-[9px] text-neutral-400 font-normal ml-0.5">kcal</span>
-              </span>
-            </div>
-
-            <div className="bg-[#252525] p-3 rounded-2xl border border-white/5">
-              <span className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block">Workouts</span>
-              <span className="text-base font-black text-white font-mono mt-0.5 block truncate">
-                {allTimeStats.totalRuns}
-                <span className="text-[9px] text-neutral-400 font-normal ml-0.5">runs</span>
+            {/* Calories Burned */}
+            <div className="py-2.5 flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <div className="w-8 h-8 rounded-xl bg-orange-500/15 text-orange-400 flex items-center justify-center shrink-0">
+                  <Flame className="w-4 h-4" />
+                </div>
+                <span className="text-xs font-semibold text-neutral-200">Calories Burned</span>
+              </div>
+              <span className="text-sm font-black text-white font-mono">
+                {allTimeStats.totalCalories} <span className="text-[10px] text-neutral-400 font-normal">kcal</span>
               </span>
             </div>
           </div>

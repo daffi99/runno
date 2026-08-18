@@ -182,3 +182,21 @@
     border-right-color: var(--border);
   }
 }
+
+/* Remove default browser focus outline on Recharts SVG / containers */
+.recharts-surface,
+.recharts-wrapper,
+.recharts-responsive-container,
+.recharts-surface:focus,
+.recharts-wrapper:focus,
+.recharts-responsive-container:focus,
+.recharts-surface:focus-visible,
+.recharts-wrapper:focus-visible,
+.recharts-responsive-container:focus-visible,
+svg:focus,
+svg:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+  -webkit-tap-highlight-color: transparent !important;
+}
+
