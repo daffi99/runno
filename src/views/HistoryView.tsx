@@ -8,6 +8,8 @@ import {
   formatDuration,
   formatPace,
   normalizeSourceName,
+  parseDateSafe,
+  formatLocalDateKey,
 } from '../utils/formatters';
 import { Search, ChevronRight, X } from 'lucide-react';
 
@@ -65,13 +67,10 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
 
     for (const run of filteredRuns) {
       if (!run.date) continue;
-      const d = new Date(run.date);
-      if (isNaN(d.getTime())) continue;
-
-      const monthKey = d.toLocaleDateString('en-US', {
-        month: 'long',
-        year: 'numeric',
-      });
+      const d = parseDateSafe(run.date);
+      const monthKey = !isNaN(d.getTime())
+        ? d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+        : 'Recent Activity';
 
       if (!monthMap.has(monthKey)) {
         monthMap.set(monthKey, { runs: [], totalDist: 0, totalDuration: 0 });
@@ -85,14 +84,13 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
 
     return Array.from(monthMap.entries()).map(([month, data]) => {
       const sortedRuns = [...data.runs].sort(
-        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+        (a, b) => parseDateSafe(b.date).getTime() - parseDateSafe(a.date).getTime()
       );
 
       const dayMap = new Map<string, DayRunGroup>();
 
       for (const run of sortedRuns) {
-        const d = new Date(run.date);
-        const dayKey = isNaN(d.getTime()) ? run.date : d.toISOString().split('T')[0];
+        const dayKey = formatLocalDateKey(run.date) || run.date;
 
         if (!dayMap.has(dayKey)) {
           dayMap.set(dayKey, {

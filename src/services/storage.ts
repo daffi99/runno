@@ -7,6 +7,62 @@ const SETTINGS_KEY = 'runno_settings_v1';
 const ACTIVE_PLAN_KEY = 'runno_active_plan_v1';
 const COACH_MESSAGES_KEY = 'runno_coach_messages_v1';
 
+// ---------------------------------------------------------------------------
+// IndexedDB Persistent Layer (Bypasses 5MB localStorage limit on Mobile PWA)
+// ---------------------------------------------------------------------------
+const IDB_NAME = 'runno_idb_v1';
+const IDB_STORE = 'runs_store';
+
+function getIDB(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    if (typeof indexedDB === 'undefined') {
+      return reject(new Error('IndexedDB not supported'));
+    }
+    const request = indexedDB.open(IDB_NAME, 1);
+    request.onupgradeneeded = () => {
+      const db = request.result;
+      if (!db.objectStoreNames.contains(IDB_STORE)) {
+        db.createObjectStore(IDB_STORE, { keyPath: 'id' });
+      }
+    };
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function idbSaveRuns(runs: Run[]): Promise<void> {
+  try {
+    const db = await getIDB();
+    const tx = db.transaction(IDB_STORE, 'readwrite');
+    const store = tx.objectStore(IDB_STORE);
+    store.clear();
+    for (const run of runs) {
+      if (run && run.id) {
+        store.put(run);
+      }
+    }
+  } catch (e) {
+    console.warn('[Runno IDB] Save error:', e);
+  }
+}
+
+async function idbGetRuns(): Promise<Run[]> {
+  try {
+    const db = await getIDB();
+    return new Promise((resolve) => {
+      const tx = db.transaction(IDB_STORE, 'readonly');
+      const store = tx.objectStore(IDB_STORE);
+      const req = store.getAll();
+      req.onsuccess = () => {
+        const items = req.result || [];
+        resolve(items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+      };
+      req.onerror = () => resolve([]);
+    });
+  } catch {
+    return [];
+  }
+}
 
 export interface AppSettings {
   unitSystem: UnitSystem;
@@ -31,8 +87,19 @@ export const storageService = {
     }
   },
 
+  async getRunsFromIdb(): Promise<Run[]> {
+    return idbGetRuns();
+  },
+
   async syncWithServer(): Promise<Run[]> {
     const localRuns = this.getRuns();
+    const idbRuns = await idbGetRuns();
+    const combinedLocalMap = new Map<string, Run>();
+    for (const r of [...localRuns, ...idbRuns]) {
+      if (r && r.id) combinedLocalMap.set(r.id, r);
+    }
+    const allLocalRuns = Array.from(combinedLocalMap.values());
+
     try {
       const res = await fetch('/api/runs');
       if (res.ok) {
@@ -49,17 +116,29 @@ export const storageService = {
           }
 
           // Merge local runs (preserve local runs if not yet in DB)
-          for (const r of localRuns) {
+          for (const r of allLocalRuns) {
             if (r && r.id) {
               const existing = runMap.get(r.id);
               if (!existing) {
                 runMap.set(r.id, r);
+                // Automatically upload desktop-local runs that are missing on the PostgreSQL server
+                fetch('/api/runs', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify(r),
+                }).catch(() => {});
               } else {
                 // Keep the version with the newer updated_at timestamp
                 const localTime = new Date(r.updated_at || r.created_at || 0).getTime();
                 const serverTime = new Date(existing.updated_at || existing.created_at || 0).getTime();
-                if (localTime >= serverTime) {
+                if (localTime > serverTime) {
                   runMap.set(r.id, r);
+                  // Push updated local version to server
+                  fetch('/api/runs', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(r),
+                  }).catch(() => {});
                 }
               }
             }
@@ -72,20 +151,36 @@ export const storageService = {
           this.saveRuns(merged);
           this.syncPlanWithRuns(merged);
           return merged;
-
         }
       }
     } catch (e) {
       console.warn('Could not sync with server DB, using local data', e);
     }
-    return localRuns;
+    return allLocalRuns.length > 0 ? allLocalRuns : localRuns;
   },
 
   saveRuns(runs: Run[]) {
+    // 1. Always persist full runs to IndexedDB (unlimited quota on mobile PWA)
+    idbSaveRuns(runs);
+
+    // 2. Persist to localStorage with fallback for quota limit
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(runs));
     } catch (e) {
-      console.error('Error saving runs to localStorage', e);
+      console.warn('[Runno Storage] localStorage quota exceeded, saving lightweight payload', e);
+      try {
+        // Strip heavy base64 screenshots so all run records reliably fit into 5MB localStorage
+        const sanitized = runs.map((r) => {
+          if (r.screenshot_url && r.screenshot_url.length > 2000) {
+            const { screenshot_url, ...rest } = r;
+            return rest as Run;
+          }
+          return r;
+        });
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(sanitized));
+      } catch (err) {
+        console.error('[Runno Storage] Critical localStorage save error:', err);
+      }
     }
   },
 

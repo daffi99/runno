@@ -74,14 +74,34 @@ export const App: React.FC = () => {
   const [screen, setScreen] = useState<AppScreen>(getInitialScreen);
 
   const loadData = async () => {
-    // 1. Immediately read local storage
+    // 1. Immediately read local storage for zero-delay UI render
     const local = storageService.getRuns();
-    setRuns(local);
+    if (local.length > 0) {
+      setRuns(local);
+    }
     setSettings(storageService.getSettings());
 
-    // 2. Sync in background with smart merge
+    // 2. Read from IndexedDB (persistent fallback on iOS PWA)
+    try {
+      const idbRuns = await storageService.getRunsFromIdb();
+      if (idbRuns.length > 0) {
+        setRuns((prev) => {
+          const map = new Map<string, Run>();
+          for (const r of [...prev, ...idbRuns]) {
+            if (r && r.id) map.set(r.id, r);
+          }
+          return Array.from(map.values()).sort(
+            (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+          );
+        });
+      }
+    } catch (_) {}
+
+    // 3. Sync with server database and merge
     const synced = await storageService.syncWithServer();
-    setRuns(synced);
+    if (synced && synced.length > 0) {
+      setRuns(synced);
+    }
   };
 
   useEffect(() => {

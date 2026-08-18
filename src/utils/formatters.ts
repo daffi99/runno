@@ -168,21 +168,32 @@ export function calculateSpeedKmh(distanceKm: number, durationSec: number): numb
 }
 
 /**
- * Safely parse date or YYYY-MM-DD string into a local Date without UTC offset shifts
+ * Safely parse date or date string into a local Date without UTC offset shifts or Safari parsing failures
  */
-export function parseDateSafe(date: Date | string): Date {
-  if (date instanceof Date) return date;
+export function parseDateSafe(date: Date | string | null | undefined): Date {
   if (!date) return new Date();
+  if (date instanceof Date) return isNaN(date.getTime()) ? new Date() : date;
   if (typeof date === 'string') {
-    if (date.includes('T')) {
-      return new Date(date);
-    }
-    const parts = date.split('-').map(Number);
-    if (parts.length === 3 && !isNaN(parts[0]) && !isNaN(parts[1]) && !isNaN(parts[2])) {
+    const trimmed = date.trim();
+    if (!trimmed) return new Date();
+    
+    // YYYY-MM-DD
+    if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+      const parts = trimmed.split('-').map(Number);
       return new Date(parts[0], parts[1] - 1, parts[2]);
     }
+    // Safari fix: replace space with T and slashes with dashes (e.g. 2026-08-10 06:30:00 -> 2026-08-10T06:30:00)
+    const isoLike = trimmed.replace(' ', 'T').replace(/\//g, '-');
+    const d = new Date(isoLike);
+    if (!isNaN(d.getTime())) {
+      return d;
+    }
+    const dFallback = new Date(trimmed);
+    if (!isNaN(dFallback.getTime())) {
+      return dFallback;
+    }
   }
-  return new Date(date);
+  return new Date();
 }
 
 /**
