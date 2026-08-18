@@ -259,7 +259,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
                 const runWorkouts = currentWeekWorkouts.filter((w) => !isRestWorkout(w));
                 const displayWorkouts = runWorkouts.slice(0, 3);
-                const currentDayOfWeek = new Date().getDay();
+                const todayIso = formatLocalDateKey(new Date());
 
                 if (displayWorkouts.length === 0) {
                   return (
@@ -273,9 +273,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       const dist = Number(w.distanceKm || 0);
                       const workoutDate = getDateForDayOfWeek(w.dayOfWeek);
                       const wIso = formatLocalDateKey(workoutDate);
+                      const isFuture = wIso > todayIso;
                       
                       const hasLoggedRun = runs.some(r => r.date && formatLocalDateKey(r.date) === wIso);
-                      const isCompleted = Boolean(w.completed || hasLoggedRun);
+                      const isCompleted = hasLoggedRun || (!isFuture && Boolean(w.completed && w.date === wIso));
 
                       return (
                         <div
