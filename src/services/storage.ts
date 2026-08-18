@@ -308,6 +308,7 @@ export const storageService = {
           if (serverTime > localTime + 2000) {
             const mergedPlan: TrainingPlan = {
               ...data.plan,
+              startDate: data.plan.startDate || localPlan?.startDate || null,
               weeklySchedules: data.plan.weeklySchedules || localPlan?.weeklySchedules || undefined,
             };
             this.saveActivePlan(mergedPlan);

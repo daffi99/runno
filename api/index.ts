@@ -55,6 +55,7 @@ export const trainingPlans = pgTable('training_plans', {
   goal: text('goal').notNull(),
   schedule_summary: text('schedule_summary').notNull(),
   selected_days: jsonb('selected_days').notNull(),
+  start_date: text('start_date'),
   weekly_target_km: real('weekly_target_km').notNull(),
   total_weeks: integer('total_weeks').notNull().default(4),
   current_week: integer('current_week').notNull().default(1),
@@ -133,6 +134,7 @@ export async function initDbSchema(pool: any) {
         current_week INTEGER NOT NULL DEFAULT 1,
         fitness_level TEXT NOT NULL DEFAULT 'intermediate',
         status TEXT NOT NULL DEFAULT 'active',
+        start_date TEXT,
         workouts JSONB NOT NULL,
         weekly_schedules JSONB,
         ai_advice TEXT,
@@ -140,6 +142,7 @@ export async function initDbSchema(pool: any) {
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL
       );
       ALTER TABLE training_plans ADD COLUMN IF NOT EXISTS weekly_schedules JSONB;
+      ALTER TABLE training_plans ADD COLUMN IF NOT EXISTS start_date TEXT;
 
       CREATE TABLE IF NOT EXISTS coach_messages (
         id TEXT PRIMARY KEY,
@@ -1246,6 +1249,7 @@ router.get('/plans/active', async (_req, res) => {
         goal: rec.goal,
         scheduleSummary: rec.schedule_summary,
         selectedDays: rec.selected_days,
+        startDate: rec.start_date || null,
         weeklyTargetKm: rec.weekly_target_km,
         totalWeeks: rec.total_weeks,
         currentWeek: rec.current_week,
@@ -1288,6 +1292,7 @@ router.post('/plans', async (req, res) => {
       goal: planPayload.goal || 'Running target',
       schedule_summary: planPayload.scheduleSummary || 'Custom',
       selected_days: planPayload.selectedDays || [],
+      start_date: planPayload.startDate || null,
       weekly_target_km: Number(planPayload.weeklyTargetKm) || 0,
       total_weeks: Number(planPayload.totalWeeks) || 4,
       current_week: Number(planPayload.currentWeek) || 1,
