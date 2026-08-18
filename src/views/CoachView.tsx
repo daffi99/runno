@@ -854,20 +854,11 @@ export const CoachView: React.FC<CoachViewProps> = ({
         <div className="flex items-center space-x-1.5">
           <button
             onClick={() => setIsManualPlanModalOpen(true)}
-            className="flex items-center space-x-1 px-2.5 py-1.5 rounded-2xl bg-[#1E1E1E] hover:bg-[#252525] text-white text-xs font-bold transition-all active:scale-95 border border-white/5 shadow-soft-sm"
-            title="Create or edit training plan manually"
+            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-2xl bg-[#1E1E1E] hover:bg-[#252525] text-white text-xs font-bold transition-all active:scale-95 border border-white/5 shadow-soft-sm"
+            title={activePlan ? "Edit training plan" : "Create training plan"}
           >
-            <Plus className="w-3.5 h-3.5" />
-            <span>Manual</span>
-          </button>
-
-          <button
-            onClick={() => setIsQuickModalOpen(true)}
-            className="flex items-center space-x-1 px-2.5 py-1.5 rounded-2xl bg-[#FF5500]/15 hover:bg-[#FF5500]/25 text-[#FF5500] text-xs font-bold transition-all active:scale-95 border border-[#FF5500]/30 shadow-soft-sm"
-            title="AI Plan Assistant"
-          >
-            <Sliders className="w-3.5 h-3.5" />
-            <span>AI Plan</span>
+            {activePlan ? <Pencil className="w-3.5 h-3.5 text-neutral-300" /> : <Plus className="w-3.5 h-3.5 text-[#FF5500]" />}
+            <span>{activePlan ? 'Edit Plan' : 'New Plan'}</span>
           </button>
         </div>
       </div>
@@ -955,149 +946,25 @@ export const CoachView: React.FC<CoachViewProps> = ({
               </div>
 
 
-              {/* Plan Overview Card */}
-              <Card className="p-4 bg-[#1E1E1E] border border-white/5 shadow-soft-sm space-y-3">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <div className="flex items-center space-x-2 flex-wrap gap-y-1">
-                      <span className={clsx(
-                        "text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full",
-                        isViewingCurrentWeek ? "bg-[#FF5500]/15 text-[#FF5500] border border-[#FF5500]/20" : "bg-[#252525] text-neutral-300 border border-white/10"
-                      )}>
-                        Week {viewedWeek} of {totalPlanWeeks} {isViewingCurrentWeek ? '• Current' : '• Preview'}
-                      </span>
-                      <span className="text-[11px] font-bold text-neutral-300">
-                        {formatWeekRange(selectedWeekBaseDate)}
-                      </span>
-                      <span className="text-neutral-600">·</span>
-                      <span className="text-[11px] font-bold text-neutral-400">
-                        {activePlan.scheduleSummary}
-                      </span>
-                    </div>
-                    <h2 className="text-lg font-black text-white tracking-tight mt-1.5">
-                      {activePlan.title}
-                    </h2>
-                    <p className="text-xs text-neutral-400 flex items-center gap-1 mt-0.5">
-                      <Target className="w-3.5 h-3.5 text-neutral-500" />
-                      {activePlan.goal}
-                    </p>
-                  </div>
-
-                  <div className="flex items-center space-x-1">
-                    <button
-                      onClick={() => setIsManualPlanModalOpen(true)}
-                      className="p-1.5 rounded-xl text-neutral-400 hover:text-white hover:bg-white/10 transition-colors"
-                      title="Edit plan details & workouts"
-                    >
-                      <Pencil className="w-4 h-4" />
-                    </button>
-
-                    <button
-                      onClick={handleClearPlan}
-                      className="p-1.5 rounded-xl text-neutral-500 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
-                      title="Remove plan"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Weekly Mileage Progress (Only for current week) */}
-                {isViewingCurrentWeek ? (
-                  <div className="space-y-1.5 pt-1">
-                    <div className="flex items-center justify-between text-xs font-semibold">
-                      <span className="text-neutral-400 font-medium">Weekly Target Progress</span>
-                      <span className="font-mono text-white">
-                        <span className="font-bold text-[#FF5500]">
-                          {formatDistance(weeklyProgress.completedKm, unitSystem, true)}
-                        </span>
-                        <span className="text-neutral-400"> / {formatDistance(weeklyProgress.targetKm, unitSystem, true)}</span>
-                      </span>
-                    </div>
-
-                    <div className="w-full h-2.5 bg-[#111111] rounded-full overflow-hidden border border-white/5">
-                      <div
-                        className="h-full bg-gradient-to-r from-[#FF5500] to-amber-500 rounded-full transition-all duration-500 ease-out"
-                        style={{ width: `${weeklyProgress.percent}%` }}
-                      />
-                    </div>
-
-                    <div className="flex items-center justify-between text-[11px] text-neutral-400 pt-0.5">
-                      <span>{weeklyProgress.completedCount} of {weeklyProgress.totalWorkouts} runs completed</span>
-                      <span className="font-bold text-white">{weeklyProgress.percent}%</span>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-between text-[11px] bg-[#111111] px-3 py-2 rounded-2xl border border-white/10 shadow-xs">
-                    <span className="text-neutral-300 font-medium truncate">
-                      Week {viewedWeek} ({formatWeekRange(selectedWeekBaseDate)})
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => setViewedWeek(currentPlanWeek)}
-                      className="text-[11px] font-bold text-[#FF5500] hover:text-[#E64D00] ml-2 shrink-0 active:scale-95 transition-transform"
-                    >
-                      This Week
-                    </button>
-                  </div>
-                )}
-
-              </Card>
-
-              {/* Weekly Schedule (7 Days for the viewed week) */}
-              <div className="space-y-2.5 pt-1">
-                <div className="flex items-center justify-between px-1">
-                  <div className="flex items-center space-x-2">
-                    <span className="text-xs font-bold uppercase tracking-wider text-neutral-400">
-                      Week {viewedWeek} Schedule
-                    </span>
-                    <span className="text-xs text-neutral-400 font-medium">
-                      ({formatWeekRange(selectedWeekBaseDate)})
-                    </span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <button
-                      onClick={() => setIsManualPlanModalOpen(true)}
-                      className="text-xs font-bold text-neutral-400 hover:text-white flex items-center gap-1 transition-colors"
-                    >
-                      <Pencil className="w-3 h-3" />
-                      Edit Plan
-                    </button>
-                    <span className="text-neutral-600">·</span>
-                    <button
-                      onClick={() => {
-                        setActiveTab('chat');
-                        setInputPrompt(`Can you help me adjust my Week ${viewedWeek} training schedule?`);
-                        setTimeout(() => chatInputRef.current?.focus(), 150);
-                      }}
-                      className="text-xs font-bold text-[#FF5500] hover:text-[#E64D00] flex items-center gap-1 transition-colors"
-                    >
-                      <Sparkles className="w-3 h-3" />
-                      AI Adjust
-                    </button>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  {currentViewedWorkouts.map((w) => {
-                    const workoutDate = getDateForDayOfWeek(w.dayOfWeek, selectedWeekBaseDate);
-                    const isToday = isViewingCurrentWeek && w.dayOfWeek === currentDayOfWeek;
-                    const dateBoundWorkout = getWorkoutForDate(w, workoutDate, isViewingCurrentWeek);
-                    return (
-                      <WorkoutCard
-                        key={`${w.id}_w${viewedWeek}`}
-
-                        workout={dateBoundWorkout}
-                        unitSystem={unitSystem}
-                        isToday={isToday}
-                        date={workoutDate}
-                        onToggleComplete={handleToggleWorkout}
-                        onSelectRun={onSelectRun}
-                        onEditWorkout={(wk) => setEditingWorkout(wk)}
-                      />
-                    );
-                  })}
-                </div>
+              {/* 7-Day Weekly Schedule */}
+              <div className="space-y-2 pt-1">
+                {currentViewedWorkouts.map((w) => {
+                  const workoutDate = getDateForDayOfWeek(w.dayOfWeek, selectedWeekBaseDate);
+                  const isToday = isViewingCurrentWeek && w.dayOfWeek === currentDayOfWeek;
+                  const dateBoundWorkout = getWorkoutForDate(w, workoutDate, isViewingCurrentWeek);
+                  return (
+                    <WorkoutCard
+                      key={`${w.id}_w${viewedWeek}`}
+                      workout={dateBoundWorkout}
+                      unitSystem={unitSystem}
+                      isToday={isToday}
+                      date={workoutDate}
+                      onToggleComplete={handleToggleWorkout}
+                      onSelectRun={onSelectRun}
+                      onEditWorkout={(wk) => setEditingWorkout(wk)}
+                    />
+                  );
+                })}
               </div>
 
 
