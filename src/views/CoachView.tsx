@@ -15,6 +15,8 @@ import {
   formatFullWorkoutDate,
   formatWeekRange,
   getDateForDayOfWeek,
+  formatLocalDateKey,
+  parseDateSafe,
 } from '../utils/formatters';
 
 import {
@@ -371,13 +373,14 @@ export const CoachView: React.FC<CoachViewProps> = ({
   const isViewingCurrentWeek = viewedWeek === currentPlanWeek;
   const isViewingNextWeek = viewedWeek === currentPlanWeek + 1;
 
-  // Selected week base date (calculated based on plan.startDate + (viewedWeek - 1) * 7 days)
+  // Selected week base date (calculated based on Monday of plan.startDate + (viewedWeek - 1) * 7 days)
   const selectedWeekBaseDate = useMemo(() => {
     if (activePlan?.startDate) {
-      const [y, m, d] = activePlan.startDate.split('-').map(Number);
-      const start = new Date(y, m - 1, d);
-      start.setDate(start.getDate() + (viewedWeek - 1) * 7);
-      return start;
+      const start = parseDateSafe(activePlan.startDate);
+      const startMonday = getDateForDayOfWeek(1, start);
+      const targetMonday = new Date(startMonday.getFullYear(), startMonday.getMonth(), startMonday.getDate());
+      targetMonday.setDate(targetMonday.getDate() + (viewedWeek - 1) * 7);
+      return targetMonday;
     }
     const d = new Date();
     d.setDate(d.getDate() + (viewedWeek - currentPlanWeek) * 7);
@@ -387,14 +390,14 @@ export const CoachView: React.FC<CoachViewProps> = ({
   // Helper to compute accurate workout completion for any target calendar date
   // Prevents past runs from falsely showing as completed on future/next week schedules
   const getWorkoutForDate = (w: PlanWorkout, targetDate: Date, isViewingThisWeek: boolean): PlanWorkout => {
-    const targetIso = targetDate.toISOString().split('T')[0];
-    const todayIso = new Date().toISOString().split('T')[0];
+    const targetIso = formatLocalDateKey(targetDate);
+    const todayIso = formatLocalDateKey(new Date());
     const isFutureDate = targetIso > todayIso;
 
     // Find if there is an actual run logged on this specific calendar date
     const matchingRun = runs.find((r) => {
       if (!r.date) return false;
-      return r.date.split('T')[0] === targetIso;
+      return formatLocalDateKey(r.date) === targetIso;
     });
 
     if (matchingRun) {
@@ -493,9 +496,9 @@ export const CoachView: React.FC<CoachViewProps> = ({
       };
     } else {
       const weekDates = weekWorkouts.map((w) =>
-        getDateForDayOfWeek(w.dayOfWeek, selectedWeekBaseDate).toISOString().split('T')[0]
+        formatLocalDateKey(getDateForDayOfWeek(w.dayOfWeek, selectedWeekBaseDate))
       );
-      const completedRunsThisWeek = runs.filter((r) => r.date && weekDates.includes(r.date.split('T')[0]));
+      const completedRunsThisWeek = runs.filter((r) => r.date && weekDates.includes(formatLocalDateKey(r.date)));
       const completedKm = completedRunsThisWeek.reduce((acc, r) => acc + (r.distance_km || 0), 0);
       const percent = targetKm > 0 ? Math.min(100, Math.round((completedKm / targetKm) * 100)) : 0;
 

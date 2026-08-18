@@ -1,5 +1,5 @@
 import type { Run, UnitSystem, TrainingPlan, AICoachMessage } from '../types/run';
-import { getDateForDayOfWeek } from '../utils/formatters';
+import { getDateForDayOfWeek, formatLocalDateKey } from '../utils/formatters';
 
 
 const STORAGE_KEY = 'runno_runs_v1';
@@ -380,10 +380,10 @@ export const storageService = {
       // Calculate target calendar date for this workout in the current week (YYYY-MM-DD)
       let workoutDateStr = '';
       if (w.date) {
-        workoutDateStr = w.date.split('T')[0];
+        workoutDateStr = formatLocalDateKey(w.date);
       } else if (typeof w.dayOfWeek === 'number') {
         const calculated = getDateForDayOfWeek(w.dayOfWeek, today);
-        workoutDateStr = calculated.toISOString().split('T')[0];
+        workoutDateStr = formatLocalDateKey(calculated);
       }
 
       if (!workoutDateStr) return w;
@@ -391,7 +391,7 @@ export const storageService = {
       // Check if there is a run logged on this date
       const matchingRun = runs.find((r) => {
         if (!r.date) return false;
-        const runIso = r.date.split('T')[0];
+        const runIso = formatLocalDateKey(r.date);
         return runIso === workoutDateStr;
       });
 

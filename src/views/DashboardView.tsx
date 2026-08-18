@@ -2,7 +2,14 @@ import React, { useState, useMemo } from 'react';
 import type { Run, UnitSystem, PlanWorkout } from '../types/run';
 import { storageService } from '../services/storage';
 import { RouteThumbnail } from '../components/ui/RouteThumbnail';
-import { formatDuration, formatPace, formatDate, formatDistance } from '../utils/formatters';
+import {
+  formatDuration,
+  formatPace,
+  formatDate,
+  formatDistance,
+  getDateForDayOfWeek,
+  formatLocalDateKey,
+} from '../utils/formatters';
 import { RefreshCw, Sparkles, ArrowRight, ChevronRight, Activity, BarChart2 } from 'lucide-react';
 import { clsx } from 'clsx';
 
@@ -149,8 +156,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     }>();
 
     for (const run of sorted) {
-      const d = new Date(run.date);
-      const dayKey = isNaN(d.getTime()) ? run.date : d.toISOString().split('T')[0];
+      const dayKey = formatLocalDateKey(run.date);
 
       if (!dayMap.has(dayKey)) {
         if (dayMap.size >= 5) break;
@@ -255,12 +261,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   <div className="space-y-2 mt-3">
                     {displayWorkouts.map((w, idx) => {
                       const dist = Number(w.distanceKm || 0);
-                      const dayOffset = w.dayOfWeek - currentDayOfWeek;
-                      const workoutDate = new Date();
-                      workoutDate.setDate(workoutDate.getDate() + dayOffset);
-                      const wIso = workoutDate.toISOString().split('T')[0];
+                      const workoutDate = getDateForDayOfWeek(w.dayOfWeek);
+                      const wIso = formatLocalDateKey(workoutDate);
                       
-                      const hasLoggedRun = runs.some(r => r.date && r.date.split('T')[0] === wIso);
+                      const hasLoggedRun = runs.some(r => r.date && formatLocalDateKey(r.date) === wIso);
                       const isCompleted = Boolean(w.completed || hasLoggedRun);
 
                       return (
@@ -392,11 +396,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           const targetKm = nonRestWorkouts.reduce((sum, w) => sum + Number(w.distanceKm || 0), 0);
 
           const completedCount = nonRestWorkouts.filter((w) => {
-            const dayOffset = w.dayOfWeek - currentDay;
-            const workoutDate = new Date(now);
-            workoutDate.setDate(now.getDate() + dayOffset);
-            const wIso = workoutDate.toISOString().split('T')[0];
-            return runs.some((r) => r.date && r.date.split('T')[0] === wIso);
+            const workoutDate = getDateForDayOfWeek(w.dayOfWeek);
+            const wIso = formatLocalDateKey(workoutDate);
+            return runs.some((r) => r.date && formatLocalDateKey(r.date) === wIso);
           }).length;
 
           const percent = targetKm > 0
@@ -481,7 +483,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             {recentDayGroups.map((dayGroup) => {
               if (dayGroup.runs.length === 1) {
                 const run = dayGroup.runs[0];
-                const isToday = dayGroup.dateKey === new Date().toISOString().split('T')[0];
+                const isToday = dayGroup.dateKey === formatLocalDateKey(new Date());
                 return (
                   <div
                     key={run.id}

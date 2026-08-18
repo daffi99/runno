@@ -168,6 +168,39 @@ export function calculateSpeedKmh(distanceKm: number, durationSec: number): numb
 }
 
 /**
+ * Safely parse date or YYYY-MM-DD string into a local Date without UTC offset shifts
+ */
+export function parseDateSafe(date: Date | string): Date {
+  if (date instanceof Date) return date;
+  if (!date) return new Date();
+  if (typeof date === 'string') {
+    if (date.includes('T')) {
+      return new Date(date);
+    }
+    const parts = date.split('-').map(Number);
+    if (parts.length === 3 && !isNaN(parts[0]) && !isNaN(parts[1]) && !isNaN(parts[2])) {
+      return new Date(parts[0], parts[1] - 1, parts[2]);
+    }
+  }
+  return new Date(date);
+}
+
+/**
+ * Format local date as YYYY-MM-DD string
+ */
+export function formatLocalDateKey(date: Date | string): string {
+  if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    return date;
+  }
+  const d = parseDateSafe(date);
+  if (isNaN(d.getTime())) return typeof date === 'string' ? date : '';
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+/**
  * Get date for a given dayOfWeek (0=Sun, 1=Mon, ..., 6=Sat) in the active week.
  * Monday is the start of the week.
  */
@@ -177,7 +210,7 @@ export function getDateForDayOfWeek(dayOfWeek: number, baseDate: Date = new Date
   const targetMonIndex = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
 
   const diffDays = targetMonIndex - currentMonIndex;
-  const targetDate = new Date(baseDate);
+  const targetDate = new Date(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate());
   targetDate.setDate(baseDate.getDate() + diffDays);
   return targetDate;
 }
@@ -186,7 +219,7 @@ export function getDateForDayOfWeek(dayOfWeek: number, baseDate: Date = new Date
  * Format a workout date (e.g. "16 Ags" or "16 Aug")
  */
 export function formatWorkoutDate(date: Date | string): string {
-  const d = typeof date === 'string' ? new Date(date) : date;
+  const d = parseDateSafe(date);
   if (isNaN(d.getTime())) return '';
   return d.toLocaleDateString('id-ID', {
     day: 'numeric',
@@ -198,7 +231,7 @@ export function formatWorkoutDate(date: Date | string): string {
  * Format full date (e.g. "Sabtu, 16 Agustus 2026")
  */
 export function formatFullWorkoutDate(date: Date | string): string {
-  const d = typeof date === 'string' ? new Date(date) : date;
+  const d = parseDateSafe(date);
   if (isNaN(d.getTime())) return '';
   return d.toLocaleDateString('id-ID', {
     weekday: 'long',
