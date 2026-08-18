@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import type { Run, UnitSystem } from '../types/run';
 import { Card } from '../components/ui/Card';
-import { formatDistance, formatPace, formatDuration } from '../utils/formatters';
+import { formatDistance, formatPace, formatDuration, normalizeSourceName } from '../utils/formatters';
 import {
   BarChart,
   Bar,
@@ -78,13 +78,16 @@ export const StatsView: React.FC<StatsViewProps> = ({ runs, unitSystem }) => {
   const sourceBreakdown = useMemo(() => {
     const counts: { [key: string]: number } = {};
     for (const r of runs) {
-      counts[r.source] = (counts[r.source] || 0) + 1;
+      const srcName = normalizeSourceName(r.source);
+      counts[srcName] = (counts[srcName] || 0) + 1;
     }
-    return Object.entries(counts).map(([name, count]) => ({
-      name,
-      count,
-      percent: Math.round((count / runs.length) * 100),
-    }));
+    return Object.entries(counts)
+      .map(([name, count]) => ({
+        name,
+        count,
+        percent: runs.length > 0 ? Math.round((count / runs.length) * 100) : 0,
+      }))
+      .sort((a, b) => b.count - a.count);
   }, [runs]);
 
   if (runs.length === 0) {

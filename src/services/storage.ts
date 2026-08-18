@@ -425,9 +425,14 @@ export const storageService = {
     });
 
     if (hasChanges) {
+      const updatedWeeklySchedules = plan.weeklySchedules ? { ...plan.weeklySchedules } : {};
+      const currentWeekNum = plan.currentWeek || 1;
+      updatedWeeklySchedules[currentWeekNum] = updatedWorkouts;
+
       const updatedPlan: TrainingPlan = {
         ...plan,
         workouts: updatedWorkouts,
+        weeklySchedules: updatedWeeklySchedules,
         updatedAt: new Date().toISOString(),
       };
       this.saveActivePlan(updatedPlan);

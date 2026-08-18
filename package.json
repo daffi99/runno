@@ -1,7 +1,7 @@
 {
   "name": "runno",
   "private": true,
-  "version": "1.0.0",
+  "version": "2.5.1",
   "type": "module",
   "scripts": {
     "dev": "concurrently -n \"API,VITE\" -c \"cyan,magenta\" \"npm run server\" \"vite\"",

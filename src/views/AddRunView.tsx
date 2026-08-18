@@ -5,6 +5,7 @@ import { parseGpx } from '../utils/gpx';
 import { compressImage } from '../utils/image';
 import type { RouteData, ExtractedRunData, Run } from '../types/run';
 import { storageService } from '../services/storage';
+import { normalizeSourceName } from '../utils/formatters';
 import {
   ChevronLeft,
   Image as ImageIcon,
@@ -162,7 +163,7 @@ export const AddRunView: React.FC<AddRunViewProps> = ({
   const handleSingleRunImport = (single: any) => {
     const extracted: ExtractedRunData = {
       date: single.date || new Date().toISOString(),
-      source: single.source || 'Imported JSON',
+      source: normalizeSourceName(single.source || 'Huawei Health'),
       distance_km: single.distance_km != null ? Number(single.distance_km) : null,
       duration_seconds: single.duration_seconds != null ? Number(single.duration_seconds) : null,
       pace_seconds_per_km: single.pace_seconds_per_km != null ? Number(single.pace_seconds_per_km) : null,
@@ -222,7 +223,7 @@ export const AddRunView: React.FC<AddRunViewProps> = ({
             const formatted: Run = {
               id: r.id || `run_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
               date: r.date || new Date().toISOString(),
-              source: r.source || 'Imported JSON',
+              source: normalizeSourceName(r.source || 'Huawei Health'),
               distance_km: Number(r.distance_km) || 0,
               duration_seconds: Number(r.duration_seconds) || 0,
               pace_seconds_per_km: r.pace_seconds_per_km || (r.distance_km && r.duration_seconds ? Math.round(r.duration_seconds / r.distance_km) : null),
@@ -283,7 +284,7 @@ export const AddRunView: React.FC<AddRunViewProps> = ({
             const formatted: Run = {
               id: r.id || `run_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
               date: r.date || new Date().toISOString(),
-              source: r.source || 'Imported JSON',
+              source: normalizeSourceName(r.source || 'Huawei Health'),
               distance_km: Number(r.distance_km) || 0,
               duration_seconds: Number(r.duration_seconds) || 0,
               pace_seconds_per_km: r.pace_seconds_per_km || (r.distance_km && r.duration_seconds ? Math.round(r.duration_seconds / r.distance_km) : null),

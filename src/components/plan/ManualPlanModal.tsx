@@ -144,6 +144,10 @@ export const ManualPlanModal: React.FC<ManualPlanModalProps> = ({
 
   const handleSave = () => {
     const planId = existingPlan?.id || `plan_manual_${Date.now()}`;
+    const planCurrentWeek = Number(currentWeek) || existingPlan?.currentWeek || 1;
+    const existingWeekly = existingPlan?.weeklySchedules ? { ...existingPlan.weeklySchedules } : {};
+    existingWeekly[planCurrentWeek] = workouts;
+
     const newPlan: TrainingPlan = {
       id: planId,
       title: title.trim() || 'Custom Training Plan',
@@ -153,10 +157,11 @@ export const ManualPlanModal: React.FC<ManualPlanModalProps> = ({
       startDate: existingPlan?.startDate || new Date().toISOString().split('T')[0],
       weeklyTargetKm: Number(totalWeeklyKm.toFixed(1)),
       totalWeeks: Number(totalWeeks) || 8,
-      currentWeek: Number(currentWeek) || 1,
+      currentWeek: planCurrentWeek,
       fitnessLevel,
       status: 'active',
       workouts,
+      weeklySchedules: existingWeekly,
       aiAdvice: existingPlan?.aiAdvice || 'Program latihan kustom Anda siap dijalankan!',
       createdAt: existingPlan?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),

@@ -6,7 +6,7 @@ import { formatDuration, formatPace, formatDate, formatDistance } from '../utils
 import { RefreshCw, Sparkles, ArrowRight, ChevronRight, Activity, BarChart2 } from 'lucide-react';
 import { clsx } from 'clsx';
 
-export const APP_VERSION = 'v2.5';
+export const APP_VERSION = 'v2.5.1';
 
 /* ── Circular Progress Ring ── */
 const CircularProgress = ({ percent, size = 56 }: { percent: number; size?: number }) => {

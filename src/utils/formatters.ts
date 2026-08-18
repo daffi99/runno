@@ -222,3 +222,24 @@ export function formatWeekRange(baseDate: Date = new Date()): string {
   return `${monDay} - ${sunDay} ${monthYear}`;
 }
 
+/**
+ * Normalize source names case-insensitively to prevent duplicates like "huawei health" vs "Huawei Health"
+ */
+export function normalizeSourceName(source?: string | null): string {
+  if (!source) return 'Other';
+  const clean = source.trim().toLowerCase().replace(/[_-]/g, ' ');
+  if (clean.includes('huawei')) return 'Huawei Health';
+  if (clean.includes('strava')) return 'Strava';
+  if (clean.includes('garmin')) return 'Garmin';
+  if (clean.includes('apple') || clean.includes('fitness')) return 'Apple Fitness';
+  if (clean.includes('amazfit')) return 'Amazfit';
+  if (clean.includes('zepp')) return 'Zepp';
+  if (clean.includes('nike') || clean.includes('nrc')) return 'Nike Run Club';
+  if (clean.includes('coros')) return 'Coros';
+  if (clean.includes('suunto')) return 'Suunto';
+  if (clean.includes('polar')) return 'Polar';
+  if (clean.includes('gpx')) return 'GPX Import';
+  if (clean.includes('json') || clean.includes('manual')) return 'Manual / JSON';
+  return source.replace(/\b\w/g, (c) => c.toUpperCase());
+}
+

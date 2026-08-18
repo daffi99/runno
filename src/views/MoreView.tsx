@@ -261,7 +261,7 @@ export const MoreView: React.FC<MoreViewProps> = ({
       <div className="pt-2 text-center text-xs text-neutral-400 space-y-1">
         <div className="flex items-center justify-center space-x-1.5 font-semibold text-neutral-400">
           <Smartphone className="w-3.5 h-3.5 text-[#FF5500]" />
-          <span>Runno PWA • v2.5</span>
+          <span>Runno PWA • v2.5.1</span>
         </div>
         <p className="text-[11px] text-neutral-500">
           Precision Personal Running Tracker • Mobile-First PWA

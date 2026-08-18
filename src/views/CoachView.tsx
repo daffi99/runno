@@ -817,11 +817,11 @@ export const CoachView: React.FC<CoachViewProps> = ({
       {/* Header */}
       <div className="flex items-center justify-between pt-2">
         <div className="flex items-center space-x-2.5">
-          <div className="w-9 h-9 rounded-2xl bg-orange-50 text-[#FF5500] flex items-center justify-center shadow-soft-xs">
+          <div className="w-9 h-9 rounded-2xl bg-[#FF5500]/15 text-[#FF5500] flex items-center justify-center shadow-soft-xs">
             <Sparkles className="w-5 h-5" />
           </div>
           <div>
-            <h1 className="text-2xl font-black text-neutral-900 tracking-tight">AI Coach</h1>
+            <h1 className="text-2xl font-black text-white tracking-tight">AI Coach</h1>
             <p className="text-xs text-neutral-400 font-medium">
               Smart training plans & schedule assistant
             </p>

@@ -7,6 +7,7 @@ import {
   formatDistance,
   formatDuration,
   formatPace,
+  normalizeSourceName,
 } from '../utils/formatters';
 import { Search, ChevronRight, X } from 'lucide-react';
 
@@ -27,12 +28,14 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
 
   const filteredRuns = useMemo(() => {
     return runs.filter((r) => {
-      if (selectedSource !== 'all' && r.source !== selectedSource) {
+      const normalized = normalizeSourceName(r.source);
+      if (selectedSource !== 'all' && normalized !== selectedSource) {
         return false;
       }
       if (!searchQuery.trim()) return true;
       const q = searchQuery.toLowerCase();
       return (
+        normalized.toLowerCase().includes(q) ||
         r.source.toLowerCase().includes(q) ||
         r.date.includes(q) ||
         r.distance_km.toString().includes(q)
@@ -126,7 +129,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
   const availableSources = useMemo(() => {
     const s = new Set<string>();
     for (const r of runs) {
-      if (r.source) s.add(r.source);
+      if (r.source) s.add(normalizeSourceName(r.source));
     }
     return Array.from(s);
   }, [runs]);
@@ -303,7 +306,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
                                 )}
                                 {run.source && (
                                   <span className="text-[9px] font-semibold px-1.5 py-0.2 rounded bg-white/10 text-neutral-300">
-                                    {run.source}
+                                    {normalizeSourceName(run.source)}
                                   </span>
                                 )}
                               </div>
