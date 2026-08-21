@@ -153,15 +153,28 @@ export const EditWorkoutModal: React.FC<EditWorkoutModalProps> = ({
     setTargetPaceSec(next);
   };
 
-  const handleSave = () => {
+  const handleSave = (overrides?: Partial<PlanWorkout>) => {
+    const finalType = overrides?.type !== undefined ? overrides.type : type;
+    const finalIsRest = finalType === 'rest';
+    const finalDistance = finalIsRest ? 0 : (overrides?.distanceKm !== undefined ? overrides.distanceKm : Number(distanceKm) || 0);
+    const finalPace = finalIsRest ? null : (overrides?.targetPaceSecPerKm !== undefined ? overrides.targetPaceSecPerKm : targetPaceSec);
+    const finalHr = finalIsRest ? null : (overrides?.targetHrZone !== undefined ? overrides.targetHrZone : targetHrZone);
+    const finalTitle = overrides?.title !== undefined
+      ? overrides.title
+      : (title.trim() || (finalIsRest ? 'Rest & Recovery' : `${finalType.toUpperCase()} Session`));
+    const finalDesc = overrides?.description !== undefined
+      ? overrides.description
+      : (finalIsRest ? 'Hari istirahat pemulihan otot.' : description.trim());
+
     const updated: PlanWorkout = {
       ...workout,
-      type,
-      distanceKm: isRest ? 0 : Number(distanceKm) || 0,
-      targetPaceSecPerKm: isRest ? null : targetPaceSec,
-      targetHrZone: isRest ? null : targetHrZone,
-      title: title.trim() || (isRest ? 'Rest & Recovery' : `${type.toUpperCase()} Session`),
-      description: description.trim(),
+      ...overrides,
+      type: finalType,
+      distanceKm: finalDistance,
+      targetPaceSecPerKm: finalPace,
+      targetHrZone: finalHr,
+      title: finalTitle,
+      description: finalDesc,
     };
     onSaveWorkout(updated);
     onClose();
@@ -169,7 +182,14 @@ export const EditWorkoutModal: React.FC<EditWorkoutModalProps> = ({
 
   const nextStep = () => {
     if (step === 1 && isRest) {
-      handleSave();
+      handleSave({
+        type: 'rest',
+        distanceKm: 0,
+        targetPaceSecPerKm: null,
+        targetHrZone: null,
+        title: 'Rest & Recovery',
+        description: 'Hari istirahat pemulihan otot.',
+      });
       return;
     }
     if (step < 5) {
@@ -224,7 +244,7 @@ export const EditWorkoutModal: React.FC<EditWorkoutModalProps> = ({
 
             <button
               type="button"
-              onClick={handleSave}
+              onClick={() => handleSave()}
               className="flex items-center space-x-1 px-3 py-1.5 rounded-xl bg-[#FF5500] hover:bg-[#E64D00] text-white text-xs font-black shadow-glow-orange active:scale-95 transition-all"
             >
               <Check className="w-4 h-4 text-white stroke-[3]" />
@@ -270,7 +290,14 @@ export const EditWorkoutModal: React.FC<EditWorkoutModalProps> = ({
                           setTargetPaceSec(null);
                           setTitle('Rest & Recovery');
                           setDescription('Hari istirahat pemulihan otot.');
-                          setTimeout(() => handleSave(), 100);
+                          handleSave({
+                            type: 'rest',
+                            distanceKm: 0,
+                            targetPaceSecPerKm: null,
+                            targetHrZone: null,
+                            title: 'Rest & Recovery',
+                            description: 'Hari istirahat pemulihan otot.',
+                          });
                         } else {
                           if (workout.type === 'rest' || distanceKm === 0) {
                             setDistanceKm(5.0);

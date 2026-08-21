@@ -130,11 +130,11 @@ export const ManualPlanModal: React.FC<ManualPlanModalProps> = ({
       setCurrentWeek(existingPlan?.currentWeek || 1);
       setFitnessLevel(existingPlan?.fitnessLevel || 'beginner');
       setTrainingNote(existingPlan?.aiAdvice || '');
-      setWorkouts(
-        existingPlan?.workouts && existingPlan.workouts.length >= 7
-          ? existingPlan.workouts
-          : generateDefault7DayWorkouts()
-      );
+      const planWeek = existingPlan?.currentWeek || 1;
+      const initialWorkouts = (existingPlan?.weeklySchedules && existingPlan.weeklySchedules[planWeek] && existingPlan.weeklySchedules[planWeek].length >= 7)
+        ? existingPlan.weeklySchedules[planWeek]
+        : (existingPlan?.workouts && existingPlan.workouts.length >= 7 ? existingPlan.workouts : generateDefault7DayWorkouts());
+      setWorkouts(initialWorkouts);
       setActiveDayTab(1);
     }
   }, [isOpen, existingPlan]);

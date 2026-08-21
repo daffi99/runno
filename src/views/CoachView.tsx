@@ -837,6 +837,8 @@ export const CoachView: React.FC<CoachViewProps> = ({
       ...activePlan,
       workouts: updatedDefaultWorkouts,
       weeklySchedules: existingWeeklySchedules,
+      selectedDays: isCurrentWeek ? activeDays.map((w) => w.dayName) : activePlan.selectedDays,
+      scheduleSummary: isCurrentWeek ? (summary || 'Flexible Schedule') : activePlan.scheduleSummary,
       weeklyTargetKm: isCurrentWeek ? Number(totalKm.toFixed(1)) : activePlan.weeklyTargetKm,
       updatedAt: new Date().toISOString(),
     };
