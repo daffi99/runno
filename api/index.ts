@@ -252,6 +252,7 @@ function getAiCredentials(customApiKey?: string) {
   const groqKey = (
     (isCustomGroq ? rawKey : '') ||
     process.env.GROQ_API_KEY ||
+    process.env.GROQ_KEY ||
     ''
   ).trim();
 
