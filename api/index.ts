@@ -529,8 +529,22 @@ Return ONLY a valid JSON object matching this schema (no markdown, no backticks)
     let modelUsed = '';
     let lastErrorText = '';
 
-    // Provider 1: Direct Google AI Studio (Gemini 2.5 Flash)
-    if (aiCreds.hasGemini) {
+    const VISION_MODEL_MAP: Record<string, string> = {
+      nvidia: 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free',
+      nvidia_safety: 'nvidia/nemotron-3.5-content-safety:free',
+      gemma: 'google/gemma-4-26b-a4b-it:free',
+      dots: 'dots-studio/dots-3-note-preview:free',
+      gemini: 'google/gemini-2.5-flash-lite',
+    };
+
+    const requestedModel = (body.model || 'nvidia').toString().toLowerCase();
+    let targetModel = VISION_MODEL_MAP[requestedModel] || requestedModel;
+    if (!targetModel.includes('/')) {
+      targetModel = 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free';
+    }
+
+    // Provider 1: Direct Google AI Studio (if requestedModel is gemini)
+    if (requestedModel === 'gemini' && aiCreds.hasGemini) {
       try {
         rawContent = await callGeminiDirect({
           apiKey: aiCreds.geminiKey,
@@ -546,33 +560,26 @@ Return ONLY a valid JSON object matching this schema (no markdown, no backticks)
       }
     }
 
-    // Provider 2: Fallback to OpenRouter if Gemini not available or failed
+    // Provider 2: OpenRouter with selected vision model and fast fallbacks
     if (!rawContent && aiCreds.hasOpenRouter) {
-      const VISION_MODEL_MAP: Record<string, string> = {
-        nvidia: 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free',
-        dots: 'dots-studio/dots-3-note-preview:free',
-        gemini: 'google/gemini-2.5-flash-lite',
-      };
-
-      const requestedModel = (body.model || 'nvidia').toString().toLowerCase();
-      let targetModel = VISION_MODEL_MAP[requestedModel] || requestedModel;
-      if (!targetModel.includes('/')) {
-        targetModel = 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free';
-      }
-
       const candidateModels = [
         targetModel,
-        targetModel !== 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free' ? 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free' : null,
-        targetModel !== 'dots-studio/dots-3-note-preview:free' ? 'dots-studio/dots-3-note-preview:free' : null,
         'google/gemini-2.5-flash-lite',
-        'google/gemini-2.0-flash-lite-preview:free',
-      ].filter(Boolean) as string[];
+        'google/gemma-4-26b-a4b-it:free',
+        'nvidia/nemotron-3.5-content-safety:free',
+        'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free',
+        'dots-studio/dots-3-note-preview:free',
+      ].filter((m, idx, arr) => m && arr.indexOf(m) === idx) as string[];
 
       for (const m of candidateModels) {
         modelUsed = m;
         try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 28000);
+
           const openRouterResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
             method: 'POST',
+            signal: controller.signal,
             headers: {
               'Content-Type': 'application/json',
               Authorization: `Bearer ${aiCreds.openRouterKey}`,
@@ -594,16 +601,33 @@ Return ONLY a valid JSON object matching this schema (no markdown, no backticks)
               temperature: 0.1,
             }),
           });
+          clearTimeout(timeoutId);
 
           if (openRouterResponse.ok) {
             const data = await openRouterResponse.json();
             rawContent = data.choices?.[0]?.message?.content || '';
-            break;
+            if (rawContent) break;
           }
           lastErrorText = await openRouterResponse.text();
         } catch (err: any) {
           lastErrorText = err.message;
         }
+      }
+    }
+
+    // Provider 3: Fallback to Direct Gemini if OpenRouter failed
+    if (!rawContent && aiCreds.hasGemini) {
+      try {
+        rawContent = await callGeminiDirect({
+          apiKey: aiCreds.geminiKey,
+          systemPrompt,
+          imagesBase64: validImages,
+          model: 'gemini-2.5-flash',
+          responseMimeType: 'application/json',
+        });
+        modelUsed = 'Google Gemini 2.5 Flash (AI Studio fallback)';
+      } catch (geminiErr: any) {
+        lastErrorText = geminiErr.message;
       }
     }
 
@@ -698,6 +722,8 @@ router.post('/test-vision', async (req, res) => {
 
     const VISION_MODEL_MAP: Record<string, string> = {
       nvidia: 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free',
+      nvidia_safety: 'nvidia/nemotron-3.5-content-safety:free',
+      gemma: 'google/gemma-4-26b-a4b-it:free',
       dots: 'dots-studio/dots-3-note-preview:free',
       gemini: 'google/gemini-2.5-flash-lite',
     };

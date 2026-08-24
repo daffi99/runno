@@ -26,7 +26,7 @@ import {
 } from 'lucide-react';
 import { clsx } from 'clsx';
 
-export type OCRModelKey = 'nvidia' | 'dots' | 'gemini';
+export type OCRModelKey = 'nvidia' | 'nvidia_safety' | 'gemma' | 'dots' | 'gemini';
 
 export interface OCRModelOption {
   id: OCRModelKey;
@@ -40,8 +40,22 @@ export const OCR_MODELS: OCRModelOption[] = [
   {
     id: 'nvidia',
     iconSrc: '/models/nvidia.png',
-    name: 'NVIDIA Nemotron',
+    name: 'NVIDIA Nemotron Nano',
     desc: 'Default · Free & Reasoning',
+    badge: 'Free',
+  },
+  {
+    id: 'nvidia_safety',
+    iconSrc: '/models/nvidia.png',
+    name: 'NVIDIA Nemotron 3.5',
+    desc: 'Content Safety · Free Tier',
+    badge: 'Free',
+  },
+  {
+    id: 'gemma',
+    iconSrc: '/models/gemini.png',
+    name: 'Google Gemma 4 26B',
+    desc: 'Google · Free Tier',
     badge: 'Free',
   },
   {
@@ -78,11 +92,17 @@ export const AddRunView: React.FC<AddRunViewProps> = ({
   const [selectedModelId, setSelectedModelId] = useState<OCRModelKey>(() => {
     try {
       const saved = localStorage.getItem('runno_ocr_model') as OCRModelKey;
-      if (saved === 'nvidia' || saved === 'dots' || saved === 'gemini') {
+      if (
+        saved === 'nvidia' ||
+        saved === 'nvidia_safety' ||
+        saved === 'gemma' ||
+        saved === 'dots' ||
+        saved === 'gemini'
+      ) {
         return saved;
       }
     } catch (_) {}
-    return 'nvidia'; // Default: NVIDIA Nemotron
+    return 'nvidia'; // Default: NVIDIA Nemotron Nano
   });
   const [isModelDropdownOpen, setIsModelDropdownOpen] = useState<boolean>(false);
 

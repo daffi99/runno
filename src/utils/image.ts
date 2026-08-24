@@ -4,9 +4,9 @@
  */
 export async function compressImage(
   fileOrBase64: File | string,
-  maxWidth: number = 1080,
-  maxHeight: number = 2400,
-  quality: number = 0.82
+  maxWidth: number = 960,
+  maxHeight: number = 2000,
+  quality: number = 0.78
 ): Promise<string> {
   return new Promise((resolve, reject) => {
     const img = new Image();
@@ -15,7 +15,7 @@ export async function compressImage(
       let width = img.naturalWidth || img.width;
       let height = img.naturalHeight || img.height;
 
-      // Handle long/tall scrolling screenshots (Huawei Health / Garmin)
+      // Handle long/tall scrolling screenshots (Huawei Health / Garmin / Strava)
       if (width > maxWidth) {
         height = Math.round((height * maxWidth) / width);
         width = maxWidth;
@@ -37,7 +37,11 @@ export async function compressImage(
         return;
       }
 
-      // Smooth rendering
+      // Fill white background for transparent screenshots
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillRect(0, 0, width, height);
+
+      // Smooth rendering for sharp numbers and letters
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = 'high';
       ctx.drawImage(img, 0, 0, width, height);

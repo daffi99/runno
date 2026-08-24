@@ -109,7 +109,7 @@ const renderFormattedMessage = (content: string, isUser: boolean, isTyping?: boo
                   return (
                     <strong
                       key={pIdx}
-                      className={clsx('font-bold', isUser ? 'text-white' : 'text-neutral-900')}
+                      className={clsx('font-bold', isUser ? 'text-white' : 'text-white')}
                     >
                       {inner}
                     </strong>
@@ -118,7 +118,7 @@ const renderFormattedMessage = (content: string, isUser: boolean, isTyping?: boo
                 if (part.startsWith('*') && part.endsWith('*') && part.length > 2) {
                   const inner = part.slice(1, -1);
                   return (
-                    <em key={pIdx} className="italic opacity-90">
+                    <em key={pIdx} className="italic text-neutral-200">
                       {inner}
                     </em>
                   );
@@ -132,13 +132,32 @@ const renderFormattedMessage = (content: string, isUser: boolean, isTyping?: boo
           );
         };
 
+        // Heading support (### Heading)
+        if (trimmed.startsWith('### ')) {
+          const headingText = trimmed.replace(/^###\s+/, '');
+          return (
+            <h4 key={idx} className="text-xs font-black text-white pt-1 tracking-tight">
+              {renderInline(headingText)}
+            </h4>
+          );
+        }
+
+        if (trimmed.startsWith('## ') || trimmed.startsWith('# ')) {
+          const headingText = trimmed.replace(/^#+\s+/, '');
+          return (
+            <h3 key={idx} className="text-sm font-black text-white pt-1.5 tracking-tight">
+              {renderInline(headingText)}
+            </h3>
+          );
+        }
+
         // Bullet point
         if (trimmed.startsWith('- ') || trimmed.startsWith('• ') || trimmed.startsWith('* ')) {
           const bulletText = trimmed.replace(/^[-•*]\s+/, '');
           return (
             <div key={idx} className="flex items-start space-x-2 pl-1">
               <span className={clsx('text-xs mt-0.5', isUser ? 'text-white/80' : 'text-[#FF5500]')}>•</span>
-              <span className="flex-1">{renderInline(bulletText)}</span>
+              <span className="flex-1 text-neutral-200">{renderInline(bulletText)}</span>
             </div>
           );
         }
@@ -151,12 +170,12 @@ const renderFormattedMessage = (content: string, isUser: boolean, isTyping?: boo
               <span className={clsx('text-[11px] font-bold mt-0.5 w-4 shrink-0', isUser ? 'text-white/80' : 'text-[#FF5500]')}>
                 {numMatch[1]}.
               </span>
-              <span className="flex-1">{renderInline(numMatch[2])}</span>
+              <span className="flex-1 text-neutral-200">{renderInline(numMatch[2])}</span>
             </div>
           );
         }
 
-        return <p key={idx}>{renderInline(line)}</p>;
+        return <p key={idx} className="text-neutral-200">{renderInline(line)}</p>;
       })}
     </div>
   );
