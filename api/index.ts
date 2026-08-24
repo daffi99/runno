@@ -300,7 +300,8 @@ async function callGroqDirect({
     });
   }
 
-  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+  // Attempt 1: Call Groq
+  let response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -313,6 +314,27 @@ async function callGroqDirect({
       temperature: 0.1,
     }),
   });
+
+  // Attempt 2: If Groq rejected response_format with json_validate_failed (400), retry without strict response_format
+  if (!response.ok && (response.status === 400 || response.status === 422)) {
+    const errText = await response.text();
+    if (errText.includes('json_validate_failed') || errText.includes('response_format')) {
+      response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiKey.trim()}`,
+        },
+        body: JSON.stringify({
+          model: model || 'qwen/qwen3.6-27b',
+          messages: [{ role: 'user', content: contentItems }],
+          temperature: 0.1,
+        }),
+      });
+    } else {
+      throw new Error(`Groq error ${response.status}: ${errText}`);
+    }
+  }
 
   if (!response.ok) {
     const errText = await response.text();
@@ -1260,7 +1282,44 @@ JSON_PLAN STRUCTURE:
       }
     }
 
-    // Fallback to OpenRouter if Gemini failed or not available
+    // Direct Groq Execution (if requested coachModel is groq or user configured Groq)
+    if (!rawReply && (coachModel === 'groq' || aiCreds.provider === 'groq' || (!aiCreds.hasGemini && aiCreds.hasGroq)) && aiCreds.hasGroq) {
+      try {
+        const chatMessages: any[] = [
+          { role: 'system', content: systemPrompt + modeDirective },
+        ];
+        for (const h of history.slice(-20)) {
+          if ((h.role === 'user' || h.role === 'assistant') && h.content && !h.content.includes('⚠️')) {
+            chatMessages.push({ role: h.role, content: h.content });
+          }
+        }
+        chatMessages.push({ role: 'user', content: message });
+
+        const groqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${aiCreds.groqKey}`,
+          },
+          body: JSON.stringify({
+            model: 'llama-3.3-70b-versatile',
+            messages: chatMessages,
+            max_tokens: 3000,
+            temperature: 0.6,
+          }),
+        });
+
+        if (groqResponse.ok) {
+          const groqData = await groqResponse.json();
+          rawReply = groqData.choices?.[0]?.message?.content || '';
+          modelUsed = 'Groq Llama 3.3 70B (GroqCloud LPU)';
+        }
+      } catch (groqErr: any) {
+        console.warn('[Runno AI Coach] Groq error:', groqErr.message);
+      }
+    }
+
+    // Fallback to OpenRouter if Gemini and Groq failed or not available
     if (!rawReply && aiCreds.hasOpenRouter) {
       const chatMessages: any[] = [
         { role: 'system', content: systemPrompt + modeDirective },

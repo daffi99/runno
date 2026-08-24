@@ -182,7 +182,7 @@ const renderFormattedMessage = (content: string, isUser: boolean, isTyping?: boo
 };
 
 
-export type CoachModelKey = 'nvidia' | 'dots' | 'gemini';
+export type CoachModelKey = 'groq' | 'nvidia' | 'dots' | 'gemini';
 
 export interface CoachModelOption {
   id: CoachModelKey;
@@ -193,10 +193,16 @@ export interface CoachModelOption {
 
 export const COACH_MODELS: CoachModelOption[] = [
   {
+    id: 'groq',
+    iconSrc: '/models/dots.png',
+    name: 'Groq Llama 3.3 70B',
+    desc: 'Groq LPU · Super Cepat & Cerdas',
+  },
+  {
     id: 'nvidia',
     iconSrc: '/models/nvidia.png',
     name: 'NVIDIA Nemotron',
-    desc: 'Default · Free & Reasoning',
+    desc: 'Reasoning · Free Tier',
   },
   {
     id: 'dots',
@@ -240,7 +246,7 @@ export const CoachView: React.FC<CoachViewProps> = ({
   const [selectedModelId, setSelectedModelId] = useState<CoachModelKey>(() => {
     try {
       const saved = localStorage.getItem('runno_coach_model') as CoachModelKey;
-      if (saved === 'nvidia' || saved === 'dots' || saved === 'gemini') {
+      if (saved === 'groq' || saved === 'nvidia' || saved === 'dots' || saved === 'gemini') {
         return saved;
       }
     } catch (_) {}

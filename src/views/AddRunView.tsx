@@ -758,6 +758,19 @@ export const AddRunView: React.FC<AddRunViewProps> = ({
       const result = await response.json();
       const extracted: ExtractedRunData = result.data;
 
+      // Validate: If no distance, duration, or pace was extracted, fail and do NOT proceed
+      if (
+        !extracted ||
+        (extracted.distance_km === null &&
+          extracted.duration_seconds === null &&
+          extracted.pace_seconds_per_km === null &&
+          !extracted.splits?.length)
+      ) {
+        throw new Error(
+          'AI tidak menemukan metrik lari yang valid pada gambar ini (jarak & waktu kosong). Pastikan screenshot menampilkan angka lari dengan jelas atau coba model lain.'
+        );
+      }
+
       const elapsedSec = result.durationSeconds || Number(((performance.now() - startTs) / 1000).toFixed(2));
       setStopwatchSeconds(elapsedSec);
 
@@ -770,7 +783,7 @@ export const AddRunView: React.FC<AddRunViewProps> = ({
       });
     } catch (err: any) {
       console.error('Extraction error:', err);
-      setErrorMsg(`AI Extraction failed: ${err.message || 'Check your OpenRouter connection'}`);
+      setErrorMsg(`AI Extraction failed: ${err.message || 'Check your API connection'}`);
     } finally {
       if (stopwatchIntervalRef.current) {
         clearInterval(stopwatchIntervalRef.current);
