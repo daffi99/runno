@@ -238,14 +238,14 @@ export const ReviewRunView: React.FC<ReviewRunViewProps> = ({
           <div>
             <div className="flex items-baseline space-x-1.5">
               <span className="text-3xl font-black text-white tracking-tight font-mono">
-                {distanceKm || '6.50'}
+                {distanceKm || '--'}
               </span>
               <span className="text-xs font-bold text-neutral-400">km</span>
             </div>
             <p className="text-[11px] text-neutral-400 font-medium">Outdoor running</p>
           </div>
           <div className="text-right">
-            <span className="text-xs font-bold text-neutral-300 block">{source}</span>
+            <span className="text-xs font-bold text-neutral-300 block">{source || 'Running Workout'}</span>
             <span className="text-[10px] text-neutral-400 block">{date}</span>
           </div>
         </div>
@@ -255,7 +255,7 @@ export const ReviewRunView: React.FC<ReviewRunViewProps> = ({
             <Timer className="w-4 h-4 text-neutral-400" />
             <div>
               <span className="font-mono font-bold text-white block">
-                {durationStr || '01:01:40'}
+                {durationStr || '--:--'}
               </span>
               <span className="text-[9px] text-neutral-400 block -mt-0.5">Workout time</span>
             </div>
@@ -264,7 +264,7 @@ export const ReviewRunView: React.FC<ReviewRunViewProps> = ({
             <Flame className="w-4 h-4 text-orange-400" />
             <div>
               <span className="font-mono font-bold text-white block">
-                {calories ? `${calories} kcal` : '658 kcal'}
+                {calories ? `${calories} kcal` : '-- kcal'}
               </span>
               <span className="text-[9px] text-neutral-400 block -mt-0.5">Total calories</span>
             </div>
@@ -272,7 +272,7 @@ export const ReviewRunView: React.FC<ReviewRunViewProps> = ({
           <div className="flex items-center space-x-2 text-neutral-300 mt-1">
             <RotateCcw className="w-4 h-4 text-neutral-400" />
             <div>
-              <span className="font-mono font-bold text-white block">{paceStr || '9:29"'}</span>
+              <span className="font-mono font-bold text-white block">{paceStr || '--:--'}</span>
               <span className="text-[9px] text-neutral-400 block -mt-0.5">Avg pace</span>
             </div>
           </div>
@@ -280,7 +280,7 @@ export const ReviewRunView: React.FC<ReviewRunViewProps> = ({
             <Heart className="w-4 h-4 text-rose-500" />
             <div>
               <span className="font-mono font-bold text-white block">
-                {avgHr ? `${avgHr} bpm` : '153 bpm'}
+                {avgHr ? `${avgHr} bpm` : '-- bpm'}
               </span>
               <span className="text-[9px] text-neutral-400 block -mt-0.5">Avg heart rate</span>
             </div>

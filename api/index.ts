@@ -239,6 +239,7 @@ function getAiCredentials(customApiKey?: string) {
   dotenv.config();
   const rawKey = (customApiKey || '').trim();
   const isCustomGemini = rawKey.startsWith('AIza') || rawKey.length === 39;
+  const isCustomGroq = rawKey.startsWith('gsk_');
 
   const geminiKey = (
     (isCustomGemini ? rawKey : '') ||
@@ -248,19 +249,77 @@ function getAiCredentials(customApiKey?: string) {
     ''
   ).trim();
 
+  const groqKey = (
+    (isCustomGroq ? rawKey : '') ||
+    process.env.GROQ_API_KEY ||
+    ''
+  ).trim();
+
   const openRouterKey = (
-    (!isCustomGemini ? rawKey : '') ||
+    (!isCustomGemini && !isCustomGroq ? rawKey : '') ||
     process.env.OPENROUTER_API_KEY ||
     ''
   ).trim();
 
   return {
     geminiKey,
+    groqKey,
     openRouterKey,
     hasGemini: geminiKey.length > 0,
+    hasGroq: groqKey.length > 0,
     hasOpenRouter: openRouterKey.length > 0,
-    provider: geminiKey.length > 0 ? 'gemini' : (openRouterKey.length > 0 ? 'openrouter' : 'none'),
+    provider: isCustomGroq ? 'groq' : (geminiKey.length > 0 ? 'gemini' : (openRouterKey.length > 0 ? 'openrouter' : (groqKey.length > 0 ? 'groq' : 'none'))),
   };
+}
+
+async function callGroqDirect({
+  apiKey,
+  systemPrompt,
+  imagesBase64 = [],
+  model = 'qwen/qwen3.6-27b',
+}: {
+  apiKey: string;
+  systemPrompt?: string;
+  imagesBase64?: string[];
+  model?: string;
+}): Promise<string> {
+  const contentItems: any[] = [];
+  if (systemPrompt) {
+    contentItems.push({ type: 'text', text: systemPrompt });
+  }
+
+  for (const img of imagesBase64) {
+    let finalUrl = img.trim();
+    if (!finalUrl.startsWith('data:')) {
+      finalUrl = `data:image/jpeg;base64,${finalUrl}`;
+    }
+    contentItems.push({
+      type: 'image_url',
+      image_url: { url: finalUrl },
+    });
+  }
+
+  const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${apiKey.trim()}`,
+    },
+    body: JSON.stringify({
+      model: model || 'qwen/qwen3.6-27b',
+      messages: [{ role: 'user', content: contentItems }],
+      response_format: { type: 'json_object' },
+      temperature: 0.1,
+    }),
+  });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`Groq error ${response.status}: ${errText}`);
+  }
+
+  const data = await response.json();
+  return data.choices?.[0]?.message?.content || '';
 }
 
 async function callGeminiDirect({
@@ -530,6 +589,7 @@ Return ONLY a valid JSON object matching this schema (no markdown, no backticks)
     let lastErrorText = '';
 
     const VISION_MODEL_MAP: Record<string, string> = {
+      groq: 'qwen/qwen3.6-27b',
       nvidia: 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free',
       nvidia_safety: 'nvidia/nemotron-3.5-content-safety:free',
       gemma: 'google/gemma-4-26b-a4b-it:free',
@@ -543,8 +603,24 @@ Return ONLY a valid JSON object matching this schema (no markdown, no backticks)
       targetModel = 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free';
     }
 
-    // Provider 1: Direct Google AI Studio (if requestedModel is gemini)
-    if (requestedModel === 'gemini' && aiCreds.hasGemini) {
+    // Provider 1: Direct Groq (if requestedModel is groq or user provided a Groq API key)
+    if ((requestedModel === 'groq' || aiCreds.provider === 'groq') && aiCreds.hasGroq) {
+      try {
+        rawContent = await callGroqDirect({
+          apiKey: aiCreds.groqKey,
+          systemPrompt,
+          imagesBase64: validImages,
+          model: 'qwen/qwen3.6-27b',
+        });
+        modelUsed = 'Groq Qwen 3.6 27B (LPU)';
+      } catch (groqErr: any) {
+        lastErrorText = groqErr.message;
+        console.warn('[Runno OCR] Direct Groq error, checking fallback:', groqErr.message);
+      }
+    }
+
+    // Provider 2: Direct Google AI Studio (if requestedModel is gemini)
+    if (!rawContent && requestedModel === 'gemini' && aiCreds.hasGemini) {
       try {
         rawContent = await callGeminiDirect({
           apiKey: aiCreds.geminiKey,
@@ -721,6 +797,7 @@ router.post('/test-vision', async (req, res) => {
     }
 
     const VISION_MODEL_MAP: Record<string, string> = {
+      groq: 'qwen/qwen3.6-27b',
       nvidia: 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free',
       nvidia_safety: 'nvidia/nemotron-3.5-content-safety:free',
       gemma: 'google/gemma-4-26b-a4b-it:free',
@@ -732,6 +809,50 @@ router.post('/test-vision', async (req, res) => {
     let targetModel = VISION_MODEL_MAP[requestedModel] || requestedModel;
     if (!targetModel.includes('/')) {
       targetModel = 'nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free';
+    }
+
+    // Direct Groq ping test
+    if ((requestedModel === 'groq' || aiCreds.provider === 'groq') && aiCreds.hasGroq) {
+      try {
+        const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${aiCreds.groqKey}`,
+          },
+          body: JSON.stringify({
+            model: 'qwen/qwen3.6-27b',
+            messages: [{ role: 'user', content: 'Ping: reply with OK.' }],
+            max_tokens: 15,
+            temperature: 0.1,
+          }),
+        });
+        const durationMs = Math.round(performance.now() - start);
+        if (groqRes.ok) {
+          return res.status(200).json({
+            success: true,
+            status: 200,
+            modelUsed: 'Groq Qwen 3.6 27B (LPU)',
+            durationMs,
+            message: 'Groq Vision API is responsive and ready for image extraction.',
+          });
+        }
+        const errText = await groqRes.text();
+        return res.status(200).json({
+          success: false,
+          status: groqRes.status,
+          modelUsed: 'Groq Qwen 3.6 27B',
+          durationMs,
+          error: `Groq HTTP ${groqRes.status}: ${errText.substring(0, 200)}`,
+        });
+      } catch (groqErr: any) {
+        return res.status(200).json({
+          success: false,
+          modelUsed: 'Groq Qwen 3.6 27B',
+          durationMs: Math.round(performance.now() - start),
+          error: groqErr.message,
+        });
+      }
     }
 
     const openRouterResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {

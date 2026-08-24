@@ -26,7 +26,7 @@ import {
 } from 'lucide-react';
 import { clsx } from 'clsx';
 
-export type OCRModelKey = 'nvidia' | 'nvidia_safety' | 'gemma' | 'dots' | 'gemini';
+export type OCRModelKey = 'groq' | 'nvidia' | 'nvidia_safety' | 'gemma' | 'dots' | 'gemini';
 
 export interface OCRModelOption {
   id: OCRModelKey;
@@ -38,10 +38,17 @@ export interface OCRModelOption {
 
 export const OCR_MODELS: OCRModelOption[] = [
   {
+    id: 'groq',
+    iconSrc: '/models/dots.png',
+    name: 'Groq Qwen 3.6 27B',
+    desc: 'Groq LPU · Super Fast',
+    badge: 'Groq',
+  },
+  {
     id: 'nvidia',
     iconSrc: '/models/nvidia.png',
     name: 'NVIDIA Nemotron Nano',
-    desc: 'Default · Free & Reasoning',
+    desc: 'Reasoning · Free Tier',
     badge: 'Free',
   },
   {
@@ -93,6 +100,7 @@ export const AddRunView: React.FC<AddRunViewProps> = ({
     try {
       const saved = localStorage.getItem('runno_ocr_model') as OCRModelKey;
       if (
+        saved === 'groq' ||
         saved === 'nvidia' ||
         saved === 'nvidia_safety' ||
         saved === 'gemma' ||
