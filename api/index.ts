@@ -238,14 +238,18 @@ app.use((req, _res, next) => {
 function getAiCredentials(customApiKey?: string) {
   dotenv.config();
   const rawKey = (customApiKey || '').trim();
-  const isCustomGemini = rawKey.startsWith('AIza') || rawKey.length === 39;
+  const isCustomGemini = rawKey.startsWith('AIza') || (rawKey.length === 39 && !rawKey.startsWith('sk-'));
   const isCustomGroq = rawKey.startsWith('gsk_');
 
   const geminiKey = (
     (isCustomGemini ? rawKey : '') ||
     process.env.GEMINI_API_KEY ||
+    process.env.GEMINI_KEY ||
     process.env.GOOGLE_AI_KEY ||
     process.env.GOOGLE_API_KEY ||
+    process.env.GOOGLE_GENAI_KEY ||
+    process.env.GEMINI_TOKEN ||
+    process.env.VITE_GEMINI_API_KEY ||
     ''
   ).trim();
 
@@ -253,12 +257,15 @@ function getAiCredentials(customApiKey?: string) {
     (isCustomGroq ? rawKey : '') ||
     process.env.GROQ_API_KEY ||
     process.env.GROQ_KEY ||
+    process.env.VITE_GROQ_API_KEY ||
     ''
   ).trim();
 
   const openRouterKey = (
     (!isCustomGemini && !isCustomGroq ? rawKey : '') ||
     process.env.OPENROUTER_API_KEY ||
+    process.env.OPENROUTER_KEY ||
+    process.env.VITE_OPENROUTER_API_KEY ||
     ''
   ).trim();
 
@@ -1523,7 +1530,7 @@ JSON_PLAN STRUCTURE:
         endpoint: '/api/ai-coach',
         status: 200,
         environment: process.env.VERCEL ? 'vercel_serverless' : 'local_node',
-        hasServerEnvKey: Boolean(process.env.OPENROUTER_API_KEY),
+        hasServerEnvKey: Boolean(aiCreds.hasGemini || aiCreds.hasOpenRouter || aiCreds.hasGroq),
         hasCustomClientKey: Boolean(customApiKey),
         hasApiKey: true,
         modelUsed,
