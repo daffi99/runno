@@ -346,11 +346,11 @@ async function callGroqDirect({
 }
 
 const GEMINI_CASCADE_MODELS = [
+  'gemini-3.7-flash',
   'gemini-2.0-flash',
   'gemini-1.5-flash',
   'gemini-1.5-flash-8b',
   'gemini-2.5-flash',
-  'gemini-2.5-flash-lite',
   'gemini-1.5-pro',
 ];
 
@@ -652,14 +652,14 @@ Return ONLY a valid JSON object matching this schema (no markdown, no backticks)
       }
     }
 
-    // Provider 2: Direct Google AI Studio with Smart Cascade (gemini-2.0-flash -> 1.5-flash -> 1.5-flash-8b -> etc.)
+    // Provider 2: Direct Google AI Studio with Smart Cascade (gemini-3.7-flash -> 2.0-flash -> 1.5-flash -> etc.)
     if (!rawContent && aiCreds.hasGemini) {
       try {
         const geminiRes = await callGeminiDirect({
           apiKey: aiCreds.geminiKey,
           systemPrompt,
           imagesBase64: validImages,
-          model: 'gemini-2.0-flash',
+          model: 'gemini-3.7-flash',
           responseMimeType: 'application/json',
         });
         rawContent = geminiRes.text;
@@ -736,10 +736,21 @@ Return ONLY a valid JSON object matching this schema (no markdown, no backticks)
       });
     }
 
-    const cleanedJson = rawContent.replace(/```json/g, '').replace(/```/g, '').trim();
-
+    let parsedData: any = null;
     try {
-      const parsedData = JSON.parse(cleanedJson);
+      const cleanedJson = rawContent.replace(/```(?:json)?/gi, '').replace(/```/g, '').trim();
+      parsedData = JSON.parse(cleanedJson);
+    } catch (_) {
+      const firstBrace = rawContent.indexOf('{');
+      const lastBrace = rawContent.lastIndexOf('}');
+      if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+        try {
+          parsedData = JSON.parse(rawContent.substring(firstBrace, lastBrace + 1));
+        } catch (_) {}
+      }
+    }
+
+    if (parsedData && typeof parsedData === 'object') {
       res.json({
         success: true,
         data: parsedData,
@@ -747,7 +758,7 @@ Return ONLY a valid JSON object matching this schema (no markdown, no backticks)
         durationMs,
         durationSeconds,
       });
-    } catch (parseError) {
+    } else {
       res.json({
         success: true,
         data: { raw_notes: rawContent },
@@ -792,7 +803,7 @@ router.post('/test-vision', async (req, res) => {
           apiKey: aiCreds.geminiKey,
           promptText: 'Ping: reply with OK.',
           responseMimeType: undefined,
-          model: 'gemini-2.0-flash',
+          model: 'gemini-3.7-flash',
         });
         const durationMs = Math.round(performance.now() - start);
         return res.json({
@@ -800,7 +811,7 @@ router.post('/test-vision', async (req, res) => {
           status: 200,
           modelUsed: geminiRes.modelUsed,
           durationMs,
-          message: 'Google AI Studio Cascade (Gemini 2.0 → 1.5) is responsive and ready for image extraction.',
+          message: 'Google AI Studio Cascade (Gemini 3.7 → 2.0 → 1.5) is responsive and ready for image extraction.',
         });
       } catch (geminiErr: any) {
         if (!aiCreds.hasOpenRouter && !aiCreds.hasGroq) {
@@ -1253,7 +1264,7 @@ JSON_PLAN STRUCTURE:
     let rawReply = '';
     let modelUsed = '';
 
-    // Direct Google AI Studio Execution with Smart Cascade (Gemini 2.0 -> 1.5-flash -> 1.5-flash-8b -> etc.)
+    // Direct Google AI Studio Execution with Smart Cascade (Gemini 3.7 -> 2.0 -> 1.5 -> etc.)
     if (aiCreds.hasGemini) {
       try {
         const historyText = history
@@ -1268,7 +1279,7 @@ JSON_PLAN STRUCTURE:
           apiKey: aiCreds.geminiKey,
           systemPrompt: systemPrompt + modeDirective,
           promptText: conversationPrompt,
-          model: 'gemini-2.0-flash',
+          model: 'gemini-3.7-flash',
           responseMimeType: undefined,
         });
         rawReply = geminiRes.text;
