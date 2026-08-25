@@ -194,9 +194,22 @@
 .recharts-wrapper:focus-visible,
 .recharts-responsive-container:focus-visible,
 svg:focus,
-svg:focus-visible {
   outline: none !important;
   box-shadow: none !important;
   -webkit-tap-highlight-color: transparent !important;
+}
+
+/* iOS Safe Area Insets for standalone PWA (Notch / Dynamic Island) */
+:root {
+  --safe-area-top: env(safe-area-inset-top, 0px);
+  --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+body {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+.safe-top-padding {
+  padding-top: max(env(safe-area-inset-top, 0px), 16px);
 }
 

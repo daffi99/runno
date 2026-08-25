@@ -132,6 +132,32 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
       });
   }, [filteredRuns]);
 
+  const [selectedMonth, setSelectedMonth] = useState<string>('auto');
+
+  const availableMonths = useMemo(() => {
+    return groupedByMonth.map((g) => g.month);
+  }, [groupedByMonth]);
+
+  // Determine active month (defaulting to current active month e.g. August 2026 or latest month)
+  const activeMonth = useMemo(() => {
+    if (selectedMonth !== 'auto') {
+      return selectedMonth;
+    }
+    const currentRealMonth = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    if (availableMonths.includes(currentRealMonth)) {
+      return currentRealMonth;
+    }
+    return availableMonths[0] || 'all';
+  }, [selectedMonth, availableMonths]);
+
+  // Filter groups according to activeMonth
+  const displayedGroups = useMemo(() => {
+    if (activeMonth === 'all') {
+      return groupedByMonth;
+    }
+    return groupedByMonth.filter((g) => g.month === activeMonth);
+  }, [groupedByMonth, activeMonth]);
+
   const availableSources = useMemo(() => {
     const s = new Set<string>();
     for (const r of runs) {
@@ -141,7 +167,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
   }, [runs]);
 
   return (
-    <div className="max-w-md mx-auto px-4 pt-4 pb-28 space-y-5">
+    <div className="max-w-md mx-auto px-4 pt-4 pb-28 space-y-4">
       <div className="flex items-center justify-between pt-2">
         <h1 className="text-2xl font-black text-white tracking-tight">History</h1>
         <div className="flex items-center space-x-2">
@@ -154,6 +180,45 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Month Tabs Bar (Scrollable Horizontal) */}
+      {availableMonths.length > 0 && (
+        <div className="flex items-center space-x-2 overflow-x-auto pb-1 scrollbar-none -mx-4 px-4">
+          <button
+            onClick={() => setSelectedMonth('all')}
+            className={`px-3.5 py-2 rounded-2xl text-xs font-bold shrink-0 transition-all shadow-soft-sm ${
+              activeMonth === 'all'
+                ? 'bg-white text-neutral-900'
+                : 'bg-[#1E1E1E] border border-white/5 text-neutral-400 hover:text-white'
+            }`}
+          >
+            Semua ({runs.length})
+          </button>
+          {groupedByMonth.map((group) => {
+            const isSelected = activeMonth === group.month;
+            return (
+              <button
+                key={group.month}
+                onClick={() => setSelectedMonth(group.month)}
+                className={`px-3.5 py-2 rounded-2xl text-xs font-bold shrink-0 transition-all flex items-center space-x-1.5 shadow-soft-sm ${
+                  isSelected
+                    ? 'bg-[#FF5500] text-white shadow-glow-orange'
+                    : 'bg-[#1E1E1E] border border-white/5 text-neutral-400 hover:text-white'
+                }`}
+              >
+                <span>{group.month}</span>
+                <span
+                  className={`text-[10px] px-1.5 py-0.5 rounded-full font-mono ${
+                    isSelected ? 'bg-black/25 text-white' : 'bg-white/5 text-neutral-500'
+                  }`}
+                >
+                  {group.count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       {showSearch && (
         <div className="space-y-2.5 animate-in fade-in">
@@ -185,7 +250,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
                   : 'bg-[#1E1E1E] border border-white/5 text-neutral-400 hover:text-white'
               }`}
             >
-              All ({runs.length})
+              All Sources ({runs.length})
             </button>
             {availableSources.map((src) => (
               <button
@@ -204,14 +269,14 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
         </div>
       )}
 
-      {groupedByMonth.length === 0 ? (
+      {displayedGroups.length === 0 ? (
         <Card className="p-8 text-center bg-[#1E1E1E] border-white/5">
           <p className="text-sm font-semibold text-white">No runs match your filter</p>
           <p className="text-xs text-neutral-500 mt-1">Try resetting search or source filter.</p>
         </Card>
       ) : (
         <div className="space-y-6">
-          {groupedByMonth.map((group) => (
+          {displayedGroups.map((group) => (
             <div key={group.month} className="space-y-3">
               <div>
                 <h2 className="text-base font-bold text-white">{group.month}</h2>

@@ -232,7 +232,7 @@ export const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#111111] text-white font-sans antialiased selection:bg-orange-900 selection:text-[#FF5500]">
-      <main className="max-w-md mx-auto min-h-screen relative">
+      <main className="max-w-md mx-auto min-h-screen relative pt-[env(safe-area-inset-top,0px)]">
         {screen.type === 'tab' && screen.tab === 'dashboard' && (
           <DashboardView
             runs={runs}
