@@ -1508,16 +1508,32 @@ JSON_PLAN STRUCTURE:
       .replace(/```[\s\S]*?```/g, '')
       .trim();
 
-    // If reply is wrapped in a JSON wrapper like {"response": "..."} or {"reply": "..."}
+    // If reply is wrapped in a JSON wrapper like {"coachResponse": "..."} or {"response": "..."}
     try {
       if (cleanReply.startsWith('{') && cleanReply.endsWith('}')) {
         const parsedJson = JSON.parse(cleanReply);
-        if (parsedJson.response && typeof parsedJson.response === 'string') {
-          cleanReply = parsedJson.response.trim();
-        } else if (parsedJson.reply && typeof parsedJson.reply === 'string') {
-          cleanReply = parsedJson.reply.trim();
-        } else if (parsedJson.message && typeof parsedJson.message === 'string') {
-          cleanReply = parsedJson.message.trim();
+        const candidates = [
+          parsedJson.coachResponse,
+          parsedJson.response,
+          parsedJson.reply,
+          parsedJson.message,
+          parsedJson.coach_response,
+          parsedJson.coach_message,
+          parsedJson.text,
+          parsedJson.content,
+          parsedJson.answer,
+        ];
+        const found = candidates.find((c) => c && typeof c === 'string');
+        if (found) {
+          cleanReply = found.trim();
+        } else {
+          // Check if any property in parsedJson is a string
+          for (const val of Object.values(parsedJson)) {
+            if (typeof val === 'string' && val.length > 5) {
+              cleanReply = val.trim();
+              break;
+            }
+          }
         }
       }
     } catch (_) {}
