@@ -9,6 +9,8 @@ import {
   parsePaceToSeconds,
   formatDuration,
   formatPace,
+  formatDate,
+  formatLocalDateKey,
 } from '../utils/formatters';
 import {
   ChevronLeft,
@@ -50,9 +52,12 @@ export const ReviewRunView: React.FC<ReviewRunViewProps> = ({
   onBack,
   onSaveRun,
 }) => {
-  const [date, setDate] = useState<string>(
-    extractedData.date ? extractedData.date.split('T')[0] : new Date().toISOString().split('T')[0]
-  );
+  const [date, setDate] = useState<string>(() => {
+    if (extractedData.date) {
+      return formatLocalDateKey(extractedData.date);
+    }
+    return formatLocalDateKey(new Date());
+  });
   const [source, setSource] = useState<string>(extractedData.source || 'Huawei Health');
   const [distanceKm, setDistanceKm] = useState<string>(
     extractedData.distance_km !== null && extractedData.distance_km !== undefined
@@ -183,7 +188,7 @@ export const ReviewRunView: React.FC<ReviewRunViewProps> = ({
 
     const finalRun: Run = {
       id: `run_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-      date: `${date}T08:00:00`,
+      date: `${formatLocalDateKey(date)}T08:00:00`,
       source,
       distance_km: distNum,
       duration_seconds: durationSec,
@@ -246,7 +251,7 @@ export const ReviewRunView: React.FC<ReviewRunViewProps> = ({
           </div>
           <div className="text-right">
             <span className="text-xs font-bold text-neutral-300 block">{source || 'Running Workout'}</span>
-            <span className="text-[10px] text-neutral-400 block">{date}</span>
+            <span className="text-[10px] text-neutral-400 block">{formatDate(date)}</span>
           </div>
         </div>
 

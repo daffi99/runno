@@ -347,11 +347,10 @@ async function callGroqDirect({
 
 const GEMINI_CASCADE_MODELS = [
   'gemini-3.7-flash',
-  'gemini-2.0-flash',
-  'gemini-1.5-flash',
-  'gemini-1.5-flash-8b',
-  'gemini-2.5-flash',
-  'gemini-1.5-pro',
+  'gemini-3.6-flash',
+  'gemini-3.5-flash',
+  'gemini-3.5-flash-lite',
+  'gemini-3.1-flash-lite',
 ];
 
 async function callGeminiDirect({
@@ -391,8 +390,8 @@ async function callGeminiDirect({
       }
     }
     parts.push({
-      inline_data: {
-        mime_type: mimeType,
+      inlineData: {
+        mimeType: mimeType,
         data: dataStr,
       },
     });
@@ -1501,6 +1500,20 @@ JSON_PLAN STRUCTURE:
       .replace(/```(?:json_plan|json)?[\s\S]*?(?:```|$)/g, '')
       .replace(/```[\s\S]*?```/g, '')
       .trim();
+
+    // If reply is wrapped in a JSON wrapper like {"response": "..."} or {"reply": "..."}
+    try {
+      if (cleanReply.startsWith('{') && cleanReply.endsWith('}')) {
+        const parsedJson = JSON.parse(cleanReply);
+        if (parsedJson.response && typeof parsedJson.response === 'string') {
+          cleanReply = parsedJson.response.trim();
+        } else if (parsedJson.reply && typeof parsedJson.reply === 'string') {
+          cleanReply = parsedJson.reply.trim();
+        } else if (parsedJson.message && typeof parsedJson.message === 'string') {
+          cleanReply = parsedJson.message.trim();
+        }
+      }
+    } catch (_) {}
 
     res.json({
       success: true,

@@ -91,7 +91,7 @@ export function formatDate(
   if (!dateStr) return 'Unknown Date';
 
   try {
-    const d = new Date(dateStr);
+    const d = parseDateSafe(dateStr);
     if (isNaN(d.getTime())) return dateStr;
 
     if (formatType === 'monthYear') {
@@ -109,7 +109,7 @@ export function formatDate(
     }
 
     if (formatType === 'isoDate') {
-      return d.toISOString().split('T')[0];
+      return formatLocalDateKey(d);
     }
 
     return d.toLocaleDateString('en-US', {
@@ -174,15 +174,45 @@ export function parseDateSafe(date: Date | string | null | undefined): Date {
   if (!date) return new Date();
   if (date instanceof Date) return isNaN(date.getTime()) ? new Date() : date;
   if (typeof date === 'string') {
-    const trimmed = date.trim();
+    let trimmed = date.trim();
     if (!trimmed) return new Date();
-    
+
+    // Clean up accidental double-timestamps e.g. "01/04/2026, 06:12T08:00:00" -> "01/04/2026, 06:12"
+    if (trimmed.includes('T') && trimmed.indexOf('T') > 8 && (trimmed.includes('/') || trimmed.includes(','))) {
+      trimmed = trimmed.split('T')[0].trim();
+    }
+
     // YYYY-MM-DD
     if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
       const parts = trimmed.split('-').map(Number);
       return new Date(parts[0], parts[1] - 1, parts[2]);
     }
-    // Safari fix: replace space with T and slashes with dashes (e.g. 2026-08-10 06:30:00 -> 2026-08-10T06:30:00)
+
+    // DD/MM/YYYY or DD-MM-YYYY (e.g. 01/04/2026 or 01/04/2026, 06:12)
+    const ddmmyyyyMatch = trimmed.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(?:[,\s]+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/);
+    if (ddmmyyyyMatch) {
+      const day = Number(ddmmyyyyMatch[1]);
+      const month = Number(ddmmyyyyMatch[2]);
+      const year = Number(ddmmyyyyMatch[3]);
+      const hours = ddmmyyyyMatch[4] ? Number(ddmmyyyyMatch[4]) : 8;
+      const mins = ddmmyyyyMatch[5] ? Number(ddmmyyyyMatch[5]) : 0;
+      const secs = ddmmyyyyMatch[6] ? Number(ddmmyyyyMatch[6]) : 0;
+      return new Date(year, month - 1, day, hours, mins, secs);
+    }
+
+    // YYYY/MM/DD or YYYY-MM-DD with time
+    const yyyymmddMatch = trimmed.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})(?:[T\s]+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?)?/);
+    if (yyyymmddMatch) {
+      const year = Number(yyyymmddMatch[1]);
+      const month = Number(yyyymmddMatch[2]);
+      const day = Number(yyyymmddMatch[3]);
+      const hours = yyyymmddMatch[4] ? Number(yyyymmddMatch[4]) : 8;
+      const mins = yyyymmddMatch[5] ? Number(yyyymmddMatch[5]) : 0;
+      const secs = yyyymmddMatch[6] ? Number(yyyymmddMatch[6]) : 0;
+      return new Date(year, month - 1, day, hours, mins, secs);
+    }
+
+    // Safari fix: replace space with T and slashes with dashes
     const isoLike = trimmed.replace(' ', 'T').replace(/\//g, '-');
     const d = new Date(isoLike);
     if (!isNaN(d.getTime())) {
