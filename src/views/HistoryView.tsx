@@ -63,17 +63,23 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
   }
 
   const groupedByMonth = useMemo<MonthRunGroup[]>(() => {
-    const monthMap = new Map<string, { runs: Run[]; totalDist: number; totalDuration: number }>();
+    // 1. Sort all runs by date descending first (latest year/month first)
+    const sortedAllRuns = [...filteredRuns].sort(
+      (a, b) => parseDateSafe(b.date).getTime() - parseDateSafe(a.date).getTime()
+    );
 
-    for (const run of filteredRuns) {
+    const monthMap = new Map<string, { runs: Run[]; totalDist: number; totalDuration: number; latestTimestamp: number }>();
+
+    for (const run of sortedAllRuns) {
       if (!run.date) continue;
       const d = parseDateSafe(run.date);
+      const timestamp = !isNaN(d.getTime()) ? d.getTime() : 0;
       const monthKey = !isNaN(d.getTime())
         ? d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
         : 'Recent Activity';
 
       if (!monthMap.has(monthKey)) {
-        monthMap.set(monthKey, { runs: [], totalDist: 0, totalDuration: 0 });
+        monthMap.set(monthKey, { runs: [], totalDist: 0, totalDuration: 0, latestTimestamp: timestamp });
       }
 
       const data = monthMap.get(monthKey)!;
@@ -82,46 +88,48 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
       data.totalDuration += run.duration_seconds || 0;
     }
 
-    return Array.from(monthMap.entries()).map(([month, data]) => {
-      const sortedRuns = [...data.runs].sort(
-        (a, b) => parseDateSafe(b.date).getTime() - parseDateSafe(a.date).getTime()
-      );
+    return Array.from(monthMap.entries())
+      .sort((a, b) => b[1].latestTimestamp - a[1].latestTimestamp)
+      .map(([month, data]) => {
+        const sortedRuns = [...data.runs].sort(
+          (a, b) => parseDateSafe(b.date).getTime() - parseDateSafe(a.date).getTime()
+        );
 
-      const dayMap = new Map<string, DayRunGroup>();
+        const dayMap = new Map<string, DayRunGroup>();
 
-      for (const run of sortedRuns) {
-        const dayKey = formatLocalDateKey(run.date) || run.date;
+        for (const run of sortedRuns) {
+          const dayKey = formatLocalDateKey(run.date) || run.date;
 
-        if (!dayMap.has(dayKey)) {
-          dayMap.set(dayKey, {
-            dateKey: dayKey,
-            formattedDate: formatDate(run.date),
-            runs: [],
-            totalDistance: 0,
-            totalDuration: 0,
-            avgPaceSec: null,
-          });
+          if (!dayMap.has(dayKey)) {
+            dayMap.set(dayKey, {
+              dateKey: dayKey,
+              formattedDate: formatDate(run.date),
+              runs: [],
+              totalDistance: 0,
+              totalDuration: 0,
+              avgPaceSec: null,
+            });
+          }
+
+          const dayGroup = dayMap.get(dayKey)!;
+          dayGroup.runs.push(run);
+          dayGroup.totalDistance += run.distance_km || 0;
+          dayGroup.totalDuration += run.duration_seconds || 0;
         }
 
-        const dayGroup = dayMap.get(dayKey)!;
-        dayGroup.runs.push(run);
-        dayGroup.totalDistance += run.distance_km || 0;
-        dayGroup.totalDuration += run.duration_seconds || 0;
-      }
+        const dayGroups = Array.from(dayMap.values()).map((dg) => ({
+          ...dg,
+          avgPaceSec: dg.totalDistance > 0 ? Math.round(dg.totalDuration / dg.totalDistance) : null,
+        }));
 
-      const dayGroups = Array.from(dayMap.values()).map((dg) => ({
-        ...dg,
-        avgPaceSec: dg.totalDistance > 0 ? Math.round(dg.totalDuration / dg.totalDistance) : null,
-      }));
-
-      return {
-        month,
-        dayGroups,
-        totalDist: data.totalDist,
-        totalDuration: data.totalDuration,
-        count: sortedRuns.length,
-      };
-    });
+        return {
+          month,
+          dayGroups,
+          totalDist: data.totalDist,
+          totalDuration: data.totalDuration,
+          count: sortedRuns.length,
+        };
+      });
   }, [filteredRuns]);
 
   const availableSources = useMemo(() => {
