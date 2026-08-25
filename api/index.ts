@@ -1118,6 +1118,8 @@ router.post('/ai-coach', async (req, res) => {
     }
     body = body || {};
 
+    const reqStartTime = Date.now();
+
     const {
       message,
       history = [],
@@ -1550,6 +1552,8 @@ JSON_PLAN STRUCTURE:
         hasCustomClientKey: Boolean(customApiKey),
         hasApiKey: true,
         modelUsed,
+        durationMs: Date.now() - reqStartTime,
+        durationSeconds: Math.max(1, Math.round((Date.now() - reqStartTime) / 1000)),
         clientTimestamp: new Date().toISOString(),
       },
     });

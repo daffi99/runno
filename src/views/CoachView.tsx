@@ -40,6 +40,7 @@ import {
   ArrowRight,
   Pencil,
   FileText,
+  MoreHorizontal,
 } from 'lucide-react';
 
 
@@ -310,7 +311,16 @@ export const CoachView: React.FC<CoachViewProps> = ({
   const [copiedTrace, setCopiedTrace] = useState<boolean>(false);
 
   const [typingMessageId, setTypingMessageId] = useState<string | null>(null);
+  const [copiedMsgId, setCopiedMsgId] = useState<string | null>(null);
   const [isQuickModalOpen, setIsQuickModalOpen] = useState<boolean>(false);
+
+  const handleCopyMessage = (text: string, msgId: string) => {
+    try {
+      navigator.clipboard.writeText(text);
+      setCopiedMsgId(msgId);
+      setTimeout(() => setCopiedMsgId(null), 2000);
+    } catch (_) {}
+  };
   const [isManualPlanModalOpen, setIsManualPlanModalOpen] = useState<boolean>(false);
   const [editingWorkout, setEditingWorkout] = useState<PlanWorkout | null>(null);
   const [appliedPlanToast, setAppliedPlanToast] = useState<string | null>(null);
@@ -674,6 +684,8 @@ export const CoachView: React.FC<CoachViewProps> = ({
     setInputPrompt('');
     setIsLoading(true);
 
+    const clientStartTime = Date.now();
+
     try {
       // Strip heavy raw json_plan block from previous messages to cut ~70% input tokens while preserving conversation context
       const cleanHistory = messages
@@ -785,7 +797,12 @@ export const CoachView: React.FC<CoachViewProps> = ({
       const fullReply = data?.reply || "Here is what I've prepared for you:";
 
       const plan = data?.suggestedPlan || null;
-      const debugInfo = data?.debugInfo || errorDebug || null;
+      const durationSeconds = data?.debugInfo?.durationSeconds || Math.max(1, Math.round((Date.now() - clientStartTime) / 1000));
+      const debugInfo = data?.debugInfo
+        ? { ...data.debugInfo, durationSeconds }
+        : errorDebug
+        ? { ...errorDebug, durationSeconds }
+        : null;
       const assistantMsgId = `msg_asst_${Date.now()}`;
 
       // Insert assistant message placeholder with plan attached
@@ -1231,95 +1248,123 @@ export const CoachView: React.FC<CoachViewProps> = ({
                     </span>
                   </div>
 
-                  <div
-                    className={clsx(
-                      'p-3.5 rounded-2xl text-xs max-w-[90%] sm:max-w-[85%] leading-relaxed shadow-soft-xs',
-                      isUser
-                        ? 'bg-[#FF5500] text-white rounded-tr-none font-medium'
-                        : 'bg-[#1E1E1E] text-neutral-100 border border-white/5 rounded-tl-none space-y-2'
+                  <div className={clsx("flex items-center gap-1.5", isUser ? "justify-end w-full" : "justify-start w-full")}>
+                    {/* 3-dot Copy button on the left of user message bubble */}
+                    {isUser && (
+                      <div className="relative shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => handleCopyMessage(msg.content, msg.id)}
+                          className="p-1.5 rounded-full text-neutral-500 hover:text-white hover:bg-white/10 active:scale-90 transition-all flex items-center justify-center cursor-pointer select-none"
+                          title="Copy pesan saya"
+                          aria-label="Copy pesan"
+                        >
+                          {copiedMsgId === msg.id ? (
+                            <Check className="w-3.5 h-3.5 text-emerald-400" />
+                          ) : (
+                            <MoreHorizontal className="w-3.5 h-3.5" />
+                          )}
+                        </button>
+                      </div>
                     )}
-                  >
-                    {renderFormattedMessage(msg.content, isUser, msg.id === typingMessageId)}
 
-                    {/* Inline Suggested Plan Card (shown once typing is complete) */}
-                    {(() => {
-                      const planToRender = msg.suggestedPlan || (msg.role === 'assistant' ? (() => {
-                        const match = msg.content.match(/(\{[\s\r\n]*"title"[\s\S]*?"workouts"[\s\S]*?\})/);
-                        if (match && match[1]) {
-                          try {
-                            const cleaned = match[1].replace(/,\s*([}\]])/g, '$1');
-                            const parsed = JSON.parse(cleaned);
-                            if (parsed.workouts) {
-                              return {
-                                ...parsed,
-                                id: parsed.id || `plan_fallback_${msg.id}`,
-                                status: parsed.status || 'draft',
-                              };
-                            }
-                          } catch (_) {}
-                        }
-                        return null;
-                      })() : null);
+                    <div
+                      className={clsx(
+                        'p-3.5 rounded-2xl text-xs max-w-[90%] sm:max-w-[85%] leading-relaxed shadow-soft-xs',
+                        isUser
+                          ? 'bg-[#FF5500] text-white rounded-tr-none font-medium'
+                          : 'bg-[#1E1E1E] text-neutral-100 border border-white/5 rounded-tl-none space-y-2'
+                      )}
+                    >
+                      {renderFormattedMessage(msg.content, isUser, msg.id === typingMessageId)}
 
-                      if (!planToRender) return null;
+                      {/* Inline Suggested Plan Card (shown once typing is complete) */}
+                      {(() => {
+                        const planToRender = msg.suggestedPlan || (msg.role === 'assistant' ? (() => {
+                          const match = msg.content.match(/(\{[\s\r\n]*"title"[\s\S]*?"workouts"[\s\S]*?\})/);
+                          if (match && match[1]) {
+                            try {
+                              const cleaned = match[1].replace(/,\s*([}\]])/g, '$1');
+                              const parsed = JSON.parse(cleaned);
+                              if (parsed.workouts) {
+                                return {
+                                  ...parsed,
+                                  id: parsed.id || `plan_fallback_${msg.id}`,
+                                  status: parsed.status || 'draft',
+                                };
+                              }
+                            } catch (_) {}
+                          }
+                          return null;
+                        })() : null);
 
-                      return (
-                        <div className="pt-2 animate-in fade-in duration-300">
+                        if (!planToRender) return null;
 
-                          <PlanCard
-                            plan={planToRender}
-                            unitSystem={unitSystem}
-                            isActive={activePlan?.id === planToRender.id}
-                            onApplyPlan={handleApplyPlan}
-                          />
-                        </div>
-                      );
-                    })()}
+                        return (
+                          <div className="pt-2 animate-in fade-in duration-300">
+
+                            <PlanCard
+                              plan={planToRender}
+                              unitSystem={unitSystem}
+                              isActive={activePlan?.id === planToRender.id}
+                              onApplyPlan={handleApplyPlan}
+                            />
+                          </div>
+                        );
+                      })()}
 
 
-                    {/* Model Info (Success: subtle small model name at bottom right, Error: search icon + status pill) */}
-                    {!isUser && msg.debugInfo && (
-                      (() => {
-                        const isSuccess =
-                          msg.debugInfo.status === 200 ||
-                          msg.debugInfo.status === '200' ||
-                          msg.debugInfo.status === 'OK';
+                      {/* Model Info with Response Timer (Success: subtle small model name + duration at bottom right, Error: search icon + status pill) */}
+                      {!isUser && msg.debugInfo && (
+                        (() => {
+                          const isSuccess =
+                            msg.debugInfo.status === 200 ||
+                            msg.debugInfo.status === '200' ||
+                            msg.debugInfo.status === 'OK';
 
-                        if (isSuccess) {
-                          const shortName = getShortModelName(msg.debugInfo.modelUsed);
+                          if (isSuccess) {
+                            const shortName = getShortModelName(msg.debugInfo.modelUsed);
+                            const durationSec =
+                              msg.debugInfo.durationSeconds !== undefined && msg.debugInfo.durationSeconds !== null
+                                ? msg.debugInfo.durationSeconds
+                                : (msg.debugInfo.durationMs ? Math.round(msg.debugInfo.durationMs / 1000) : null);
+                            const durationLabel =
+                              durationSec !== null && durationSec !== undefined ? ` - ${durationSec} second` : '';
+
+                            return (
+                              <div className="flex justify-end items-center pt-1">
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedDebugInfo(msg.debugInfo)}
+                                  className="text-[9px] font-mono text-neutral-400/90 hover:text-neutral-300 transition-colors cursor-pointer select-none tracking-tight flex items-center gap-1"
+                                  title={`Model: ${msg.debugInfo.modelUsed || 'AI'}${durationLabel} (Click for Diagnostics)`}
+                                >
+                                  <span>{shortName}{durationLabel}</span>
+                                </button>
+                              </div>
+                            );
+                          }
+
                           return (
-                            <div className="flex justify-end items-center pt-1">
+                            <div className="pt-1 flex justify-start">
                               <button
                                 type="button"
                                 onClick={() => setSelectedDebugInfo(msg.debugInfo)}
-                                className="text-[9px] font-mono text-neutral-400/90 hover:text-neutral-300 transition-colors cursor-pointer select-none tracking-tight flex items-center gap-1"
-                                title={`Model: ${msg.debugInfo.modelUsed || 'AI'} (Click for Diagnostics)`}
+                                className="text-[10px] font-mono text-neutral-400 hover:text-white bg-[#252525] hover:bg-[#2F2F2F] px-2 py-0.5 rounded-full border border-rose-500/20 flex items-center gap-1 transition-all active:scale-95 cursor-pointer select-none"
+                                title="View Diagnostics"
                               >
-                                <span>{shortName}</span>
+                                <Search className="w-3 h-3 text-rose-400" />
+                                <span className="text-[9.5px] font-bold font-mono text-rose-400">
+                                  {String(msg.debugInfo.status || 'Error')}
+                                </span>
                               </button>
                             </div>
                           );
-                        }
-
-                        return (
-                          <div className="pt-1 flex justify-start">
-                            <button
-                              type="button"
-                              onClick={() => setSelectedDebugInfo(msg.debugInfo)}
-                              className="text-[10px] font-mono text-neutral-400 hover:text-white bg-[#252525] hover:bg-[#2F2F2F] px-2 py-0.5 rounded-full border border-rose-500/20 flex items-center gap-1 transition-all active:scale-95 cursor-pointer select-none"
-                              title="View Diagnostics"
-                            >
-                              <Search className="w-3 h-3 text-rose-400" />
-                              <span className="text-[9.5px] font-bold font-mono text-rose-400">
-                                {String(msg.debugInfo.status || 'Error')}
-                              </span>
-                            </button>
-                          </div>
-                        );
-                      })()
-                    )}
+                        })()
+                      )}
 
 
+                    </div>
                   </div>
                 </div>
               );
