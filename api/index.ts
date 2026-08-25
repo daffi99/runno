@@ -346,11 +346,12 @@ async function callGroqDirect({
 }
 
 const GEMINI_CASCADE_MODELS = [
-  'gemini-3.7-flash',
-  'gemini-3.5-flash',
+  'gemini-2.0-flash',
+  'gemini-1.5-flash',
+  'gemini-1.5-flash-8b',
   'gemini-2.5-flash',
   'gemini-2.5-flash-lite',
-  'gemini-1.5-flash',
+  'gemini-1.5-pro',
 ];
 
 async function callGeminiDirect({
@@ -651,14 +652,14 @@ Return ONLY a valid JSON object matching this schema (no markdown, no backticks)
       }
     }
 
-    // Provider 2: Direct Google AI Studio with Smart Cascade (gemini-3.7-flash -> 3.5 -> 2.5 -> 2.5-lite)
+    // Provider 2: Direct Google AI Studio with Smart Cascade (gemini-2.0-flash -> 1.5-flash -> 1.5-flash-8b -> etc.)
     if (!rawContent && aiCreds.hasGemini) {
       try {
         const geminiRes = await callGeminiDirect({
           apiKey: aiCreds.geminiKey,
           systemPrompt,
           imagesBase64: validImages,
-          model: 'gemini-3.7-flash',
+          model: 'gemini-2.0-flash',
           responseMimeType: 'application/json',
         });
         rawContent = geminiRes.text;
@@ -791,7 +792,7 @@ router.post('/test-vision', async (req, res) => {
           apiKey: aiCreds.geminiKey,
           promptText: 'Ping: reply with OK.',
           responseMimeType: undefined,
-          model: 'gemini-3.7-flash',
+          model: 'gemini-2.0-flash',
         });
         const durationMs = Math.round(performance.now() - start);
         return res.json({
@@ -799,7 +800,7 @@ router.post('/test-vision', async (req, res) => {
           status: 200,
           modelUsed: geminiRes.modelUsed,
           durationMs,
-          message: 'Google AI Studio Cascade (Gemini 3.7 → 2.5) is responsive and ready for image extraction.',
+          message: 'Google AI Studio Cascade (Gemini 2.0 → 1.5) is responsive and ready for image extraction.',
         });
       } catch (geminiErr: any) {
         if (!aiCreds.hasOpenRouter && !aiCreds.hasGroq) {
@@ -1252,7 +1253,7 @@ JSON_PLAN STRUCTURE:
     let rawReply = '';
     let modelUsed = '';
 
-    // Direct Google AI Studio Execution with Smart Cascade (Gemini 3.7 -> 3.5 -> 2.5 -> 2.5-lite)
+    // Direct Google AI Studio Execution with Smart Cascade (Gemini 2.0 -> 1.5-flash -> 1.5-flash-8b -> etc.)
     if (aiCreds.hasGemini) {
       try {
         const historyText = history
@@ -1267,7 +1268,7 @@ JSON_PLAN STRUCTURE:
           apiKey: aiCreds.geminiKey,
           systemPrompt: systemPrompt + modeDirective,
           promptText: conversationPrompt,
-          model: 'gemini-3.7-flash',
+          model: 'gemini-2.0-flash',
           responseMimeType: undefined,
         });
         rawReply = geminiRes.text;

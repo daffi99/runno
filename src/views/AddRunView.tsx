@@ -40,8 +40,8 @@ export const OCR_MODELS: OCRModelOption[] = [
   {
     id: 'gemini',
     iconSrc: '/models/gemini.png',
-    name: 'Gemini 3.7 Flash',
-    desc: 'Google AI Studio · Auto (3.7 → 2.5)',
+    name: 'Gemini 2.0 Flash',
+    desc: 'Google AI Studio · Auto (2.0 → 1.5)',
     badge: 'Auto Cascade',
   },
   {
