@@ -504,13 +504,25 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     onClick={() => onSelectRun(run.id)}
                     className="bg-[#1E1E1E] rounded-2xl p-3.5 flex items-center space-x-3.5 cursor-pointer active:scale-[0.99] transition-all border border-white/5 hover:border-white/10"
                   >
-                    <RouteThumbnail routeData={run.route_data} width={52} height={44} />
+                    <RouteThumbnail
+                      routeData={run.route_data}
+                      workoutType={run.workout_type || 'outdoor'}
+                      width={52}
+                      height={44}
+                    />
 
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between items-start">
-                        <span className="text-sm font-black text-white truncate">
-                          {formatDistance(run.distance_km, unitSystem, true)}
-                        </span>
+                        <div className="flex items-center space-x-1.5 truncate">
+                          <span className="text-sm font-black text-white truncate">
+                            {formatDistance(run.distance_km, unitSystem, true)}
+                          </span>
+                          {run.workout_type === 'indoor' ? (
+                            <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded-full bg-blue-500/15 text-blue-400 border border-blue-500/30 shrink-0">
+                              Indoor
+                            </span>
+                          ) : null}
+                        </div>
                         {isToday ? (
                           <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-[#FF5500]/20 text-[#FF5500] border border-[#FF5500]/30 shrink-0">
                             Now
@@ -567,12 +579,23 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         onClick={() => onSelectRun(run.id)}
                         className="p-2.5 rounded-2xl bg-[#252525] hover:bg-[#2A2A2A] border border-white/5 hover:border-[#FF5500]/20 flex items-center space-x-3 cursor-pointer transition-all active:scale-[0.99] group"
                       >
-                        <RouteThumbnail routeData={run.route_data} width={46} height={38} />
+                        <RouteThumbnail
+                          routeData={run.route_data}
+                          workoutType={run.workout_type || 'outdoor'}
+                          width={46}
+                          height={38}
+                        />
+
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center space-x-1.5">
                             <span className="text-[10px] font-bold text-neutral-300 uppercase tracking-wider">
                               Session {idx + 1}
                             </span>
+                            {run.workout_type === 'indoor' ? (
+                              <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded-full bg-blue-500/15 text-blue-400 border border-blue-500/30">
+                                Indoor
+                              </span>
+                            ) : null}
                             {run.date && run.date.includes('T') && (
                               <span className="text-[10px] text-neutral-400 font-mono">
                                 {new Date(run.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}

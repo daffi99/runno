@@ -42,6 +42,7 @@ export interface Run {
   id: string;
   date: string; // YYYY-MM-DD or YYYY-MM-DDTHH:mm
   source: string; // Huawei Health, Amazfit, Garmin, Strava, Apple Fitness, Nike Run Club, Zepp, Coros, Other
+  workout_type?: 'outdoor' | 'indoor'; // Default: 'outdoor' (orange), 'indoor' (blue)
   distance_km: number;
   duration_seconds: number;
   pace_seconds_per_km: number | null;
@@ -83,6 +84,7 @@ export interface Run {
 export interface ExtractedRunData {
   date: string | null;
   source: string | null;
+  workout_type?: 'outdoor' | 'indoor' | null;
   distance_km: number | null;
   duration_seconds: number | null;
   pace_seconds_per_km: number | null;

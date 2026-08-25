@@ -8,6 +8,7 @@ import { SplitsTable } from '../components/splits/SplitsTable';
 import { RunCharts } from '../components/charts/RunCharts';
 import { parseGpx } from '../utils/gpx';
 import { compressImage } from '../utils/image';
+import { storageService } from '../services/storage';
 import {
   formatDate,
   formatDuration,
@@ -272,6 +273,18 @@ export const RunDetailView: React.FC<RunDetailViewProps> = ({
     }
   };
 
+  const handleUpdateWorkoutType = (type: 'outdoor' | 'indoor') => {
+    const updated = {
+      ...run,
+      workout_type: type,
+      updated_at: new Date().toISOString(),
+    };
+    storageService.saveRun(updated);
+    if (onUpdateRun) {
+      onUpdateRun(updated);
+    }
+  };
+
   const hasRunningDynamics =
     run.total_steps ||
     run.stride_length_cm ||
@@ -322,7 +335,19 @@ export const RunDetailView: React.FC<RunDetailViewProps> = ({
           <h1 className="text-base font-bold text-white leading-tight">
             {formatDate(run.date, 'short')}
           </h1>
-          <span className="text-xs text-neutral-400 font-medium">{run.source}</span>
+          <div className="flex items-center justify-center space-x-1.5 mt-0.5">
+            <span className="text-xs text-neutral-400 font-medium">{run.source}</span>
+            <span className="text-neutral-600">·</span>
+            {run.workout_type === 'indoor' ? (
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-blue-500/15 text-blue-400 border border-blue-500/30">
+                Indoor
+              </span>
+            ) : (
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-[#FF5500]/15 text-[#FF5500] border border-[#FF5500]/30">
+                Outdoor
+              </span>
+            )}
+          </div>
         </div>
 
         <div className="relative">
@@ -341,6 +366,41 @@ export const RunDetailView: React.FC<RunDetailViewProps> = ({
                 onClick={() => setShowMenu(false)}
               />
               <div className="absolute right-0 mt-2 w-56 bg-[#1E1E1E] rounded-2xl shadow-soft-lg border border-white/10 py-1.5 z-50 animate-in fade-in zoom-in-95">
+                {/* Workout Type Selector */}
+                <div className="px-3 py-2 border-b border-white/5">
+                  <span className="text-[10px] uppercase font-bold text-neutral-400 block mb-1.5 tracking-wider">
+                    Workout Type
+                  </span>
+                  <div className="grid grid-cols-2 gap-1.5 bg-[#141414] p-1 rounded-xl border border-white/5">
+                    <button
+                      onClick={() => {
+                        setShowMenu(false);
+                        handleUpdateWorkoutType('outdoor');
+                      }}
+                      className={`px-2 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center space-x-1 ${
+                        (run.workout_type || 'outdoor') === 'outdoor'
+                          ? 'bg-[#FF5500] text-white shadow-glow-orange'
+                          : 'text-neutral-400 hover:text-white'
+                      }`}
+                    >
+                      <span>Outdoor</span>
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowMenu(false);
+                        handleUpdateWorkoutType('indoor');
+                      }}
+                      className={`px-2 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center space-x-1 ${
+                        run.workout_type === 'indoor'
+                          ? 'bg-blue-600 text-white shadow-blue-500/20'
+                          : 'text-neutral-400 hover:text-white'
+                      }`}
+                    >
+                      <span>Indoor</span>
+                    </button>
+                  </div>
+                </div>
+
                 <button
                   onClick={() => {
                     setShowMenu(false);

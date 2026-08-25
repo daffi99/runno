@@ -297,12 +297,28 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
                         onClick={() => onSelectRun(run.id)}
                         className="p-3.5 flex items-center space-x-3.5 bg-[#1E1E1E] border-white/5 hover:border-white/15"
                       >
-                        <RouteThumbnail routeData={run.route_data} width={64} height={52} />
+                        <RouteThumbnail
+                          routeData={run.route_data}
+                          workoutType={run.workout_type || 'outdoor'}
+                          width={64}
+                          height={52}
+                        />
 
                         <div className="flex-1 min-w-0">
-                          <span className="text-[11px] font-semibold text-neutral-400 block">
-                            {formatDate(run.date)}
-                          </span>
+                          <div className="flex items-center space-x-1.5">
+                            <span className="text-[11px] font-semibold text-neutral-400">
+                              {formatDate(run.date)}
+                            </span>
+                            {run.workout_type === 'indoor' ? (
+                              <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded-full bg-blue-500/15 text-blue-400 border border-blue-500/30">
+                                Indoor
+                              </span>
+                            ) : (
+                              <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded-full bg-[#FF5500]/15 text-[#FF5500] border border-[#FF5500]/30">
+                                Outdoor
+                              </span>
+                            )}
+                          </div>
                           <div className="flex items-baseline space-x-1 mt-0.5">
                             <span className="text-base font-black text-white">
                               {formatDistance(run.distance_km, unitSystem, true)}
@@ -363,13 +379,27 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
                             onClick={() => onSelectRun(run.id)}
                             className="p-2.5 rounded-2xl bg-[#252525] hover:bg-[#2F2F2F] border border-white/5 hover:border-[#FF5500]/30 flex items-center space-x-3 cursor-pointer transition-all active:scale-[0.99] group"
                           >
-                            <RouteThumbnail routeData={run.route_data} width={50} height={42} />
+                            <RouteThumbnail
+                              routeData={run.route_data}
+                              workoutType={run.workout_type || 'outdoor'}
+                              width={50}
+                              height={42}
+                            />
 
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center space-x-1.5">
                                 <span className="text-[10px] font-bold text-neutral-300 uppercase tracking-wider">
                                   Session {idx + 1}
                                 </span>
+                                {run.workout_type === 'indoor' ? (
+                                  <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded-full bg-blue-500/15 text-blue-400 border border-blue-500/30">
+                                    Indoor
+                                  </span>
+                                ) : (
+                                  <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded-full bg-[#FF5500]/15 text-[#FF5500] border border-[#FF5500]/30">
+                                    Outdoor
+                                  </span>
+                                )}
                                 {run.date && run.date.includes('T') && (
                                   <span className="text-[10px] text-neutral-400 font-mono">
                                     {new Date(run.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}

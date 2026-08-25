@@ -1,10 +1,11 @@
 import React, { useMemo } from 'react';
 import { generateRouteSvgPath } from '../../utils/gpx';
 import type { RouteData } from '../../types/run';
-import { MapPin } from 'lucide-react';
+import { MapPin, Zap } from 'lucide-react';
 
 interface RouteThumbnailProps {
   routeData?: RouteData | null;
+  workoutType?: 'outdoor' | 'indoor';
   className?: string;
   width?: number;
   height?: number;
@@ -12,6 +13,7 @@ interface RouteThumbnailProps {
 
 export const RouteThumbnail: React.FC<RouteThumbnailProps> = ({
   routeData,
+  workoutType = 'outdoor',
   className = '',
   width = 64,
   height = 52,
@@ -22,12 +24,23 @@ export const RouteThumbnail: React.FC<RouteThumbnailProps> = ({
   }, [routeData, width, height]);
 
   if (!svgInfo) {
+    if (workoutType === 'indoor') {
+      return (
+        <div
+          style={{ width, height }}
+          className={`bg-blue-500/10 border border-blue-500/20 rounded-2xl flex items-center justify-center text-blue-400 shrink-0 ${className}`}
+          title="Indoor Running"
+        >
+          <Zap className="w-5 h-5 opacity-80 fill-blue-400/20" />
+        </div>
+      );
+    }
     return (
       <div
         style={{ width, height }}
         className={`bg-neutral-100 rounded-2xl flex items-center justify-center text-neutral-300 shrink-0 ${className}`}
       >
-        <MapPin className="w-5 h-5 opacity-40" />
+        <MapPin className="w-5 h-5 opacity-40 text-neutral-400" />
       </div>
     );
   }

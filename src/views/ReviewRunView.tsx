@@ -190,6 +190,7 @@ export const ReviewRunView: React.FC<ReviewRunViewProps> = ({
       id: `run_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
       date: `${formatLocalDateKey(date)}T08:00:00`,
       source,
+      workout_type: (extractedData.workout_type as any) || 'outdoor',
       distance_km: distNum,
       duration_seconds: durationSec,
       pace_seconds_per_km: paceSec,
