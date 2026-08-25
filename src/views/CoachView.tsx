@@ -195,7 +195,7 @@ export const COACH_MODELS: CoachModelOption[] = [
   {
     id: 'groq',
     iconSrc: '/models/dots.png',
-    name: 'Groq Llama 3.3 70B',
+    name: 'Groq GPT-OSS 120B',
     desc: 'Groq LPU · Super Cepat & Cerdas',
   },
   {

@@ -642,8 +642,8 @@ Return ONLY a valid JSON object matching this schema (no markdown, no backticks)
       }
     }
 
-    // Provider 2: Direct Google AI Studio (if requestedModel is gemini)
-    if (!rawContent && requestedModel === 'gemini' && aiCreds.hasGemini) {
+    // Provider 2: Direct Google AI Studio (fallback for any model, or primary when gemini selected)
+    if (!rawContent && aiCreds.hasGemini) {
       try {
         rawContent = await callGeminiDirect({
           apiKey: aiCreds.geminiKey,
@@ -1302,7 +1302,7 @@ JSON_PLAN STRUCTURE:
             Authorization: `Bearer ${aiCreds.groqKey}`,
           },
           body: JSON.stringify({
-            model: 'llama-3.3-70b-versatile',
+            model: 'openai/gpt-oss-120b',
             messages: chatMessages,
             max_tokens: 3000,
             temperature: 0.6,
@@ -1312,7 +1312,7 @@ JSON_PLAN STRUCTURE:
         if (groqResponse.ok) {
           const groqData = await groqResponse.json();
           rawReply = groqData.choices?.[0]?.message?.content || '';
-          modelUsed = 'Groq Llama 3.3 70B (GroqCloud LPU)';
+          modelUsed = 'Groq GPT-OSS 120B (GroqCloud LPU)';
         }
       } catch (groqErr: any) {
         console.warn('[Runno AI Coach] Groq error:', groqErr.message);
