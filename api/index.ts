@@ -1138,10 +1138,10 @@ router.post('/ai-coach', async (req, res) => {
     if (!aiCreds.hasGemini && !aiCreds.hasOpenRouter) {
       return res.status(200).json({
         success: false,
-        reply: `⚠️ **API Key AI Belum Terdeteksi**\n\nAI Coach memerlukan API key untuk berkomunikasi. Silakan tempelkan **Google Gemini API Key** (dari Google AI Studio) atau OpenRouter API Key di tab **More > Preferences**, atau tambahkan \`GEMINI_API_KEY\` di Vercel Environment Variables.`,
+        reply: 'Coach sedang sibuk, coba beberapa saat lagi...',
         debugInfo: {
           endpoint: '/api/ai-coach',
-          status: 'MISSING_API_KEY',
+          status: 401,
           environment: process.env.VERCEL ? 'vercel_serverless' : 'local_node',
           hasGeminiKey: false,
           hasOpenRouterKey: false,
@@ -1414,11 +1414,10 @@ JSON_PLAN STRUCTURE:
       }
 
       if (!rawReply) {
-        const fallbackPlan = generateAlgorithmicPlan(message, runnerContext);
         return res.json({
-          success: true,
-          reply: `⚠️ **AI Service Status**\n\nPanggilan ke model AI mengembalikan error. Saya telah menyiapkan jadwal latihan alternatif di bawah menggunakan offline coaching engine.`,
-          suggestedPlan: fallbackPlan,
+          success: false,
+          reply: 'Coach sedang sibuk, coba beberapa saat lagi...',
+          suggestedPlan: null,
           debugInfo: {
             endpoint: '/api/ai-coach',
             status: openRouterResponse?.status || 500,
@@ -1565,7 +1564,7 @@ JSON_PLAN STRUCTURE:
     console.error('[Runno AI Coach] Exception:', err);
     res.status(200).json({
       success: false,
-      reply: `⚠️ **Serverless Exception**\n\nTerjadi kesalahan di backend serverless: \`${err.message || 'Unknown error'}\``,
+      reply: 'Coach sedang sibuk, coba beberapa saat lagi...',
       debugInfo: {
         endpoint: '/api/ai-coach',
         status: 500,

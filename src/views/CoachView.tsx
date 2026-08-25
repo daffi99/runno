@@ -93,6 +93,17 @@ const getShortModelName = (modelUsed?: string): string => {
     .slice(0, 20);
 };
 
+const getErrorStatusCode = (status?: any): string => {
+  if (!status) return '500';
+  const str = String(status);
+  const codeMatch = str.match(/\b([45]\d{2})\b/);
+  if (codeMatch) return codeMatch[1];
+  if (str.toLowerCase().includes('apikey') || str.toLowerCase().includes('missing')) return '401';
+  if (str.toLowerCase().includes('rate') || str.toLowerCase().includes('429')) return '429';
+  if (str.toLowerCase().includes('timeout') || str.toLowerCase().includes('504')) return '504';
+  return str.length > 8 ? '500' : str;
+};
+
 const DEFAULT_WELCOME_MESSAGE: AICoachMessage = {
   id: 'msg_welcome',
   role: 'assistant',
@@ -787,7 +798,7 @@ export const CoachView: React.FC<CoachViewProps> = ({
           };
 
           data = {
-            reply: `⚠️ **Gagal Terhubung ke Coaching Engine**\n\n${networkOrServerErr.message || 'Error koneksi'}\n\nSilakan cek panel debug di bawah untuk melihat penyebab detailnya.`,
+            reply: 'Coach sedang sibuk, coba beberapa saat lagi...',
             suggestedPlan: null,
             debugInfo: errorDebug,
           };
@@ -826,11 +837,11 @@ export const CoachView: React.FC<CoachViewProps> = ({
       const errorMsg: AICoachMessage = {
         id: `msg_err_${Date.now()}`,
         role: 'assistant',
-        content: `Sorry, I encountered an issue connecting to the coaching engine: ${err.message}.`,
+        content: 'Coach sedang sibuk, coba beberapa saat lagi...',
         timestamp: new Date().toISOString(),
         debugInfo: {
           endpoint: '/api/ai-coach',
-          status: err.message,
+          status: 500,
           rawError: err.stack || err.message,
           clientTimestamp: new Date().toISOString(),
         },
@@ -1355,7 +1366,7 @@ export const CoachView: React.FC<CoachViewProps> = ({
                               >
                                 <Search className="w-3 h-3 text-rose-400" />
                                 <span className="text-[9.5px] font-bold font-mono text-rose-400">
-                                  {String(msg.debugInfo.status || 'Error')}
+                                  {getErrorStatusCode(msg.debugInfo.status)}
                                 </span>
                               </button>
                             </div>
