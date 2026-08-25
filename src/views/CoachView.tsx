@@ -60,6 +60,38 @@ interface CoachViewProps {
 
 type CoachSubTab = 'schedule' | 'chat';
 
+const getShortModelName = (modelUsed?: string): string => {
+  if (!modelUsed) return 'ai coach';
+  const lower = modelUsed.toLowerCase();
+
+  if (lower.includes('3.7-flash') || lower.includes('3.7 flash')) return 'gemini 3.7 flash';
+  if (lower.includes('3.6-flash') || lower.includes('3.6 flash')) return 'gemini 3.6 flash';
+  if (lower.includes('3.5-flash-lite') || lower.includes('3.5 flash lite')) return 'gemini 3.5 flash lite';
+  if (lower.includes('3.5-flash') || lower.includes('3.5 flash')) return 'gemini 3.5 flash';
+  if (lower.includes('3.1-flash') || lower.includes('3.1 flash')) return 'gemini 3.1 flash lite';
+  if (lower.includes('2.5-flash') || lower.includes('2.5 flash')) return 'gemini 2.5 flash';
+  if (lower.includes('2.0-flash') || lower.includes('2.0 flash')) return 'gemini 2.0 flash';
+  if (lower.includes('1.5-flash') || lower.includes('1.5 flash')) return 'gemini 1.5 flash';
+  if (lower.includes('gemini')) return 'gemini';
+
+  if (lower.includes('liquid') || lower.includes('lfm') || lower.includes('dots')) return 'dots 3';
+  if (lower.includes('nvidia') || lower.includes('nemotron')) return 'nvidia';
+  if (lower.includes('groq') || lower.includes('120b')) return 'groq 120b';
+  if (lower.includes('qwen')) return 'qwen 2.5';
+  if (lower.includes('llama')) return 'llama 3.3';
+  if (lower.includes('mistral') || lower.includes('codestral')) return 'mistral';
+  if (lower.includes('deepseek')) return 'deepseek';
+
+  return modelUsed
+    .replace(/^Google\s+/i, '')
+    .replace(/\s*\(AI Studio\)/i, '')
+    .replace(/^OpenRouter:\s*/i, '')
+    .replace(/^openai\//i, '')
+    .trim()
+    .toLowerCase()
+    .slice(0, 20);
+};
+
 const DEFAULT_WELCOME_MESSAGE: AICoachMessage = {
   id: 'msg_welcome',
   role: 'assistant',
@@ -1245,26 +1277,46 @@ export const CoachView: React.FC<CoachViewProps> = ({
                     })()}
 
 
-                    {/* Minimized Search Icon + Status Pill */}
+                    {/* Model Info (Success: subtle small model name at bottom right, Error: search icon + status pill) */}
                     {!isUser && msg.debugInfo && (
-                      <div className="pt-0.5">
-                        <button
-                          type="button"
-                          onClick={() => setSelectedDebugInfo(msg.debugInfo)}
-                          className="text-[10px] font-mono text-neutral-400 hover:text-white bg-[#252525] hover:bg-[#2F2F2F] px-2 py-0.5 rounded-full border border-white/5 flex items-center gap-1 transition-all active:scale-95 cursor-pointer select-none"
-                          title="View Diagnostics"
-                        >
-                          <Search className="w-3 h-3 text-neutral-400" />
-                          <span className={clsx(
-                            "text-[9.5px] font-bold font-mono",
-                            msg.debugInfo.status === 200 || msg.debugInfo.status === '200' || msg.debugInfo.status === 'OK'
-                              ? "text-emerald-400"
-                              : "text-rose-400"
-                          )}>
-                            {String(msg.debugInfo.status || '200')}
-                          </span>
-                        </button>
-                      </div>
+                      (() => {
+                        const isSuccess =
+                          msg.debugInfo.status === 200 ||
+                          msg.debugInfo.status === '200' ||
+                          msg.debugInfo.status === 'OK';
+
+                        if (isSuccess) {
+                          const shortName = getShortModelName(msg.debugInfo.modelUsed);
+                          return (
+                            <div className="flex justify-end items-center pt-1">
+                              <button
+                                type="button"
+                                onClick={() => setSelectedDebugInfo(msg.debugInfo)}
+                                className="text-[9px] font-mono text-neutral-400/90 hover:text-neutral-300 transition-colors cursor-pointer select-none tracking-tight flex items-center gap-1"
+                                title={`Model: ${msg.debugInfo.modelUsed || 'AI'} (Click for Diagnostics)`}
+                              >
+                                <span>{shortName}</span>
+                              </button>
+                            </div>
+                          );
+                        }
+
+                        return (
+                          <div className="pt-1 flex justify-start">
+                            <button
+                              type="button"
+                              onClick={() => setSelectedDebugInfo(msg.debugInfo)}
+                              className="text-[10px] font-mono text-neutral-400 hover:text-white bg-[#252525] hover:bg-[#2F2F2F] px-2 py-0.5 rounded-full border border-rose-500/20 flex items-center gap-1 transition-all active:scale-95 cursor-pointer select-none"
+                              title="View Diagnostics"
+                            >
+                              <Search className="w-3 h-3 text-rose-400" />
+                              <span className="text-[9.5px] font-bold font-mono text-rose-400">
+                                {String(msg.debugInfo.status || 'Error')}
+                              </span>
+                            </button>
+                          </div>
+                        );
+                      })()
                     )}
 
 
