@@ -182,7 +182,7 @@ const renderFormattedMessage = (content: string, isUser: boolean, isTyping?: boo
 };
 
 
-export type CoachModelKey = 'groq' | 'nvidia' | 'dots' | 'gemini';
+export type CoachModelKey = 'gemini' | 'groq' | 'nvidia' | 'dots';
 
 export interface CoachModelOption {
   id: CoachModelKey;
@@ -192,6 +192,12 @@ export interface CoachModelOption {
 }
 
 export const COACH_MODELS: CoachModelOption[] = [
+  {
+    id: 'gemini',
+    iconSrc: '/models/gemini.png',
+    name: 'Gemini 3.7 Flash',
+    desc: 'Google AI Studio · Auto (3.7 → 2.5)',
+  },
   {
     id: 'groq',
     iconSrc: '/models/dots.png',
@@ -209,12 +215,6 @@ export const COACH_MODELS: CoachModelOption[] = [
     iconSrc: '/models/dots.png',
     name: 'Dots 3 Note',
     desc: 'Free · Ringkas & Cepat',
-  },
-  {
-    id: 'gemini',
-    iconSrc: '/models/gemini.png',
-    name: 'Gemini 2.5 Flash',
-    desc: 'Google · Ultra Responsif',
   },
 ];
 
@@ -246,11 +246,11 @@ export const CoachView: React.FC<CoachViewProps> = ({
   const [selectedModelId, setSelectedModelId] = useState<CoachModelKey>(() => {
     try {
       const saved = localStorage.getItem('runno_coach_model') as CoachModelKey;
-      if (saved === 'groq' || saved === 'nvidia' || saved === 'dots' || saved === 'gemini') {
+      if (saved === 'gemini' || saved === 'groq' || saved === 'nvidia' || saved === 'dots') {
         return saved;
       }
     } catch (_) {}
-    return 'nvidia'; // Default to NVIDIA
+    return 'gemini'; // Default to Gemini 3.7 Flash
   });
   const [isModelDropdownOpen, setIsModelDropdownOpen] = useState<boolean>(false);
 

@@ -38,9 +38,16 @@ export interface OCRModelOption {
 
 export const OCR_MODELS: OCRModelOption[] = [
   {
+    id: 'gemini',
+    iconSrc: '/models/gemini.png',
+    name: 'Gemini 3.7 Flash',
+    desc: 'Google AI Studio · Auto (3.7 → 2.5)',
+    badge: 'Auto Cascade',
+  },
+  {
     id: 'groq',
     iconSrc: '/models/dots.png',
-    name: 'Groq Qwen 3.6 27B',
+    name: 'Groq GPT-OSS 120B',
     desc: 'Groq LPU · Super Fast',
     badge: 'Groq',
   },
@@ -72,13 +79,6 @@ export const OCR_MODELS: OCRModelOption[] = [
     desc: 'Fast · Free Tier',
     badge: 'Free',
   },
-  {
-    id: 'gemini',
-    iconSrc: '/models/gemini.png',
-    name: 'Gemini 2.5 Flash',
-    desc: 'Google · Ultra Fast',
-    badge: 'Flash',
-  },
 ];
 
 interface AddRunViewProps {
@@ -100,17 +100,17 @@ export const AddRunView: React.FC<AddRunViewProps> = ({
     try {
       const saved = localStorage.getItem('runno_ocr_model') as OCRModelKey;
       if (
+        saved === 'gemini' ||
         saved === 'groq' ||
         saved === 'nvidia' ||
         saved === 'nvidia_safety' ||
         saved === 'gemma' ||
-        saved === 'dots' ||
-        saved === 'gemini'
+        saved === 'dots'
       ) {
         return saved;
       }
     } catch (_) {}
-    return 'nvidia'; // Default: NVIDIA Nemotron Nano
+    return 'gemini'; // Default: Gemini 3.7 Flash Cascade
   });
   const [isModelDropdownOpen, setIsModelDropdownOpen] = useState<boolean>(false);
 

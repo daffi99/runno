@@ -345,12 +345,20 @@ async function callGroqDirect({
   return data.choices?.[0]?.message?.content || '';
 }
 
+const GEMINI_CASCADE_MODELS = [
+  'gemini-3.7-flash',
+  'gemini-3.5-flash',
+  'gemini-2.5-flash',
+  'gemini-2.5-flash-lite',
+  'gemini-1.5-flash',
+];
+
 async function callGeminiDirect({
   apiKey,
   systemPrompt,
   imagesBase64 = [],
   promptText = '',
-  model = 'gemini-2.5-flash',
+  model,
   responseMimeType = 'application/json',
 }: {
   apiKey: string;
@@ -359,10 +367,11 @@ async function callGeminiDirect({
   promptText?: string;
   model?: string;
   responseMimeType?: string;
-}): Promise<string> {
+}): Promise<{ text: string; modelUsed: string }> {
   const cleanKey = apiKey.trim();
-  const targetModel = model || 'gemini-2.5-flash';
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${cleanKey}`;
+  const modelsToTry = model
+    ? [model, ...GEMINI_CASCADE_MODELS.filter((m) => m !== model)]
+    : GEMINI_CASCADE_MODELS;
 
   const parts: any[] = [];
   const combinedText = [systemPrompt, promptText].filter(Boolean).join('\n\n');
@@ -404,35 +413,35 @@ async function callGeminiDirect({
     payload.generationConfig.responseMimeType = responseMimeType;
   }
 
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  });
+  let lastErrorText = '';
 
-  if (!res.ok) {
-    const errText = await res.text();
-    // Fallback to gemini-1.5-flash if 2.5-flash has temporary model quota or deprecation
-    if (targetModel !== 'gemini-1.5-flash') {
-      console.warn(`[Google AI Studio] ${targetModel} returned ${res.status}, retrying with gemini-1.5-flash...`);
-      return callGeminiDirect({
-        apiKey,
-        systemPrompt,
-        imagesBase64,
-        promptText,
-        model: 'gemini-1.5-flash',
-        responseMimeType,
+  for (const targetModel of modelsToTry) {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${targetModel}:generateContent?key=${cleanKey}`;
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
       });
+
+      if (res.ok) {
+        const json = await res.json();
+        const textOutput = json?.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (textOutput) {
+          return { text: textOutput, modelUsed: `Google ${targetModel} (AI Studio)` };
+        }
+      }
+
+      const errText = await res.text();
+      lastErrorText = `[${targetModel}] HTTP ${res.status}: ${errText.substring(0, 150)}`;
+      console.warn(`[Google AI Studio Cascade] Model ${targetModel} returned status ${res.status}, auto-switching to next model in cascade...`);
+    } catch (fetchErr: any) {
+      lastErrorText = `[${targetModel}] ${fetchErr.message}`;
+      console.warn(`[Google AI Studio Cascade] Model ${targetModel} fetch error:`, fetchErr.message);
     }
-    throw new Error(`Google AI Studio Error (${res.status}): ${errText}`);
   }
 
-  const json = await res.json();
-  const textOutput = json?.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!textOutput) {
-    throw new Error('Google AI Studio returned empty content.');
-  }
-  return textOutput;
+  throw new Error(`Google AI Studio Cascade Error: All models in cascade failed. Last error: ${lastErrorText}`);
 }
 
 // ---------------------------------------------------------------------------
@@ -642,24 +651,25 @@ Return ONLY a valid JSON object matching this schema (no markdown, no backticks)
       }
     }
 
-    // Provider 2: Direct Google AI Studio (fallback for any model, or primary when gemini selected)
+    // Provider 2: Direct Google AI Studio with Smart Cascade (gemini-3.7-flash -> 3.5 -> 2.5 -> 2.5-lite)
     if (!rawContent && aiCreds.hasGemini) {
       try {
-        rawContent = await callGeminiDirect({
+        const geminiRes = await callGeminiDirect({
           apiKey: aiCreds.geminiKey,
           systemPrompt,
           imagesBase64: validImages,
-          model: 'gemini-2.5-flash',
+          model: 'gemini-3.7-flash',
           responseMimeType: 'application/json',
         });
-        modelUsed = 'Google Gemini 2.5 Flash (AI Studio)';
+        rawContent = geminiRes.text;
+        modelUsed = geminiRes.modelUsed;
       } catch (geminiErr: any) {
         lastErrorText = geminiErr.message;
         console.warn('[Runno OCR] Direct Gemini error, checking OpenRouter fallback:', geminiErr.message);
       }
     }
 
-    // Provider 2: OpenRouter with selected vision model and fast fallbacks
+    // Provider 3: OpenRouter with selected vision model and fast fallbacks
     if (!rawContent && aiCreds.hasOpenRouter) {
       const candidateModels = [
         targetModel,
@@ -711,22 +721,6 @@ Return ONLY a valid JSON object matching this schema (no markdown, no backticks)
         } catch (err: any) {
           lastErrorText = err.message;
         }
-      }
-    }
-
-    // Provider 3: Fallback to Direct Gemini if OpenRouter failed
-    if (!rawContent && aiCreds.hasGemini) {
-      try {
-        rawContent = await callGeminiDirect({
-          apiKey: aiCreds.geminiKey,
-          systemPrompt,
-          imagesBase64: validImages,
-          model: 'gemini-2.5-flash',
-          responseMimeType: 'application/json',
-        });
-        modelUsed = 'Google Gemini 2.5 Flash (AI Studio fallback)';
-      } catch (geminiErr: any) {
-        lastErrorText = geminiErr.message;
       }
     }
 
@@ -793,25 +787,25 @@ router.post('/test-vision', async (req, res) => {
 
     if (aiCreds.hasGemini) {
       try {
-        await callGeminiDirect({
+        const geminiRes = await callGeminiDirect({
           apiKey: aiCreds.geminiKey,
           promptText: 'Ping: reply with OK.',
           responseMimeType: undefined,
-          model: 'gemini-2.5-flash',
+          model: 'gemini-3.7-flash',
         });
         const durationMs = Math.round(performance.now() - start);
         return res.json({
           success: true,
           status: 200,
-          modelUsed: 'Google Gemini 2.5 Flash (Direct AI Studio)',
+          modelUsed: geminiRes.modelUsed,
           durationMs,
-          message: 'Google AI Studio is responsive and ready for image extraction.',
+          message: 'Google AI Studio Cascade (Gemini 3.7 → 2.5) is responsive and ready for image extraction.',
         });
       } catch (geminiErr: any) {
-        if (!aiCreds.hasOpenRouter) {
+        if (!aiCreds.hasOpenRouter && !aiCreds.hasGroq) {
           return res.status(200).json({
             success: false,
-            modelUsed: 'Google Gemini 2.5 Flash',
+            modelUsed: 'Google Gemini (AI Studio)',
             durationMs: Math.round(performance.now() - start),
             error: geminiErr.message,
           });
@@ -1258,7 +1252,7 @@ JSON_PLAN STRUCTURE:
     let rawReply = '';
     let modelUsed = '';
 
-    // Direct Google AI Studio Execution
+    // Direct Google AI Studio Execution with Smart Cascade (Gemini 3.7 -> 3.5 -> 2.5 -> 2.5-lite)
     if (aiCreds.hasGemini) {
       try {
         const historyText = history
@@ -1269,16 +1263,17 @@ JSON_PLAN STRUCTURE:
         
         const conversationPrompt = `${historyText ? `${historyText}\n\n` : ''}Runner: ${message}\nCoach Runno:`;
 
-        rawReply = await callGeminiDirect({
+        const geminiRes = await callGeminiDirect({
           apiKey: aiCreds.geminiKey,
           systemPrompt: systemPrompt + modeDirective,
           promptText: conversationPrompt,
-          model: 'gemini-2.5-flash',
+          model: 'gemini-3.7-flash',
           responseMimeType: undefined,
         });
-        modelUsed = 'Google Gemini 2.5 Flash (AI Studio)';
+        rawReply = geminiRes.text;
+        modelUsed = geminiRes.modelUsed;
       } catch (geminiErr: any) {
-        console.warn('[Runno AI Coach] Direct Gemini error, checking OpenRouter fallback:', geminiErr.message);
+        console.warn('[Runno AI Coach] Direct Gemini error, checking fallbacks:', geminiErr.message);
       }
     }
 
