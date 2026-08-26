@@ -731,6 +731,7 @@ export const CoachView: React.FC<CoachViewProps> = ({
         })),
       }));
 
+      const now = new Date();
       const payload = {
         message: trimmed,
         history: cleanHistory,
@@ -739,6 +740,10 @@ export const CoachView: React.FC<CoachViewProps> = ({
         runnerContext: {
           recentRuns: sanitizedRuns,
           unitSystem,
+          clientDate: now.toISOString(),
+          localDateString: now.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
+          localDayName: now.toLocaleDateString('id-ID', { weekday: 'long' }),
+          localTime: now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
         },
         customApiKey,
       };

@@ -1223,17 +1223,44 @@ ${workoutsSummary || '• No specific workouts listed for this week.'}
 `;
     }
 
+    // Current Temporal Context (Date, Day of Week, and Time)
+    const now = runnerContext.clientDate ? new Date(runnerContext.clientDate) : new Date();
+    const dayNamesId = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+    const monthNamesId = [
+      'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+      'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
+    ];
+    const currentDayName = runnerContext.localDayName || dayNamesId[now.getDay()];
+    const currentDateFormatted = runnerContext.localDateString || `${currentDayName}, ${now.getDate()} ${monthNamesId[now.getMonth()]} ${now.getFullYear()}`;
+    const currentTimeFormatted = runnerContext.localTime || now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const todayIsoDate = now.toISOString().split('T')[0];
+
+    const timeContext = `=== CURRENT DATE & TIME (WAKTU SAAT INI) ===
+• Hari Ini (Today): ${currentDateFormatted} (Pukul ${currentTimeFormatted})
+• Hari (Current Day): ${currentDayName}
+• Tanggal ISO: ${todayIsoDate}
+• PANDUAN REFERENSI WAKTU:
+  1. Hari ini adalah hari ${currentDayName} (${now.getDate()} ${monthNamesId[now.getMonth()]}).
+  2. Lari/sesi yang tercatat bertanggal hari ini (${todayIsoDate}) atau berlabel ${currentDayName} adalah lari HARI INI (tadi pagi / siang ini / hari ini), JANGAN pernah sebut "kemarin".
+  3. "Kemarin" adalah hari ${dayNamesId[(now.getDay() + 6) % 7]}.
+  4. "Besok" adalah hari ${dayNamesId[(now.getDay() + 1) % 7]}.
+`;
+
     const systemPrompt = `You are Coach Runno, a motivating, warm, and highly experienced running coach.
 
+${timeContext}
 ${runnerProfileSummary}
 ${planContext}
 
 COACHING & RESPONSE PRINCIPLES:
-1. Pure Conversational Chat:
+1. Exact Date & Temporal Consistency:
+   - Always speak with full awareness of the exact current date (${currentDateFormatted}) and current day (${currentDayName}).
+   - Never say "kemarin" for workouts completed on today's date (${currentDayName}). Refer to them as "sesi hari ini" or "lari tadi".
+2. Pure Conversational Chat:
    - Talk like a genuine, friendly, and practical human running coach (Indonesian by default if user speaks Indonesian, or English if user speaks English).
    - Answer user questions directly, concisely, and encouragingly.
    - If the user asks for total distance, total runs, or runner statistics, give the exact numbers immediately.
-2. Plan & Schedule Guidance (Bullet Points / Numbered List):
+3. Plan & Schedule Guidance (Bullet Points / Numbered List):
    - When suggesting training routines, weekly schedules, workouts, pacing, or distance progressions, explain everything clearly using structured markdown bullet points or numbered lists.
    - Do NOT output JSON blocks or code blocks. Keep all recommendations directly inside clean, readable chat text.`;
 
