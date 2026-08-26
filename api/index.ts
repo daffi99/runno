@@ -1191,9 +1191,36 @@ router.post('/ai-coach', async (req, res) => {
       runnerProfileSummary += `No previous runs logged yet.\n`;
     }
 
-    let planContext = 'Currently No Active Plan.';
+    let planContext = '=== CURRENT TRAINING PLAN ===\nStatus: Currently No Active Plan.\n';
     if (currentPlan) {
-      planContext = `Current Active Plan: "${currentPlan.title}" (Goal: ${currentPlan.goal}, ${currentPlan.scheduleSummary}, Target: ${currentPlan.weeklyTargetKm}km/week, Week ${currentPlan.currentWeek || 1} of ${currentPlan.totalWeeks || 4}).`;
+      const curWeek = currentPlan.currentWeek || 1;
+      const workouts =
+        currentPlan.weeklySchedules?.[curWeek] ||
+        currentPlan.workouts ||
+        [];
+
+      const workoutsSummary = workouts.map((w: any) => {
+        const paceStr = w.targetPaceSecPerKm
+          ? `@ ${Math.floor(w.targetPaceSecPerKm / 60)}:${String(w.targetPaceSecPerKm % 60).padStart(2, '0')}/km`
+          : '';
+        const hrStr = w.targetHrZone ? `[${w.targetHrZone}]` : '';
+        const statusStr = w.completed ? '(Completed ✓)' : '(Pending)';
+        const distStr = w.distanceKm > 0 ? `${w.distanceKm} km` : 'Rest';
+        const descStr = w.description ? ` - "${w.description}"` : '';
+
+        return `• ${w.dayName || 'Day'}: ${w.title || 'Workout'} (${distStr} ${paceStr} ${hrStr}) ${statusStr}${descStr}`;
+      }).join('\n');
+
+      planContext = `=== CURRENT ACTIVE TRAINING PLAN ===
+Title: "${currentPlan.title}"
+Goal: ${currentPlan.goal || 'General Fitness'}
+Schedule Days: ${currentPlan.scheduleSummary || currentPlan.selectedDays?.join(', ') || 'Flexible'}
+Weekly Target Distance: ${currentPlan.weeklyTargetKm || 0} km
+Progress: Week ${curWeek} of ${currentPlan.totalWeeks || 4}
+${currentPlan.aiAdvice ? `Coach Strategy / Notes: "${currentPlan.aiAdvice}"\n` : ''}
+Workouts Schedule (Week ${curWeek}):
+${workoutsSummary || '• No specific workouts listed for this week.'}
+`;
     }
 
     const systemPrompt = `You are Coach Runno, a motivating, warm, and highly experienced running coach.
