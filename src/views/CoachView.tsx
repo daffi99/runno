@@ -239,8 +239,8 @@ export const COACH_MODELS: CoachModelOption[] = [
   {
     id: 'gemini',
     iconSrc: '/models/gemini.png',
-    name: 'Gemini 3.7 Flash',
-    desc: 'Google AI Studio · Auto (3.7 → 2.0 → 1.5)',
+    name: 'Gemini 3.5 Flash-Lite',
+    desc: 'Google AI Studio · Super Cepat (3.5 Lite → 3.5 → 3.7 → 3.6)',
   },
   {
     id: 'groq',
