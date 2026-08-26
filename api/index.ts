@@ -1202,72 +1202,15 @@ ${runnerProfileSummary}
 ${planContext}
 
 COACHING & RESPONSE PRINCIPLES:
-1. Direct, Straightforward & Concise:
-   - Always answer user questions directly without unnecessary rambling or robotic disclaimers.
-   - If the user asks for total distance, total runs, or overall statistics, give the exact answer immediately from the summary in 1-2 clear, encouraging sentences.
-2. Natural, Friendly Persona:
-   - Talk like a genuine human running coach (Indonesian by default if the user speaks Indonesian, or English if user speaks English).
-   - Keep answers practical, actionable, and easy to read.
-3. Structured Plan Generation:
-   - When proposing, adapting, advancing, or adjusting any training plan/schedule, write your brief coaching notes AND append the complete structured plan inside a \`\`\`json_plan ... \`\`\` code block.
-   - Keep each workout's "description" short and concise (1 sentence) to keep generation fast and complete.
-
-JSON_PLAN STRUCTURE:
-\`\`\`json_plan
-{
-  "title": "Sub-35 Min 5K Plan - Week 2",
-  "goal": "Mencapai Sub-35 Menit 5K",
-  "scheduleSummary": "Selasa, Kamis, Sabtu",
-  "selectedDays": ["Tuesday", "Thursday", "Saturday"],
-  "weeklyTargetKm": 13.5,
-  "totalWeeks": 16,
-  "currentWeek": 2,
-  "fitnessLevel": "beginner",
-  "aiAdvice": "Jaga lari santai tetap konversasional untuk pemulihan optimal.",
-  "workouts": [
-    {
-      "dayOfWeek": 1,
-      "dayName": "Senin",
-      "title": "Rest & Recovery",
-      "type": "rest",
-      "distanceKm": 0,
-      "targetPaceSecPerKm": null,
-      "targetHrZone": "Rest",
-      "description": "Istirahat total agar otot pulih optimal."
-    },
-    {
-      "dayOfWeek": 2,
-      "dayName": "Selasa",
-      "title": "Easy Aerobic Run",
-      "type": "easy",
-      "distanceKm": 4.0,
-      "targetPaceSecPerKm": 390,
-      "targetHrZone": "Zone 2 (Aerobic)",
-      "description": "Lari santai dengan ritme stabil dan nafas teratur."
-    }
-  ]
-}
-\`\`\``;
-
-    const lowerMsg = message.toLowerCase();
-
-    const isExplicitPlan =
-      lowerMsg.includes('buatkan jadwal') ||
-      lowerMsg.includes('jadwal latihan') ||
-      lowerMsg.includes('bikin plan') ||
-      lowerMsg.includes('buat plan') ||
-      lowerMsg.includes('generate plan') ||
-      lowerMsg.includes('create plan') ||
-      lowerMsg.includes('buatkan plan') ||
-      lowerMsg.includes('training plan') ||
-      lowerMsg.includes('minggu') ||
-      lowerMsg.includes('week') ||
-      lowerMsg.includes('jadwal');
+1. Pure Conversational Chat:
+   - Talk like a genuine, friendly, and practical human running coach (Indonesian by default if user speaks Indonesian, or English if user speaks English).
+   - Answer user questions directly, concisely, and encouragingly.
+   - If the user asks for total distance, total runs, or runner statistics, give the exact numbers immediately.
+2. Plan & Schedule Guidance (Bullet Points / Numbered List):
+   - When suggesting training routines, weekly schedules, workouts, pacing, or distance progressions, explain everything clearly using structured markdown bullet points or numbered lists.
+   - Do NOT output JSON blocks or code blocks. Keep all recommendations directly inside clean, readable chat text.`;
 
     let modeDirective = '';
-    if (isExplicitPlan) {
-      modeDirective = '\n\nIMPORTANT: The user wants a training plan or schedule update. You MUST provide the full ```json_plan ... ``` code block containing all 7 days alongside your coaching notes.';
-    }
 
     let rawReply = '';
     let modelUsed = '';
@@ -1541,8 +1484,8 @@ JSON_PLAN STRUCTURE:
 
     res.json({
       success: true,
-      reply: cleanReply || 'Berikut adalah jadwal latihan yang telah saya susun untuk kamu:',
-      suggestedPlan,
+      reply: cleanReply || 'Halo! Ada yang bisa saya bantu untuk program latihan lari kamu hari ini?',
+      suggestedPlan: null,
       debugInfo: {
         endpoint: '/api/ai-coach',
         status: 200,

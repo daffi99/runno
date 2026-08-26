@@ -1289,42 +1289,6 @@ export const CoachView: React.FC<CoachViewProps> = ({
                     >
                       {renderFormattedMessage(msg.content, isUser, msg.id === typingMessageId)}
 
-                      {/* Inline Suggested Plan Card (shown once typing is complete) */}
-                      {(() => {
-                        const planToRender = msg.suggestedPlan || (msg.role === 'assistant' ? (() => {
-                          const match = msg.content.match(/(\{[\s\r\n]*"title"[\s\S]*?"workouts"[\s\S]*?\})/);
-                          if (match && match[1]) {
-                            try {
-                              const cleaned = match[1].replace(/,\s*([}\]])/g, '$1');
-                              const parsed = JSON.parse(cleaned);
-                              if (parsed.workouts) {
-                                return {
-                                  ...parsed,
-                                  id: parsed.id || `plan_fallback_${msg.id}`,
-                                  status: parsed.status || 'draft',
-                                };
-                              }
-                            } catch (_) {}
-                          }
-                          return null;
-                        })() : null);
-
-                        if (!planToRender) return null;
-
-                        return (
-                          <div className="pt-2 animate-in fade-in duration-300">
-
-                            <PlanCard
-                              plan={planToRender}
-                              unitSystem={unitSystem}
-                              isActive={activePlan?.id === planToRender.id}
-                              onApplyPlan={handleApplyPlan}
-                            />
-                          </div>
-                        );
-                      })()}
-
-
                       {/* Model Info with Response Timer (Success: subtle small model name + duration at bottom right, Error: search icon + status pill) */}
                       {!isUser && msg.debugInfo && (
                         (() => {
