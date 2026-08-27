@@ -1194,32 +1194,53 @@ router.post('/ai-coach', async (req, res) => {
     let planContext = '=== CURRENT TRAINING PLAN ===\nStatus: Currently No Active Plan.\n';
     if (currentPlan) {
       const curWeek = currentPlan.currentWeek || 1;
-      const workouts =
-        currentPlan.weeklySchedules?.[curWeek] ||
-        currentPlan.workouts ||
-        [];
+      const weeklySchedules = currentPlan.weeklySchedules || {};
+      const weeklyKeys = Object.keys(weeklySchedules).map(Number).filter((n) => !isNaN(n));
+      const maxWeekFromSchedules = weeklyKeys.length > 0 ? Math.max(...weeklyKeys) : 1;
+      const totalWeeks = Math.max(currentPlan.totalWeeks || 4, maxWeekFromSchedules);
 
-      const workoutsSummary = workouts.map((w: any) => {
-        const paceStr = w.targetPaceSecPerKm
-          ? `@ ${Math.floor(w.targetPaceSecPerKm / 60)}:${String(w.targetPaceSecPerKm % 60).padStart(2, '0')}/km`
-          : '';
-        const hrStr = w.targetHrZone ? `[${w.targetHrZone}]` : '';
-        const statusStr = w.completed ? '(Completed ✓)' : '(Pending)';
-        const distStr = w.distanceKm > 0 ? `${w.distanceKm} km` : 'Rest';
-        const descStr = w.description ? ` - "${w.description}"` : '';
+      const allWeeksSummary: string[] = [];
 
-        return `• ${w.dayName || 'Day'}: ${w.title || 'Workout'} (${distStr} ${paceStr} ${hrStr}) ${statusStr}${descStr}`;
-      }).join('\n');
+      for (let w = 1; w <= totalWeeks; w++) {
+        const isCurrent = w === curWeek;
+        const workoutsForW: any[] =
+          weeklySchedules[w] && Array.isArray(weeklySchedules[w]) && weeklySchedules[w].length > 0
+            ? weeklySchedules[w]
+            : (currentPlan.workouts || []);
 
-      planContext = `=== CURRENT ACTIVE TRAINING PLAN ===
+        const weekTotalKm = workoutsForW.reduce((sum, item) => sum + (Number(item.distanceKm) || 0), 0);
+
+        const daysList = workoutsForW.map((wk: any) => {
+          const paceStr = wk.targetPaceSecPerKm
+            ? `@ ${Math.floor(wk.targetPaceSecPerKm / 60)}:${String(wk.targetPaceSecPerKm % 60).padStart(2, '0')}/km`
+            : '';
+          const hrStr = wk.targetHrZone ? `[${wk.targetHrZone}]` : '';
+          const statusStr = wk.completed ? '(Completed ✓)' : '(Pending)';
+          const distStr = wk.distanceKm > 0 ? `${wk.distanceKm} km` : 'Rest';
+          const descStr = wk.description ? ` - "${wk.description}"` : '';
+
+          return `    • ${wk.dayName || 'Day'}: ${wk.title || 'Workout'} (${distStr} ${paceStr} ${hrStr}) ${statusStr}${descStr}`;
+        }).join('\n');
+
+        allWeeksSummary.push(
+`  --- MINGGU / WEEK ${w} ${isCurrent ? '[MINGGU INI / CURRENT ACTIVE WEEK]' : ''} (Target: ${weekTotalKm.toFixed(1)} km) ---
+${daysList || '    • Tidak ada jadwal latihan spesifik.'}`
+        );
+      }
+
+      planContext = `=== COMPLETE MULTI-WEEK TRAINING PLAN (SELURUH MINGGU LATIHAN) ===
 Title: "${currentPlan.title}"
 Goal: ${currentPlan.goal || 'General Fitness'}
-Schedule Days: ${currentPlan.scheduleSummary || currentPlan.selectedDays?.join(', ') || 'Flexible'}
-Weekly Target Distance: ${currentPlan.weeklyTargetKm || 0} km
-Progress: Week ${curWeek} of ${currentPlan.totalWeeks || 4}
+Selected Running Days: ${currentPlan.scheduleSummary || currentPlan.selectedDays?.join(', ') || 'Flexible'}
+Total Weeks: ${totalWeeks} Minggu
+Current Active Week: Minggu ${curWeek} (Saat ini runner sedang di Minggu ke-${curWeek})
 ${currentPlan.aiAdvice ? `Coach Strategy / Notes: "${currentPlan.aiAdvice}"\n` : ''}
-Workouts Schedule (Week ${curWeek}):
-${workoutsSummary || '• No specific workouts listed for this week.'}
+JADWAL LENGKAP SEMUA MINGGU (MINGGU 1 SAMPAI MINGGU ${totalWeeks}):
+${allWeeksSummary.join('\n\n')}
+
+ATURAN PENTING MEMBACA JADWAL MINGGU:
+1. Anda memiliki data lengkap seluruh minggu latihan (Minggu 1 s/d ${totalWeeks}) di atas.
+2. Jika runner bertanya tentang menu latihan minggu tertentu (contoh: "jadwal minggu 4", "minggu 2", "week 3", "minggu depan"), BACAKAN PERSIS rincian sesi latihan dari data "MINGGU / WEEK X" di atas. JANGAN mengarang atau mengganti jenis latihan/jarak yang sudah diset runner!
 `;
     }
 
