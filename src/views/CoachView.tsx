@@ -37,6 +37,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronDown,
+  ChevronUp,
   ArrowRight,
   Pencil,
   FileText,
@@ -323,7 +324,15 @@ export const CoachView: React.FC<CoachViewProps> = ({
 
   const [typingMessageId, setTypingMessageId] = useState<string | null>(null);
   const [copiedMsgId, setCopiedMsgId] = useState<string | null>(null);
+  const [visibleChatCount, setVisibleChatCount] = useState<number>(5);
   const [isQuickModalOpen, setIsQuickModalOpen] = useState<boolean>(false);
+
+  const visibleMessages = useMemo(() => {
+    if (messages.length <= visibleChatCount) return messages;
+    return messages.slice(-visibleChatCount);
+  }, [messages, visibleChatCount]);
+
+  const hiddenMessagesCount = Math.max(0, messages.length - visibleMessages.length);
 
   const handleCopyMessage = (text: string, msgId: string) => {
     try {
@@ -949,7 +958,7 @@ export const CoachView: React.FC<CoachViewProps> = ({
 
 
   return (
-    <div className="max-w-md mx-auto px-4 pt-4 pb-28 space-y-4">
+    <div className="max-w-md mx-auto px-4 pt-4 pb-44 space-y-4">
       {/* Toast Notification */}
       {appliedPlanToast && (
         <div className="fixed top-5 left-4 right-4 max-w-md mx-auto z-50 p-3.5 rounded-2xl bg-neutral-900 text-white flex items-center space-x-2.5 shadow-2xl animate-in slide-in-from-top duration-200">
@@ -980,46 +989,6 @@ export const CoachView: React.FC<CoachViewProps> = ({
           >
             {activePlan ? <Pencil className="w-3.5 h-3.5 text-neutral-300" /> : <Plus className="w-3.5 h-3.5 text-[#FF5500]" />}
             <span>{activePlan ? 'Edit Plan' : 'New Plan'}</span>
-          </button>
-        </div>
-      </div>
-
-
-      {/* Sticky Top Segmented Sub-Tab Switcher */}
-      <div className="sticky top-0 z-30 pt-1 pb-1.5 -mx-4 px-4 bg-[#111111]/90 backdrop-blur-md">
-        <div className="grid grid-cols-2 p-1 bg-[#1E1E1E] rounded-2xl border border-white/5 shadow-soft-xs">
-          <button
-            type="button"
-            onClick={() => setActiveTab('schedule')}
-            className={clsx(
-              'py-2 px-3 rounded-xl text-xs font-bold transition-all duration-200 flex items-center justify-center space-x-2',
-              activeTab === 'schedule'
-                ? 'bg-[#2A2A2A] text-white shadow-sm'
-                : 'text-neutral-400 hover:text-white'
-            )}
-          >
-            <Calendar className="w-3.5 h-3.5" />
-            <span>Active Plan</span>
-            {activePlan && (
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            )}
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab('chat')}
-            className={clsx(
-              'py-2 px-3 rounded-xl text-xs font-bold transition-all duration-200 flex items-center justify-center space-x-2',
-              activeTab === 'chat'
-                ? 'bg-[#2A2A2A] text-white shadow-sm'
-                : 'text-neutral-400 hover:text-white'
-            )}
-          >
-            <MessageSquare className="w-3.5 h-3.5" />
-            <span>Coach Chat</span>
-            <span className="px-1.5 py-0.2 rounded-full bg-[#FF5500]/15 text-[#FF5500] text-[10px] font-black border border-[#FF5500]/30">
-              AI
-            </span>
           </button>
         </div>
       </div>
@@ -1254,9 +1223,23 @@ export const CoachView: React.FC<CoachViewProps> = ({
           </div>
 
 
-          {/* Chat Messages Feed */}
+          {/* Chat Messages Feed (Default: 5 Latest Messages, Tap to Load More) */}
           <div className="space-y-3.5 min-h-[300px]">
-            {messages.map((msg) => {
+            {hiddenMessagesCount > 0 && (
+              <div className="flex justify-center pt-1 pb-1">
+                <button
+                  type="button"
+                  onClick={() => setVisibleChatCount((prev) => prev + 5)}
+                  className="px-3.5 py-1.5 rounded-full bg-[#1E1E1E] hover:bg-[#252525] border border-white/10 text-neutral-300 hover:text-white text-[11px] font-bold flex items-center gap-1.5 shadow-soft-xs active:scale-95 transition-all cursor-pointer select-none"
+                >
+                  <ChevronUp className="w-3.5 h-3.5 text-[#FF5500]" />
+                  <span>Lihat chat sebelumnya (+5)</span>
+                  <span className="text-[9.5px] font-mono text-neutral-400">({hiddenMessagesCount} lagi)</span>
+                </button>
+              </div>
+            )}
+
+            {visibleMessages.map((msg) => {
               const isUser = msg.role === 'user';
               return (
                 <div
@@ -1371,7 +1354,7 @@ export const CoachView: React.FC<CoachViewProps> = ({
           </div>
 
           {/* Chat Input Bar */}
-          <div className="sticky bottom-20 pt-2 bg-gradient-to-t from-[#111111] via-[#111111] to-transparent">
+          <div className="sticky bottom-34 z-30 pt-2 bg-gradient-to-t from-[#111111] via-[#111111] to-transparent">
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -1486,6 +1469,53 @@ export const CoachView: React.FC<CoachViewProps> = ({
 
         </div>
       )}
+
+      {/* Floating Bottom Sub-Tab Switcher (Floating Just Above the Bottom Navigation Bar) */}
+      <div className="fixed bottom-22 left-0 right-0 z-40 flex justify-center pointer-events-none px-4">
+        <div className="pointer-events-auto flex items-center p-1 bg-[#1E1E1E]/90 backdrop-blur-xl rounded-full border border-white/10 shadow-2xl space-x-1">
+          <button
+            type="button"
+            onClick={() => setActiveTab('schedule')}
+            className={clsx(
+              'py-1.5 px-4 rounded-full text-xs font-bold transition-all duration-200 flex items-center space-x-1.5 cursor-pointer',
+              activeTab === 'schedule'
+                ? 'bg-[#FF5500] text-white shadow-sm'
+                : 'text-neutral-400 hover:text-white'
+            )}
+          >
+            <Calendar className="w-3.5 h-3.5" />
+            <span>Active Plan</span>
+            {activePlan && (
+              <span className={clsx(
+                "w-1.5 h-1.5 rounded-full",
+                activeTab === 'schedule' ? "bg-white" : "bg-emerald-500 animate-pulse"
+              )} />
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setActiveTab('chat')}
+            className={clsx(
+              'py-1.5 px-4 rounded-full text-xs font-bold transition-all duration-200 flex items-center space-x-1.5 cursor-pointer',
+              activeTab === 'chat'
+                ? 'bg-[#FF5500] text-white shadow-sm'
+                : 'text-neutral-400 hover:text-white'
+            )}
+          >
+            <MessageSquare className="w-3.5 h-3.5" />
+            <span>Coach Chat</span>
+            <span className={clsx(
+              "px-1.5 py-0.2 rounded-full text-[9px] font-black",
+              activeTab === 'chat'
+                ? "bg-black/30 text-white"
+                : "bg-[#FF5500]/15 text-[#FF5500] border border-[#FF5500]/30"
+            )}>
+              AI
+            </span>
+          </button>
+        </div>
+      </div>
 
       {/* Quick Setup Plan Modal */}
       <QuickPlanModal
