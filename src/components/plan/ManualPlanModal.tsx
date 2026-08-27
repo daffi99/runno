@@ -181,6 +181,11 @@ export const ManualPlanModal: React.FC<ManualPlanModalProps> = ({
     const existingWeekly = existingPlan?.weeklySchedules ? { ...existingPlan.weeklySchedules } : {};
     existingWeekly[planCurrentWeek] = workouts;
 
+    const existingWeeklyNotes = existingPlan?.weeklyNotes ? { ...existingPlan.weeklyNotes } : {};
+    if (trainingNote.trim()) {
+      existingWeeklyNotes[planCurrentWeek] = trainingNote.trim();
+    }
+
     const newPlan: TrainingPlan = {
       id: planId,
       title: title.trim() || 'Custom Training Plan',
@@ -195,6 +200,7 @@ export const ManualPlanModal: React.FC<ManualPlanModalProps> = ({
       status: 'active',
       workouts,
       weeklySchedules: existingWeekly,
+      weeklyNotes: existingWeeklyNotes,
       aiAdvice: trainingNote.trim(),
       createdAt: existingPlan?.createdAt || new Date().toISOString(),
       updatedAt: new Date().toISOString(),

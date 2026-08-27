@@ -473,6 +473,7 @@ export const storageService = {
               ...data.plan,
               startDate: data.plan.startDate || localPlan?.startDate || null,
               weeklySchedules: data.plan.weeklySchedules || localPlan?.weeklySchedules || undefined,
+              weeklyNotes: data.plan.weeklyNotes || localPlan?.weeklyNotes || undefined,
             };
             this.saveActivePlan(mergedPlan);
             return mergedPlan;

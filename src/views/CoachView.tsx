@@ -348,23 +348,6 @@ export const CoachView: React.FC<CoachViewProps> = ({
   const [isEditingNote, setIsEditingNote] = useState<boolean>(false);
   const [editedNoteText, setEditedNoteText] = useState<string>('');
 
-  const handleStartEditNote = () => {
-    setEditedNoteText(activePlan?.aiAdvice || '');
-    setIsEditingNote(true);
-  };
-
-  const handleSaveNote = () => {
-    if (!activePlan) return;
-    const updatedPlan: TrainingPlan = {
-      ...activePlan,
-      aiAdvice: editedNoteText.trim(),
-      updatedAt: new Date().toISOString(),
-    };
-    storageService.saveActivePlan(updatedPlan);
-    setActivePlan(updatedPlan);
-    setIsEditingNote(false);
-  };
-
 
 
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -491,6 +474,30 @@ export const CoachView: React.FC<CoachViewProps> = ({
       setViewedWeek(currentPlanWeek);
     }
   }, [activePlan?.id, activePlan?.startDate, currentPlanWeek]);
+
+  const currentWeekNote = activePlan?.weeklyNotes?.[viewedWeek] || '';
+
+  const handleStartEditNote = () => {
+    setEditedNoteText(currentWeekNote);
+    setIsEditingNote(true);
+  };
+
+  const handleSaveNote = () => {
+    if (!activePlan) return;
+    const updatedWeeklyNotes: Record<number, string> = {
+      ...(activePlan.weeklyNotes || {}),
+      [viewedWeek]: editedNoteText.trim(),
+    };
+    const updatedPlan: TrainingPlan = {
+      ...activePlan,
+      weeklyNotes: updatedWeeklyNotes,
+      aiAdvice: viewedWeek === currentPlanWeek ? editedNoteText.trim() : (activePlan.aiAdvice || ''),
+      updatedAt: new Date().toISOString(),
+    };
+    storageService.saveActivePlan(updatedPlan);
+    setActivePlan(updatedPlan);
+    setIsEditingNote(false);
+  };
 
   const isViewingCurrentWeek = viewedWeek === currentPlanWeek;
   const isViewingNextWeek = viewedWeek === currentPlanWeek + 1;
@@ -958,7 +965,7 @@ export const CoachView: React.FC<CoachViewProps> = ({
 
 
   return (
-    <div className="max-w-md mx-auto px-4 pt-4 pb-44 space-y-4">
+    <div className="max-w-md mx-auto px-4 pt-4 pb-36 space-y-3.5">
       {/* Toast Notification */}
       {appliedPlanToast && (
         <div className="fixed top-5 left-4 right-4 max-w-md mx-auto z-50 p-3.5 rounded-2xl bg-neutral-900 text-white flex items-center space-x-2.5 shadow-2xl animate-in slide-in-from-top duration-200">
@@ -1058,12 +1065,12 @@ export const CoachView: React.FC<CoachViewProps> = ({
               </div>
 
 
-              {/* Training Note Card */}
+              {/* Training Note Card (Per-Week Independent Note) */}
               <div className="p-4 rounded-3xl bg-[#1E1E1E] border border-white/5 shadow-soft-sm space-y-2.5">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2 text-white font-bold text-xs">
                     <FileText className="w-4 h-4 text-[#FF5500]" />
-                    <span>Note Training</span>
+                    <span>Note Training (Week {viewedWeek})</span>
                   </div>
                   {!isEditingNote ? (
                     <button
@@ -1071,7 +1078,7 @@ export const CoachView: React.FC<CoachViewProps> = ({
                       className="text-[11px] font-bold text-neutral-400 hover:text-white flex items-center gap-1 transition-colors px-2 py-1 rounded-xl hover:bg-white/5 active:scale-95"
                     >
                       <Pencil className="w-3 h-3" />
-                      <span>{activePlan.aiAdvice ? 'Edit' : 'Tulis Note'}</span>
+                      <span>{currentWeekNote ? 'Edit' : 'Tulis Note'}</span>
                     </button>
                   ) : (
                     <div className="flex items-center space-x-1.5">
@@ -1097,15 +1104,15 @@ export const CoachView: React.FC<CoachViewProps> = ({
                     <textarea
                       value={editedNoteText}
                       onChange={(e) => setEditedNoteText(e.target.value)}
-                      placeholder="Tulis catatan latihan atau target Anda di sini..."
+                      placeholder={`Tulis catatan latihan khusus untuk Minggu ${viewedWeek}...`}
                       rows={3}
                       className="w-full bg-[#151515] border border-white/10 rounded-2xl p-3 text-xs text-white placeholder:text-neutral-500 focus:outline-none focus:border-[#FF5500] transition-colors resize-none leading-relaxed"
                       autoFocus
                     />
                   </div>
-                ) : activePlan.aiAdvice ? (
+                ) : currentWeekNote ? (
                   <p className="text-xs text-neutral-300 leading-relaxed whitespace-pre-line">
-                    {activePlan.aiAdvice}
+                    {currentWeekNote}
                   </p>
                 ) : (
                   <div
@@ -1113,7 +1120,7 @@ export const CoachView: React.FC<CoachViewProps> = ({
                     className="p-3.5 rounded-2xl bg-black/20 border border-dashed border-white/10 text-center cursor-pointer hover:border-white/20 transition-all group"
                   >
                     <p className="text-xs text-neutral-400 group-hover:text-neutral-300 transition-colors">
-                      + Tambah catatan latihan...
+                      + Tambah catatan latihan untuk Minggu {viewedWeek}...
                     </p>
                   </div>
                 )}
@@ -1354,7 +1361,7 @@ export const CoachView: React.FC<CoachViewProps> = ({
           </div>
 
           {/* Chat Input Bar */}
-          <div className="sticky bottom-34 z-30 pt-2 bg-gradient-to-t from-[#111111] via-[#111111] to-transparent">
+          <div className="sticky bottom-36 z-30 pt-2 bg-gradient-to-t from-[#111111] via-[#111111] to-transparent">
             <form
               onSubmit={(e) => {
                 e.preventDefault();
@@ -1471,7 +1478,7 @@ export const CoachView: React.FC<CoachViewProps> = ({
       )}
 
       {/* Floating Bottom Sub-Tab Switcher (Floating Just Above the Bottom Navigation Bar) */}
-      <div className="fixed bottom-22 left-0 right-0 z-40 flex justify-center pointer-events-none px-4">
+      <div className="fixed bottom-24 left-0 right-0 z-40 flex justify-center pointer-events-none px-4">
         <div className="pointer-events-auto flex items-center p-1 bg-[#1E1E1E]/90 backdrop-blur-xl rounded-full border border-white/10 shadow-2xl space-x-1">
           <button
             type="button"

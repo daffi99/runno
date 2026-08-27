@@ -63,6 +63,7 @@ export const trainingPlans = pgTable('training_plans', {
   status: text('status').notNull().default('active'),
   workouts: jsonb('workouts').notNull(),
   weekly_schedules: jsonb('weekly_schedules'),
+  weekly_notes: jsonb('weekly_notes'),
   ai_advice: text('ai_advice'),
   created_at: timestamp('created_at').defaultNow().notNull(),
   updated_at: timestamp('updated_at').defaultNow().notNull(),
@@ -142,6 +143,7 @@ export async function initDbSchema(pool: any) {
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW() NOT NULL
       );
       ALTER TABLE training_plans ADD COLUMN IF NOT EXISTS weekly_schedules JSONB;
+      ALTER TABLE training_plans ADD COLUMN IF NOT EXISTS weekly_notes JSONB;
       ALTER TABLE training_plans ADD COLUMN IF NOT EXISTS start_date TEXT;
 
       CREATE TABLE IF NOT EXISTS coach_messages (
@@ -1249,9 +1251,12 @@ router.post('/ai-coach', async (req, res) => {
           return `    • ${wk.dayName || 'Day'}: ${wk.title || 'Workout'} (${distStr} ${paceStr} ${hrStr}) ${statusStr}${descStr}`;
         }).join('\n');
 
+        const weekNote = currentPlan.weeklyNotes?.[w] || '';
+        const weekNoteStr = weekNote ? `\n    • Note / Catatan Training Minggu ${w}: "${weekNote}"` : '';
+
         allWeeksSummary.push(
 `  --- MINGGU / WEEK ${w} ${isCurrent ? '[★ MINGGU AKTIF SAAT INI / CURRENT ACTIVE WEEK ★]' : ''} (Target: ${weekTotalKm.toFixed(1)} km) ---
-${daysList || '    • Tidak ada jadwal latihan spesifik.'}`
+${daysList || '    • Tidak ada jadwal latihan spesifik.'}${weekNoteStr}`
         );
       }
 
@@ -1821,6 +1826,7 @@ router.get('/plans/active', async (_req, res) => {
         status: rec.status,
         workouts: rec.workouts,
         weeklySchedules: rec.weekly_schedules || null,
+        weeklyNotes: rec.weekly_notes || null,
         aiAdvice: rec.ai_advice,
         createdAt: rec.created_at?.toISOString?.() || new Date().toISOString(),
         updatedAt: rec.updated_at?.toISOString?.() || new Date().toISOString(),
@@ -1864,6 +1870,7 @@ router.post('/plans', async (req, res) => {
       status: planPayload.status || 'active',
       workouts: planPayload.workouts || [],
       weekly_schedules: planPayload.weeklySchedules || null,
+      weekly_notes: planPayload.weeklyNotes || null,
       ai_advice: planPayload.aiAdvice || null,
       updated_at: new Date(),
     };

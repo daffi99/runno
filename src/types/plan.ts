@@ -38,6 +38,7 @@ export interface TrainingPlan {
   status: 'active' | 'completed' | 'archived';
   workouts: PlanWorkout[]; // Default / active week workouts
   weeklySchedules?: Record<number, PlanWorkout[]>; // Independent workouts per week (Week 1, Week 2, Week 3, etc.)
+  weeklyNotes?: Record<number, string>; // Independent training notes per week (Week 1, Week 2, Week 3, etc.)
   aiAdvice?: string; // Strategic coaching tips
   createdAt: string;
   updatedAt: string;
