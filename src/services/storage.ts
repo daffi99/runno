@@ -175,15 +175,29 @@ export const storageService = {
           }
 
           if (missingOnServer.length > 0) {
-            try {
-              await fetch('/api/runs/batch', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ runs: missingOnServer }),
-              });
-              console.log(`[Runno Client] Auto-pushed ${missingOnServer.length} runs to server DB.`);
-            } catch (err) {
-              console.warn('[Runno Client] Notice pushing runs to server:', err);
+            // Strip large base64 screenshots so the payload stays tiny (< 50KB) and avoids 413 Payload Too Large
+            const sanitizedMissing = missingOnServer.map((r) => {
+              if (r.screenshot_url && r.screenshot_url.length > 2000) {
+                const { screenshot_url, ...rest } = r;
+                return rest as Run;
+              }
+              return r;
+            });
+
+            for (let i = 0; i < sanitizedMissing.length; i += 10) {
+              const chunk = sanitizedMissing.slice(i, i + 10);
+              try {
+                const bRes = await fetch('/api/runs/batch', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ runs: chunk }),
+                });
+                if (bRes.ok) {
+                  console.log(`[Runno Client] Auto-pushed chunk (${chunk.length} runs) to server DB.`);
+                }
+              } catch (err) {
+                console.warn('[Runno Client] Notice pushing chunk to server:', err);
+              }
             }
           }
 
@@ -230,6 +244,54 @@ export const storageService = {
     }
 
     return merged;
+  },
+
+  async forcePushAllLocalRunsToServer(): Promise<{ success: boolean; count: number }> {
+    const deletedIds = this.getDeletedRunIds();
+    const localRuns = this.getRuns();
+    const idbRuns = await this.getRunsFromIdb();
+    const combinedMap = new Map<string, Run>();
+    for (const r of [...localRuns, ...idbRuns]) {
+      if (r && r.id && !deletedIds.has(r.id)) combinedMap.set(r.id, r);
+    }
+    const allRuns = Array.from(combinedMap.values());
+    
+    const sanitized = allRuns.map((r) => {
+      if (r.screenshot_url && r.screenshot_url.length > 2000) {
+        const { screenshot_url, ...rest } = r;
+        return rest as Run;
+      }
+      return r;
+    });
+
+    let uploaded = 0;
+    for (let i = 0; i < sanitized.length; i += 10) {
+      const chunk = sanitized.slice(i, i + 10);
+      try {
+        const res = await fetch('/api/runs/batch', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ runs: chunk }),
+        });
+        if (res.ok) {
+          uploaded += chunk.length;
+        }
+      } catch (_) {}
+    }
+
+    // Also push active plan
+    const activePlan = this.getActivePlan();
+    if (activePlan) {
+      try {
+        await fetch('/api/plans', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(activePlan),
+        });
+      } catch (_) {}
+    }
+
+    return { success: true, count: uploaded };
   },
 
   saveRuns(runs: Run[]) {

@@ -14,7 +14,9 @@ import {
   Smartphone,
   Check,
   BarChart2,
+  RefreshCw,
 } from 'lucide-react';
+import { clsx } from 'clsx';
 
 interface MoreViewProps {
   settings: AppSettings;
@@ -35,7 +37,22 @@ export const MoreView: React.FC<MoreViewProps> = ({
   const [apiKeyInput, setApiKeyInput] = useState<string>(settings.customOpenRouterKey || '');
   const [savedKeySuccess, setSavedKeySuccess] = useState<boolean>(false);
   const [importStatus, setImportStatus] = useState<string | null>(null);
+  const [isSyncingDb, setIsSyncingDb] = useState<boolean>(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleSyncAllToDb = async () => {
+    setIsSyncingDb(true);
+    try {
+      const res = await storageService.forcePushAllLocalRunsToServer();
+      setImportStatus(`Berhasil mengunggah ${res.count} riwayat lari ke Neon Cloud DB!`);
+      onDataChanged();
+    } catch (err: any) {
+      setImportStatus(`Gagal sync: ${err?.message || err}`);
+    } finally {
+      setIsSyncingDb(false);
+      setTimeout(() => setImportStatus(null), 4000);
+    }
+  };
 
   const handleSaveApiKey = () => {
     onUpdateSettings({ customOpenRouterKey: apiKeyInput.trim() });
@@ -234,6 +251,25 @@ export const MoreView: React.FC<MoreViewProps> = ({
             <div>
               <h3 className="text-sm font-bold text-white">Import Runs (JSON)</h3>
               <p className="text-xs text-neutral-400">Restore runs from a previously exported backup file</p>
+            </div>
+          </div>
+          <ChevronRight className="w-4 h-4 text-neutral-500" />
+        </Card>
+
+        <Card
+          variant="interactive"
+          onClick={handleSyncAllToDb}
+          className="p-4 flex items-center justify-between bg-[#1E1E1E] border-white/5 cursor-pointer"
+        >
+          <div className="flex items-center space-x-3.5">
+            <div className="w-10 h-10 rounded-2xl bg-[#FF5500]/15 text-[#FF5500] flex items-center justify-center shrink-0">
+              <RefreshCw className={clsx("w-5 h-5", isSyncingDb && "animate-spin")} />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-white">Sync All Runs to Cloud DB</h3>
+              <p className="text-xs text-neutral-400">
+                {isSyncingDb ? 'Sedang mengunggah ke Neon DB...' : 'Upload & sync all local runs to PostgreSQL database'}
+              </p>
             </div>
           </div>
           <ChevronRight className="w-4 h-4 text-neutral-500" />
