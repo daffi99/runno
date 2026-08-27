@@ -732,10 +732,16 @@ export const CoachView: React.FC<CoachViewProps> = ({
       }));
 
       const now = new Date();
+      const planWithResolvedWeek = activePlan ? {
+        ...activePlan,
+        currentWeek: currentPlanWeek,
+        viewedWeek: viewedWeek,
+      } : null;
+
       const payload = {
         message: trimmed,
         history: cleanHistory,
-        currentPlan: activePlan,
+        currentPlan: planWithResolvedWeek,
         coachModel: selectedModelId,
         runnerContext: {
           recentRuns: sanitizedRuns,
@@ -744,6 +750,8 @@ export const CoachView: React.FC<CoachViewProps> = ({
           localDateString: now.toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
           localDayName: now.toLocaleDateString('id-ID', { weekday: 'long' }),
           localTime: now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }),
+          currentPlanWeek: currentPlanWeek,
+          viewedWeek: viewedWeek,
         },
         customApiKey,
       };

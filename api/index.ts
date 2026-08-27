@@ -1193,11 +1193,38 @@ router.post('/ai-coach', async (req, res) => {
 
     let planContext = '=== CURRENT TRAINING PLAN ===\nStatus: Currently No Active Plan.\n';
     if (currentPlan) {
-      const curWeek = currentPlan.currentWeek || 1;
+      let curWeek = Number(runnerContext.currentPlanWeek) || Number(currentPlan.currentWeek) || 1;
+      
+      // Also calculate from startDate if available
+      if (currentPlan.startDate && !runnerContext.currentPlanWeek) {
+        try {
+          const start = new Date(currentPlan.startDate);
+          const startDay = start.getDay();
+          const startDiff = start.getDate() - startDay + (startDay === 0 ? -6 : 1);
+          const startMonday = new Date(start);
+          startMonday.setDate(startDiff);
+          startMonday.setHours(0, 0, 0, 0);
+
+          const todayDate = runnerContext.clientDate ? new Date(runnerContext.clientDate) : new Date();
+          const todayDay = todayDate.getDay();
+          const todayDiff = todayDate.getDate() - todayDay + (todayDay === 0 ? -6 : 1);
+          const todayMonday = new Date(todayDate);
+          todayMonday.setDate(todayDiff);
+          todayMonday.setHours(0, 0, 0, 0);
+
+          const diffDays = Math.round((todayMonday.getTime() - startMonday.getTime()) / (24 * 3600 * 1000));
+          const diffWeeks = Math.floor(diffDays / 7);
+          const computed = 1 + diffWeeks;
+          if (computed >= 1) {
+            curWeek = computed;
+          }
+        } catch (_) {}
+      }
+
       const weeklySchedules = currentPlan.weeklySchedules || {};
       const weeklyKeys = Object.keys(weeklySchedules).map(Number).filter((n) => !isNaN(n));
       const maxWeekFromSchedules = weeklyKeys.length > 0 ? Math.max(...weeklyKeys) : 1;
-      const totalWeeks = Math.max(currentPlan.totalWeeks || 4, maxWeekFromSchedules);
+      const totalWeeks = Math.max(currentPlan.totalWeeks || 4, maxWeekFromSchedules, curWeek);
 
       const allWeeksSummary: string[] = [];
 
@@ -1223,24 +1250,27 @@ router.post('/ai-coach', async (req, res) => {
         }).join('\n');
 
         allWeeksSummary.push(
-`  --- MINGGU / WEEK ${w} ${isCurrent ? '[MINGGU INI / CURRENT ACTIVE WEEK]' : ''} (Target: ${weekTotalKm.toFixed(1)} km) ---
+`  --- MINGGU / WEEK ${w} ${isCurrent ? '[★ MINGGU AKTIF SAAT INI / CURRENT ACTIVE WEEK ★]' : ''} (Target: ${weekTotalKm.toFixed(1)} km) ---
 ${daysList || '    • Tidak ada jadwal latihan spesifik.'}`
         );
       }
 
       planContext = `=== COMPLETE MULTI-WEEK TRAINING PLAN (SELURUH MINGGU LATIHAN) ===
-Title: "${currentPlan.title}"
-Goal: ${currentPlan.goal || 'General Fitness'}
-Selected Running Days: ${currentPlan.scheduleSummary || currentPlan.selectedDays?.join(', ') || 'Flexible'}
-Total Weeks: ${totalWeeks} Minggu
-Current Active Week: Minggu ${curWeek} (Saat ini runner sedang di Minggu ke-${curWeek})
-${currentPlan.aiAdvice ? `Coach Strategy / Notes: "${currentPlan.aiAdvice}"\n` : ''}
-JADWAL LENGKAP SEMUA MINGGU (MINGGU 1 SAMPAI MINGGU ${totalWeeks}):
+• Judul Program: "${currentPlan.title}"
+• Target/Goal: ${currentPlan.goal || 'General Fitness'}
+• Hari Latihan: ${currentPlan.scheduleSummary || currentPlan.selectedDays?.join(', ') || 'Flexible'}
+• Total Durasi: ${totalWeeks} Minggu
+• MINGGU AKTIF SEKARANG: MINGGU ${curWeek} (Saat ini runner sedang di Minggu ke-${curWeek} dari ${totalWeeks} minggu)
+${runnerContext.viewedWeek ? `• Minggu yang Sedang Dibuka di Layar: Minggu ${runnerContext.viewedWeek}\n` : ''}
+${currentPlan.aiAdvice ? `• Catatan Strategi Coach: "${currentPlan.aiAdvice}"\n` : ''}
+
+JADWAL LENGKAP TIAP MINGGU (MINGGU 1 SAMPAI MINGGU ${totalWeeks}):
 ${allWeeksSummary.join('\n\n')}
 
-ATURAN PENTING MEMBACA JADWAL MINGGU:
-1. Anda memiliki data lengkap seluruh minggu latihan (Minggu 1 s/d ${totalWeeks}) di atas.
-2. Jika runner bertanya tentang menu latihan minggu tertentu (contoh: "jadwal minggu 4", "minggu 2", "week 3", "minggu depan"), BACAKAN PERSIS rincian sesi latihan dari data "MINGGU / WEEK X" di atas. JANGAN mengarang atau mengganti jenis latihan/jarak yang sudah diset runner!
+ATURAN KRUSIAL MINGGU & JADWAL:
+1. MINGGU AKTIF SAAT INI ADALAH MINGGU ${curWeek}. Jangan pernah mengira runner masih di Minggu 1 jika tertulis Minggu ${curWeek}!
+2. Jika runner bertanya tentang "minggu ini", jawab berdasarkan menu MINGGU ${curWeek}.
+3. Jika runner bertanya tentang menu minggu tertentu (contoh: "jadwal minggu 4", "minggu 2", "week 3", "minggu depan"), BACAKAN PERSIS rincian sesi latihan dari data "MINGGU / WEEK X" di atas tanpa mengarang!
 `;
     }
 
