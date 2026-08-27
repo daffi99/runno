@@ -175,11 +175,16 @@ export const storageService = {
           }
 
           if (missingOnServer.length > 0) {
-            fetch('/api/runs/batch', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ runs: missingOnServer }),
-            }).catch(() => {});
+            try {
+              await fetch('/api/runs/batch', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ runs: missingOnServer }),
+              });
+              console.log(`[Runno Client] Auto-pushed ${missingOnServer.length} runs to server DB.`);
+            } catch (err) {
+              console.warn('[Runno Client] Notice pushing runs to server:', err);
+            }
           }
 
           const merged = Array.from(runMap.values()).sort(
